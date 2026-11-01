@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Night Hunt</title><link rel="stylesheet" href="style.css"><link rel="icon" href="favicon.svg"></head><body>
+<canvas id="c"></canvas>
+<div id="menu" class="panel">
+  <h1>NIGHT HUNT</h1><p class="sub">a multiplayer monster survival game (fan-made, play with friends)</p>
+  <label>Your name <input id="pname" maxlength="16" placeholder="Player"></label>
+  <label>Play mode <select id="mode"><option value="online">🌐 Online (internet, peer-to-peer)</option><option value="server">📶 This server (Wi-Fi / LAN)</option></select></label>
+  <div class="tabs"><button data-tab="create" class="on">Create Server</button><button data-tab="join">Join with Code</button><button data-tab="browse">Public Servers</button></div>
+  <div id="tab-create" class="tab">
+    <label>Server name <input id="sname" maxlength="24" placeholder="Night Hunt Server"></label>
+    <label>Max players: <b id="maxv">4</b><input id="smax" type="range" min="2" max="15" value="4"></label>
+    <div class="priv"><label><input type="radio" name="priv" value="friends" checked> 🔒 Friends only <small>(join with private code / invite link)</small></label>
+    <label><input type="radio" name="priv" value="public"> 🌍 Public <small>(shows in the public server list)</small></label></div>
+    <button id="bcreate" class="big">Create Server</button>
+  </div>
+  <div id="tab-join" class="tab hide"><label>Server code <input id="jcode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"></label><button id="bjoin" class="big">Join</button></div>
+  <div id="tab-browse" class="tab hide"><div id="slist">Loading…</div><button id="brefresh">Refresh</button></div>
+  <div id="merr" class="err"></div>
+  <div id="dlwin" style="text-align:center;margin-top:12px"><a href="https://github.com/leonisbel/night-hunt/releases/latest/download/NightHunt-Windows.zip" style="display:inline-block;background:#1f6feb;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-weight:bold">⬇ Download for Windows</a></div>
+  <div class="help"><b>Controls:</b> WASD / arrows move · Shift sprint · Mouse aims flashlight · Space or click = monster ability · Tab = scoreboard · M = mute</div>
+</div>
+<div id="hud" class="hide">
+  <div id="topbar"><span id="hcode"></span><button id="binvite">Copy invite link</button><span id="hcount"></span></div>
+  <div id="timer"></div>
+  <div id="rolebox"></div>
+  <div id="stam"><div></div></div>
+  <div id="ability"></div>
+  <div id="hostbox" class="hide"><b>Host controls</b><div><button id="bstart" class="big">🚁 Take off!</button></div>
+    <div><button id="baddbot">+ Bot</button><button id="bkick">− Bot</button></div>
+    <label>Max <input id="hmax" type="number" min="2" max="15"></label> <label><input type="checkbox" id="hpub"> Public</label></div>
+  <div id="lobbyhint"></div>
+  <div id="events"></div>
+  <div id="board" class="hide"></div>
+  <button id="bleave">Leave</button>
+</div>
+<div id="overlay" class="hide"></div>
+<script src="vendor/peerjs.min.js"></script><script src="vendor/nostr.bundle.js"></script><script src="core.js"></script><script src="net.js"></script><script src="draw.js"></script><script src="game.js"></script></body></html>
