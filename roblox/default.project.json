@@ -1,0 +1,34 @@
+{
+  "name": "NightHunt",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "NightHunt": { "$path": "src/shared" }
+    },
+    "ServerScriptService": {
+      "NightHuntServer": { "$path": "src/server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "NightHuntClient": { "$path": "src/client" }
+      }
+    },
+    "Players": {
+      "$properties": { "CharacterAutoLoads": true, "RespawnTime": 3 }
+    },
+    "Workspace": {
+      "LobbySpawn": {
+        "$className": "SpawnLocation",
+        "$properties": {
+          "Anchored": true,
+          "Size": [12, 1, 12],
+          "Position": [0, 0.5, 45],
+          "Neutral": true,
+          "Duration": 0,
+          "Color": [0.17, 0.2, 0.25],
+          "Material": "Metal"
+        }
+      }
+    }
+  }
+}

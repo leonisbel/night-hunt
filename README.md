@@ -38,3 +38,7 @@ WASD / arrow keys: move · Shift: sprint (survivors) · Mouse: aim flashlight ·
 - **Own server:** `npm install && node server.js` (Node 18+). Open http://localhost:3000.
 
 Fan-made for private play. Freddy/Bonnie/Chica/Foxy/Springtrap belong to Scott Cawthon, Cartoon Cat and Siren Head to Trevor Henderson, the Demogorgon to Netflix, and the other characters to their creators.
+
+## Roblox version
+The Roblox Studio version is in [`roblox/`](roblox/), with its own Studio and publishing steps.
+Download the place file: https://github.com/leonisbel/night-hunt/releases/latest/download/NightHunt.rbxlx
