@@ -7,6 +7,14 @@ local function at(x, y, z, rx, ry, rz)
 end
 local BALL, CYL = Enum.PartType.Ball, Enum.PartType.Cylinder
 local NEON, METAL, GLASS = Enum.Material.Neon, Enum.Material.Metal, Enum.Material.Glass
+local FABRIC, RUST, SLATE, PLASTIC = Enum.Material.Fabric, Enum.Material.CorrodedMetal, Enum.Material.Slate, Enum.Material.SmoothPlastic
+-- default surface material per monster (fur-like fabric for animatronics, rough skin for creatures)
+local SKIN = {
+	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
+	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, boiledone = Enum.Material.Pebble, drnowhere = FABRIC,
+	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Pebble,
+}
+local defaultMat = PLASTIC
 
 -- Builder: adds parts relative to `root`. If anchored, parts are anchored; otherwise welded to root.
 local function builder(model, root, anchored)
@@ -15,11 +23,11 @@ local function builder(model, root, anchored)
 		local p = Instance.new("Part")
 		p.Size = size
 		p.Color = color
-		p.Material = opts.mat or Enum.Material.SmoothPlastic
+		p.Material = opts.mat or defaultMat
 		if opts.shape then p.Shape = opts.shape end
 		p.TopSurface = Enum.SurfaceType.Smooth
 		p.BottomSurface = Enum.SurfaceType.Smooth
-		p.CastShadow = false
+		p.CastShadow = opts.noShadow ~= true
 		p.CanCollide = anchored and (opts.collide == true) or false
 		p.CanQuery = anchored
 		p.CanTouch = false
@@ -66,6 +74,28 @@ local function animatronic(P, body, belly, eyeColor)
 	P(Vector3.new(1.7, 0.9, 0.7), at(0, 2.2, -1.15), belly)                                     -- muzzle
 	P(Vector3.new(1.3, 0.22, 0.1), at(0, 1.85, -1.5), rgb(235, 230, 215))                        -- teeth
 	eyes(P, 3.05, -1.05, 0.5, 0.65, true, 0.32, eyeColor, true)
+	animatronicDetail(P, body, belly)
+end
+
+-- extra detail shared by the animatronics: rusty endoskeleton joints, hands, feet, cheeks, brows
+local function animatronicDetail(P, body, belly)
+	for _, x in ipairs({ -0.65, 0.65 }) do
+		P(Vector3.new(0.55, 0.55, 0.55), at(x, -1.1, -0.1), rgb(70, 66, 60), { shape = BALL, mat = RUST })      -- knees
+		P(Vector3.new(1.1, 0.55, 1.6), at(x, -3.05, -0.3), body)                                               -- feet
+		P(Vector3.new(0.9, 0.45, 1.0), at(x, -3.15, -0.95), belly)                                             -- toes
+	end
+	for _, x in ipairs({ -1.85, 1.85 }) do
+		P(Vector3.new(0.6, 0.6, 0.6), at(x, 1.5, 0), rgb(70, 66, 60), { shape = BALL, mat = RUST })            -- shoulders
+		P(Vector3.new(0.5, 0.5, 0.5), at(x * 1.02, 0.1, 0), rgb(70, 66, 60), { shape = BALL, mat = RUST })     -- elbows
+		P(Vector3.new(0.95, 0.95, 0.95), at(x * 1.08, -1.4, 0), body, { shape = BALL })                      -- hands
+		P(Vector3.new(0.55, 0.12, 0.3), at(x * 0.27, 3.55, -1.25, 0, 0, x > 0 and -12 or 12), rgb(25, 20, 18)) -- brows
+	end
+	P(Vector3.new(0.9, 0.9, 0.6), at(-0.75, 2.35, -1.0), belly, { shape = BALL })                            -- cheeks
+	P(Vector3.new(0.9, 0.9, 0.6), at(0.75, 2.35, -1.0), belly, { shape = BALL })
+	P(Vector3.new(1.4, 0.35, 0.6), at(0, 1.62, -1.25), body)                                                -- lower jaw
+	P(Vector3.new(1.2, 0.18, 0.1), at(0, 1.82, -1.52), rgb(225, 220, 200))                                  -- lower teeth
+	P(Vector3.new(2.7, 0.35, 1.7), at(0, 1.75, 0), rgb(60, 56, 50), { mat = RUST })                          -- neck ring
+	P(Vector3.new(0.05, 1.2, 0.05), at(0.3, 0.2, -0.88), rgb(255, 40, 40), { mat = NEON, noShadow = true })  -- exposed wire
 end
 
 local BUILD = {}
@@ -77,6 +107,8 @@ BUILD.freddy = function(P)
 	P(Vector3.new(0.15, 1.9, 1.9), at(0, 4, 0, 0, 0, 90), rgb(15, 15, 15), { shape = CYL })     -- hat brim
 	P(Vector3.new(1.1, 1.2, 1.2), at(0, 4.6, 0, 0, 0, 90), rgb(15, 15, 15), { shape = CYL })    -- hat
 	P(Vector3.new(1.1, 0.45, 0.2), at(0, 1.4, -0.85), rgb(15, 15, 15))                          -- bow tie
+	P(Vector3.new(0.25, 1.4, 0.25), at(2.0, -0.9, -0.6, 20, 0, 0), rgb(30, 30, 30), { mat = METAL })   -- microphone
+	P(Vector3.new(0.45, 0.45, 0.45), at(2.0, -0.2, -0.85), rgb(60, 60, 60), { shape = BALL, mat = METAL })
 end
 BUILD.bonnie = function(P)
 	animatronic(P, rgb(91, 91, 189), rgb(185, 167, 232), rgb(200, 40, 40))
@@ -109,6 +141,9 @@ BUILD.springtrap = function(P)
 	P(Vector3.new(0.55, 2.2, 0.4), at(1, 4.3, 0.2, 0, 0, -45), rgb(105, 120, 45))               -- bent ear
 	P(Vector3.new(0.7, 0.7, 0.12), at(0.6, 0.6, -1.02), rgb(50, 35, 25))                        -- torn hole
 	P(Vector3.new(0.6, 0.6, 0.12), at(-0.5, -0.6, -1.02), rgb(50, 35, 25))
+	for i = 1, 4 do P(Vector3.new(0.08, 1.4, 0.08), at(-0.9 + i * 0.35, 0.3, -1.05, 0, 0, i * 20), rgb(130, 20, 20), { mat = NEON, noShadow = true }) end -- dangling wires
+	P(Vector3.new(1.0, 0.8, 0.5), at(0, 0.1, -1.0), rgb(75, 70, 60), { mat = RUST })            -- endoskeleton showing through
+	P(Vector3.new(0.4, 0.4, 0.4), at(0.9, 4.3, -0.25), rgb(75, 70, 60), { shape = BALL, mat = RUST })
 end
 BUILD.cartooncat = function(P)
 	local black = rgb(15, 15, 15)
@@ -125,6 +160,13 @@ BUILD.cartooncat = function(P)
 	eyes(P, 5.7, -1.2, 0.7, 1.2, true, 0.45, black, false)
 	P(Vector3.new(2.8, 0.7, 0.2), at(0, 4.5, -1.6), rgb(255, 255, 255))                          -- huge grin
 	for i = -4, 4 do P(Vector3.new(0.08, 0.7, 0.22), at(i * 0.3, 4.5, -1.62), black) end          -- teeth lines
+	for _, x in ipairs({ -1, 1 }) do
+		for f = -1, 1 do P(Vector3.new(0.16, 1.1, 0.16), at(x * 3.1 + f * 0.25, -1.9, -0.1, 0, 0, f * 12), rgb(240, 240, 240)) end -- long glove fingers
+		P(Vector3.new(0.7, 0.3, 1.3), at(x * 0.5, -3.1, -0.3), rgb(250, 250, 250))                -- cartoon shoes
+	end
+	P(Vector3.new(0.3, 4.5, 0.3), at(0, 1.8, 1.4, 35, 0, 0), black)                              -- tail
+	P(Vector3.new(0.45, 0.25, 0.1), at(-0.7, 6.35, -1.55, 0, 0, -15), black)                     -- angry brows
+	P(Vector3.new(0.45, 0.25, 0.1), at(0.7, 6.35, -1.55, 0, 0, 15), black)
 end
 BUILD.sirenhead = function(P)
 	local skin = rgb(107, 79, 58)
@@ -138,7 +180,12 @@ BUILD.sirenhead = function(P)
 	for _, x in ipairs({ -1.9, 1.9 }) do
 		P(Vector3.new(1.7, 1.5, 1.3), at(x, 12.3, 0), rgb(140, 140, 140), { mat = METAL })        -- speakers
 		P(Vector3.new(0.2, 1.1, 1.1), at(x, 12.3, -0.7, 0, 90, 0), rgb(20, 20, 20), { shape = CYL })
+		P(Vector3.new(0.12, 0.6, 0.6), at(x, 12.3, -0.82, 0, 90, 0), rgb(60, 60, 60), { shape = CYL, mat = METAL })
+		for f = 0, 2 do P(Vector3.new(0.18, 1.6, 0.18), at(x * 0.9 + (f - 1) * 0.2, 1.4, -0.1, 0, 0, (f - 1) * 10), rgb(90, 66, 48)) end -- long bony fingers
 	end
+	for i = 0, 4 do P(Vector3.new(1.6, 0.12, 1.05), at(0, 5.0 + i * 0.6, -0.05), rgb(95, 70, 52)) end          -- visible ribs
+	P(Vector3.new(0.9, 3, 0.9), at(0, 9.6, 0), rgb(122, 92, 69))                                 -- neck flesh
+	for _, x in ipairs({ -0.6, 0.6 }) do P(Vector3.new(1, 0.8, 1.8), at(x, -3.1, -0.4), skin) end  -- feet
 end
 BUILD.boiledone = function(P)
 	local red = rgb(59, 8, 8)
@@ -146,6 +193,8 @@ BUILD.boiledone = function(P)
 	P(Vector3.new(2.5, 2.5, 2.5), at(0, 3.1, 0), rgb(74, 10, 10), { shape = BALL })
 	eyes(P, 3.35, -1.05, 0.4, 0.3, false, 0.3, rgb(255, 255, 255), true)
 	for i = 1, 6 do P(Vector3.new(0.35, 0.35, 0.35), at(math.sin(i * 7) * 1.1, math.cos(i * 3) * 1.4, -0.85), rgb(140, 0, 0), { shape = BALL, mat = NEON }) end
+	for i = 1, 8 do P(Vector3.new(0.18, 0.5 + (i % 3) * 0.3, 0.18), at(math.sin(i * 2.3) * 1.1, -1.5 - (i % 3) * 0.2, math.cos(i * 2.3) * 0.7), rgb(90, 0, 0), { mat = Enum.Material.Glass, transp = 0.2 }) end -- dripping
+	P(Vector3.new(1.4, 0.25, 0.1), at(0, 2.6, -1.22), rgb(20, 0, 0))                             -- gaping mouth
 end
 BUILD.drnowhere = function(P)
 	humanoidBody(P, rgb(232, 232, 232), { legs = rgb(40, 40, 50) })
@@ -157,6 +206,12 @@ BUILD.drnowhere = function(P)
 	P(Vector3.new(1.2, 0.12, 0.1), at(0, 2.45, -1.08), rgb(0, 0, 0))                            -- thin smile
 	P(Vector3.new(2.4, 0.25, 2.4), at(0, 3.75, 0), rgb(150, 150, 150))                          -- headband
 	P(Vector3.new(0.12, 0.7, 0.7), at(0, 3.9, -1.15, 0, 90, 0), rgb(200, 40, 40), { shape = CYL, mat = METAL }) -- head mirror
+	P(Vector3.new(0.12, 1.6, 0.12), at(-0.5, 1.2, -0.85, 0, 0, 25), rgb(30, 30, 30), { mat = METAL })   -- stethoscope
+	P(Vector3.new(0.12, 1.6, 0.12), at(0.5, 1.2, -0.85, 0, 0, -25), rgb(30, 30, 30), { mat = METAL })
+	P(Vector3.new(0.4, 0.4, 0.2), at(0, 0.5, -0.9), rgb(160, 160, 160), { shape = BALL, mat = METAL })
+	P(Vector3.new(0.6, 0.1, 0.05), at(0.8, 1.0, -0.83), rgb(30, 90, 180))                       -- name badge
+	P(Vector3.new(0.18, 0.18, 0.18), at(-0.45, 3.1, -1.12), rgb(255, 255, 255), { shape = BALL, mat = NEON, noShadow = true }) -- tiny pupils
+	P(Vector3.new(0.18, 0.18, 0.18), at(0.45, 3.1, -1.12), rgb(255, 255, 255), { shape = BALL, mat = NEON, noShadow = true })
 end
 BUILD.locust = function(P)
 	local black = rgb(21, 21, 21)
@@ -171,7 +226,9 @@ BUILD.locust = function(P)
 		P(Vector3.new(0.25, 2.6, 0.25), at(-1.6, y, 0, 0, 0, -60 + i * 10), black)
 		P(Vector3.new(0.25, 2.6, 0.25), at(1.6, y, 0, 0, 0, 60 - i * 10), black)
 	end
-	for i = 1, 5 do P(Vector3.new(1.4, 0.06, 0.05), at(math.sin(i * 5) * 0.6, i * 0.8 - 1.5, -0.62), rgb(220, 220, 220), { mat = NEON, transp = 0.4 }) end -- static lines
+	for i = 1, 5 do P(Vector3.new(1.4, 0.06, 0.05), at(math.sin(i * 5) * 0.6, i * 0.8 - 1.5, -0.62), rgb(220, 220, 220), { mat = NEON, transp = 0.4, noShadow = true }) end -- static lines
+	for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.1, 3.4, 1.6), at(x * 0.7, 1.4, 0.9, 0, x * 25, x * 10), rgb(160, 170, 120), { mat = GLASS, transp = 0.55 }) end -- translucent wings
+	P(Vector3.new(1.3, 0.4, 0.6), at(0, 3.4, -0.85), rgb(10, 10, 10))                            -- mandibles
 end
 BUILD.monochrome = function(P)
 	humanoidBody(P, rgb(154, 154, 154), { legs = rgb(110, 110, 110), arms = rgb(190, 190, 190) })
@@ -181,6 +238,7 @@ BUILD.monochrome = function(P)
 	P(Vector3.new(0.75, 0.9, 0.3), at(-0.55, 3.3, -1.25), rgb(0, 0, 0), { shape = BALL })
 	P(Vector3.new(0.75, 0.9, 0.3), at(0.55, 3.3, -1.25), rgb(0, 0, 0), { shape = BALL })
 	P(Vector3.new(1.6, 0.15, 0.1), at(0, 2.45, -1.32), rgb(0, 0, 0))
+	for i = 1, 5 do P(Vector3.new(0.4, 0.4, 0.4), at(math.sin(i * 3.1) * 1.6, 1 + math.cos(i * 1.7) * 2, math.cos(i) * 0.9), rgb(30 * i, 30 * i, 30 * i), { mat = NEON, transp = 0.3, noShadow = true }) end -- glitch cubes
 	P(Vector3.new(0.15, 0.4, 0.1), at(-0.8, 2.6, -1.32), rgb(0, 0, 0))
 	P(Vector3.new(0.15, 0.4, 0.1), at(0.8, 2.6, -1.32), rgb(0, 0, 0))
 end
@@ -197,7 +255,13 @@ BUILD.demogorgon = function(P)
 		P(Vector3.new(1, 2, 0.22), off, rgb(138, 112, 102))
 		P(Vector3.new(0.8, 0.15, 0.26), off * CFrame.new(0, -0.6, -0.02), rgb(245, 240, 224))
 		P(Vector3.new(0.8, 0.15, 0.26), off * CFrame.new(0, 0.1, -0.02), rgb(245, 240, 224))
+		P(Vector3.new(0.6, 0.15, 0.26), off * CFrame.new(0, 0.7, -0.02), rgb(245, 240, 224))
 	end
+	for _, x in ipairs({ -1, 1 }) do
+		for f = -1, 1 do P(Vector3.new(0.14, 1.5, 0.14), at(x * 1.75 + f * 0.18, -1.9, -0.2, -15, 0, f * 8), rgb(60, 50, 46)) end -- long claws
+		P(Vector3.new(0.9, 0.5, 1.6), at(x * 0.6, -3.05, -0.4), skin)
+	end
+	for i = 0, 3 do P(Vector3.new(2.05, 0.1, 1.35), at(0, 0.2 + i * 0.6, 0), rgb(85, 70, 64)) end       -- sinewy ridges
 end
 
 -- Weld a monster model onto a character. Returns the model.
@@ -226,8 +290,10 @@ function Models.morph(character, kind)
 	weld.Part0 = hrp
 	weld.Part1 = root
 	weld.Parent = root
-	local P = builder(model, root, false);
+	local P = builder(model, root, false)
+	defaultMat = SKIN[kind] or PLASTIC;
 	(BUILD[kind] or BUILD.freddy)(P)
+	defaultMat = PLASTIC
 	model.PrimaryPart = root
 	-- hide the player's own avatar
 	for _, d in ipairs(character:GetDescendants()) do
@@ -257,8 +323,10 @@ function Models.template(kind)
 	root.Size = Vector3.new(1, 1, 1)
 	root.CFrame = CFrame.new(0, 3, 0)
 	root.Parent = model
-	local P = builder(model, root, true);
+	local P = builder(model, root, true)
+	defaultMat = SKIN[kind] or PLASTIC;
 	(BUILD[kind] or BUILD.freddy)(P)
+	defaultMat = PLASTIC
 	model.PrimaryPart = root
 	return model
 end
@@ -276,9 +344,9 @@ function Models.helicopter(cf, bodyColor)
 	base.Parent = model
 	local P = builder(model, base, true)
 	local c = bodyColor or Color3.fromRGB(45, 90, 58)
-	P(Vector3.new(7, 5, 11), at(0, 4.5, 0), c, { collide = true })                                -- cabin
+	P(Vector3.new(7, 5, 11), at(0, 4.5, 0), c, { collide = true, mat = METAL })                              -- cabin
 	P(Vector3.new(6, 3.5, 3), at(0, 5, -6.2), Color3.fromRGB(159, 211, 255), { mat = GLASS, transp = 0.35 }) -- windshield
-	P(Vector3.new(1.4, 1.4, 12), at(0, 5.5, 11.5), c)                                            -- tail boom
+	P(Vector3.new(1.4, 1.4, 12), at(0, 5.5, 11.5), c, { mat = METAL })                                          -- tail boom
 	P(Vector3.new(0.5, 4, 2.4), at(0, 7, 17.2), c)                                               -- tail fin
 	P(Vector3.new(0.6, 0.6, 12), at(-3, 0.6, 0), Color3.fromRGB(30, 30, 30), { mat = METAL })   -- skids
 	P(Vector3.new(0.6, 0.6, 12), at(3, 0.6, 0), Color3.fromRGB(30, 30, 30), { mat = METAL })

@@ -35,7 +35,14 @@ Fan-made for private play. Freddy, Bonnie, Chica, Foxy and Springtrap belong to 
 | Demogorgon | Upside Down Portal: place a portal, then jump back to it |
 
 - **Maps:** Abandoned Pizzeria Town, Foggy Woods and Static Fields. They're generated fresh every round, with buildings, trees, hiding bushes and crates, vents and flickering lights.
-- **Controls:** WASD to move, Shift to sprint (survivors have stamina), E to use your power. Touch buttons are included.
+- **Controls:**
+  - **PC:** WASD to move, Shift to sprint (survivors have stamina), E to use your power, F to switch your flashlight on or off.
+  - **Phone and iPad:** the Roblox thumbstick moves you (forced on with `DevTouchMovementMode = Thumbstick`). On-screen **RUN** (tap to toggle sprint), **POWER** (monsters only) and **LIGHT** (survivors only) buttons appear when they apply. The UI scales down to fit small screens.
+  - **Gamepad:** left stick, L3 sprint, X power, Y flashlight.
+- **Graphics (v1.2.0):**
+  - Future lighting, Atmosphere fog, colour grading, Bloom and SunRays. Each one changes smoothly between the lobby (dusk), hunting (dark fog, cold tint for survivors, red tint for monsters) and spectating.
+  - Smooth Terrain ground (LeafyGrass, Grass or Asphalt) with mud and dirt patches, plus drifting ground-fog particles.
+  - Shadow-casting flashlights, Fabric, Rubber, Slate and Metal materials, and more detailed monsters: joints, hands, feet, jaws, teeth, wires, and extras for each character (Freddy's mic, Springtrap's endoskeleton, Siren Head's speakers and ribs, the Locust's wings, Monochrome's glitch cubes and more).
 
 ## Files
 - `NightHunt.rbxlx`: the place file, ready to open in Studio. It's built with Rojo 7.7.1 from `default.project.json`.

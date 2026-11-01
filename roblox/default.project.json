@@ -3,30 +3,134 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "NightHunt": { "$path": "src/shared" }
+      "NightHunt": {
+        "$path": "src/shared"
+      }
     },
     "ServerScriptService": {
-      "NightHuntServer": { "$path": "src/server" }
+      "NightHuntServer": {
+        "$path": "src/server"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "NightHuntClient": { "$path": "src/client" }
+        "NightHuntClient": {
+          "$path": "src/client"
+        }
+      },
+      "$properties": {
+        "DevTouchMovementMode": "Thumbstick",
+        "DevTouchCameraMovementMode": "Classic",
+        "CameraMaxZoomDistance": 40
       }
     },
     "Players": {
-      "$properties": { "CharacterAutoLoads": true, "RespawnTime": 3 }
+      "$properties": {
+        "CharacterAutoLoads": true,
+        "RespawnTime": 3
+      }
     },
     "Workspace": {
       "LobbySpawn": {
         "$className": "SpawnLocation",
         "$properties": {
           "Anchored": true,
-          "Size": [12, 1, 12],
-          "Position": [0, 0.5, 45],
+          "Size": [
+            12,
+            1,
+            12
+          ],
+          "Position": [
+            0,
+            0.5,
+            45
+          ],
           "Neutral": true,
           "Duration": 0,
-          "Color": [0.17, 0.2, 0.25],
+          "Color": [
+            0.17,
+            0.2,
+            0.25
+          ],
           "Material": "Metal"
+        }
+      },
+      "$properties": {
+        "StreamingEnabled": false
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "GlobalShadows": true,
+        "Brightness": 2.2,
+        "ClockTime": 18.4,
+        "ShadowSoftness": 0.25,
+        "EnvironmentDiffuseScale": 0.8,
+        "EnvironmentSpecularScale": 0.8,
+        "Ambient": [
+          0.18,
+          0.16,
+          0.22
+        ],
+        "OutdoorAmbient": [
+          0.43,
+          0.37,
+          0.47
+        ]
+      },
+      "NH_Atmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Density": 0.32,
+          "Offset": 0.1,
+          "Haze": 1.4,
+          "Glare": 0.4,
+          "Color": [
+            0.78,
+            0.59,
+            0.63
+          ],
+          "Decay": [
+            0.42,
+            0.27,
+            0.43
+          ]
+        }
+      },
+      "NH_Grade": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "Contrast": 0.12,
+          "Saturation": 0.05,
+          "TintColor": [
+            1,
+            0.93,
+            0.88
+          ]
+        }
+      },
+      "NH_Bloom": {
+        "$className": "BloomEffect",
+        "$properties": {
+          "Intensity": 0.6,
+          "Size": 24,
+          "Threshold": 1.4
+        }
+      },
+      "NH_SunRays": {
+        "$className": "SunRaysEffect",
+        "$properties": {
+          "Intensity": 0.08,
+          "Spread": 0.8
+        }
+      },
+      "NH_Sky": {
+        "$className": "Sky",
+        "$properties": {
+          "StarCount": 3000,
+          "MoonAngularSize": 14,
+          "SunAngularSize": 12
         }
       }
     }

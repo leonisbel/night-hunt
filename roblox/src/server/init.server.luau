@@ -219,13 +219,14 @@ local function giveFlashlight(p)
 	if not hrp then return end
 	local att = Instance.new("Attachment")
 	att.Name = "NH_Flashlight"
+	p:SetAttribute("FlashOff", nil)
 	att.Position = Vector3.new(0, 1.2, -0.6)
 	att.Parent = hrp
 	local s = Instance.new("SpotLight")
 	s.Face = Enum.NormalId.Front
-	s.Range = 48
-	s.Angle = 55
-	s.Brightness = 3.2
+	s.Range = 56
+	s.Angle = 48
+	s.Brightness = 4
 	s.Color = Color3.fromRGB(255, 244, 214)
 	s.Shadows = true
 	s.Parent = att
@@ -303,8 +304,10 @@ ABILITY.freddy = function(p)
 		local fl = h and h:FindFirstChild("NH_Flashlight")
 		if fl then
 			for _, l in ipairs(fl:GetChildren()) do l.Enabled = false end
+			s:SetAttribute("LightsOut", true)
 			task.delay(5, function()
-				if fl.Parent then for _, l in ipairs(fl:GetChildren()) do l.Enabled = true end end
+				s:SetAttribute("LightsOut", nil)
+				if fl.Parent then for _, l in ipairs(fl:GetChildren()) do l.Enabled = not (l:IsA("SpotLight") and s:GetAttribute("FlashOff")) end end
 			end)
 		end
 		Notify:FireClient(s, "effect", "lightsout", 5)
@@ -470,6 +473,7 @@ local roundToken = 0
 local function cleanupRound()
 	if roundFolder then roundFolder:Destroy() end
 	roundFolder = nil
+	MapGen.clearTerrain()
 	currentMap = nil
 	extractionOpen = false
 	monsterTraps = {}
@@ -849,6 +853,16 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		useAbility(p)
 	elseif kind == "sprint" then
 		F(p).sprint = data == true
+	elseif kind == "flashlight" then
+		-- survivors can switch their flashlight on/off (Freddy's Lights Out still forces it off)
+		local h = hrpOf(p)
+		local fl = h and h:FindFirstChild("NH_Flashlight")
+		if not fl or p:GetAttribute("Role") ~= "Survivor" then return end
+		local on = p:GetAttribute("FlashOff") == true
+		p:SetAttribute("FlashOff", not on)
+		if not p:GetAttribute("LightsOut") then
+			for _, l in ipairs(fl:GetChildren()) do if l:IsA("SpotLight") then l.Enabled = on end end
+		end
 	elseif kind == "start" then
 		if State:GetAttribute("Mode") ~= "Match" then return end
 		if p.UserId ~= settings.hostId then toast(p, "Only the host can take off."); return end

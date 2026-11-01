@@ -231,7 +231,8 @@ function step() {
     for (const p of r.players.values()) {
       if (p.bot) botThink(r, p, t);
       const k = p.keys || {}; let dx = (k.right ? 1 : 0) - (k.left ? 1 : 0), dy = (k.down ? 1 : 0) - (k.up ? 1 : 0);
-      const len = Math.hypot(dx, dy); if (len) { dx /= len; dy /= len; }
+      let len = Math.hypot(dx, dy); if (len) { dx /= len; dy /= len; }
+      else if (!p.bot && p.mv) { const ml = Math.hypot(p.mv.x, p.mv.y); if (ml > .15) { const s = Math.min(1, ml) / ml; dx = p.mv.x * s; dy = p.mv.y * s; len = Math.min(1, ml); } } // analog joystick
       if (r.state === 'flight') continue;
       let sp;
       if (p.role === 'monster') { sp = MONSTERS[p.mt].speed * (p.st.dash > t ? 3 : 1); }
@@ -314,7 +315,8 @@ function handleConnection(ws) {
           if (!jr) return send({ ws }, { t: 'error', msg: 'No server with that code.' });
           if (jr.players.size >= jr.max) return send({ ws }, { t: 'error', msg: `Server is full (${jr.players.size}/${jr.max}).` });
           p = makePlayer(clean(m.player, 16) || 'Player', ws); addToRoom(jr, p); break; }
-        case 'input': if (p) { const k = m.k || {}; p.keys = { up: !!k.up, down: !!k.down, left: !!k.left, right: !!k.right, sprint: !!k.sprint }; if (typeof m.a === 'number' && isFinite(m.a)) p.a = m.a; } break;
+        case 'input': if (p) { const k = m.k || {}; p.keys = { up: !!k.up, down: !!k.down, left: !!k.left, right: !!k.right, sprint: !!k.sprint }; if (typeof m.a === 'number' && isFinite(m.a)) p.a = m.a;
+          p.mv = Array.isArray(m.mv) && m.mv.length === 2 && m.mv.every(v => typeof v === 'number' && isFinite(v)) ? { x: Math.max(-1, Math.min(1, m.mv[0])), y: Math.max(-1, Math.min(1, m.mv[1])) } : null; } break;
         case 'ability': if (r) useAbility(r, p); break;
         case 'start': if (r && r.host === p.id && r.state === 'lobby') {
           const notBoarded = [...r.players.values()].filter(q => !q.bot && !(r.boarded || []).includes(q.id));

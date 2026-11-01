@@ -1,4 +1,5 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#050307"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">
 <title>Night Hunt</title><link rel="stylesheet" href="style.css"><link rel="icon" href="favicon.svg"></head><body>
 <canvas id="c"></canvas>
 <div id="menu" class="panel">
@@ -17,7 +18,8 @@
   <div id="tab-browse" class="tab hide"><div id="slist">Loading…</div><button id="brefresh">Refresh</button></div>
   <div id="merr" class="err"></div>
   <div id="dlwin" style="text-align:center;margin-top:12px"><a href="https://github.com/leonisbel/night-hunt/releases/latest/download/NightHunt-Windows.zip" style="display:inline-block;background:#1f6feb;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-weight:bold">⬇ Download for Windows</a></div>
-  <div class="help"><b>Controls:</b> WASD / arrows move · Shift sprint · Mouse aims flashlight · Space or click = monster ability · Tab = scoreboard · M = mute</div>
+  <div class="help desk"><b>Controls:</b> WASD / arrows move · Shift sprint · Mouse aims flashlight · Space or click = monster ability · Tab = scoreboard · M = mute</div>
+  <div class="help mob"><b>Touch controls:</b> left thumb = joystick (move) · right side = drag to aim your flashlight · 🏃 = sprint · ⚡ = monster ability · 📋 = players</div>
 </div>
 <div id="hud" class="hide">
   <div id="topbar"><span id="hcode"></span><button id="binvite">Copy invite link</button><span id="hcount"></span></div>
@@ -34,4 +36,14 @@
   <button id="bleave">Leave</button>
 </div>
 <div id="overlay" class="hide"></div>
-<script src="vendor/peerjs.min.js"></script><script src="vendor/nostr.bundle.js"></script><script src="core.js"></script><script src="net.js"></script><script src="draw.js"></script><script src="game.js"></script></body></html>
+<div id="flightcard" class="hide"></div>
+<div id="arrows"></div>
+<div id="touch">
+  <div id="joyzone"><div id="joybase"><div id="joyknob"></div></div><span class="zl">MOVE</span></div>
+  <div id="aimzone"><div id="aimring"><b></b></div><span class="zl">AIM</span></div>
+  <button id="tsprint" class="tb">🏃<small>SPRINT</small></button>
+  <button id="tability" class="tb hide">⚡<small>ABILITY</small></button>
+  <button id="tboard" class="tb sm">📋</button>
+  <button id="tmute" class="tb sm">🔊</button>
+</div>
+<script src="vendor/peerjs.min.js"></script><script src="vendor/nostr.bundle.js"></script><script src="core.js"></script><script src="net.js"></script><script type="module" src="game.js"></script></body></html>

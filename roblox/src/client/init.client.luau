@@ -306,57 +306,184 @@ local greyUntil = 0
 ---------------------------------------------------------------------------
 -- Lighting per state / role
 ---------------------------------------------------------------------------
-local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or new("Atmosphere", {}, Lighting)
+local function effect(className, name)
+	local e = Lighting:FindFirstChild(name) or Lighting:FindFirstChildOfClass(className)
+	if not e then e = Instance.new(className); e.Name = name; e.Parent = Lighting end
+	return e
+end
+local atmosphere = effect("Atmosphere", "NH_Atmosphere")
+local grade = effect("ColorCorrectionEffect", "NH_Grade")
+local bloom = effect("BloomEffect", "NH_Bloom")
+local rays = effect("SunRaysEffect", "NH_SunRays")
+local function lerpTo(obj, prop, v, k)
+	local cur = obj[prop]
+	if typeof(cur) == "number" then obj[prop] = cur + (v - cur) * k
+	elseif typeof(cur) == "Color3" then obj[prop] = cur:Lerp(v, k)
+	else obj[prop] = v end
+end
+local lastLightT = os.clock()
 local function applyLighting()
+	local now = os.clock()
+	local k = math.clamp((now - lastLightT) * 3, 0, 1) -- smooth transitions
+	lastLightT = now
 	local st = State:GetAttribute("State")
 	local role = player:GetAttribute("Role")
-	local inMap = st == "Hunt" and (role == "Monster" or (role == "Survivor" and player:GetAttribute("Alive") and not player:GetAttribute("Escaped")))
+	local alive = player:GetAttribute("Alive") and not player:GetAttribute("Escaped")
+	local inMap = st == "Hunt" and (role == "Monster" or (role == "Survivor" and alive))
+	local spectating = st == "Hunt" and not inMap
+	local fogColor = State:GetAttribute("FogColor") or Color3.new(0, 0, 0)
 	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = 0.25
 	if inMap then
-		Lighting.ClockTime = 0
-		Lighting.Brightness = 0.2
-		Lighting.EnvironmentDiffuseScale = 0
-		Lighting.EnvironmentSpecularScale = 0
-		Lighting.OutdoorAmbient = role == "Monster" and Color3.fromRGB(70, 25, 25) or Color3.fromRGB(12, 12, 16)
-		Lighting.Ambient = role == "Monster" and Color3.fromRGB(60, 20, 20) or Color3.fromRGB(6, 6, 8)
-		Lighting.FogColor = State:GetAttribute("FogColor") or Color3.new(0, 0, 0)
-		Lighting.FogEnd = (State:GetAttribute("FogEnd") or 120) * (role == "Monster" and 1.4 or 1)
-		Lighting.FogStart = 8
-		atmosphere.Density = 0.45
-		atmosphere.Color = State:GetAttribute("FogColor") or Color3.new(0, 0, 0)
-		atmosphere.Haze = 2
+		local mon = role == "Monster"
+		Lighting.ClockTime = 0.2
+		lerpTo(Lighting, "Brightness", mon and 0.8 or 0.35, k)
+		lerpTo(Lighting, "ExposureCompensation", mon and 0.3 or -0.1, k)
+		Lighting.EnvironmentDiffuseScale = 0.15
+		Lighting.EnvironmentSpecularScale = 0.6
+		lerpTo(Lighting, "OutdoorAmbient", mon and Color3.fromRGB(75, 28, 28) or Color3.fromRGB(16, 16, 22), k)
+		lerpTo(Lighting, "Ambient", mon and Color3.fromRGB(50, 18, 18) or Color3.fromRGB(8, 8, 12), k)
+		Lighting.FogColor = fogColor
+		Lighting.FogEnd = 100000 -- Atmosphere handles the fog under Future lighting
+		lerpTo(atmosphere, "Density", mon and 0.36 or 0.5, k)
+		atmosphere.Offset = 0.15
+		lerpTo(atmosphere, "Color", fogColor:Lerp(Color3.fromRGB(110, 110, 120), 0.35), k)
+		lerpTo(atmosphere, "Decay", fogColor, k)
+		atmosphere.Glare = 0
+		lerpTo(atmosphere, "Haze", 2.6, k)
+		lerpTo(grade, "Contrast", 0.22, k)
+		lerpTo(grade, "Saturation", mon and -0.1 or -0.4, k)
+		lerpTo(grade, "Brightness", 0, k)
+		lerpTo(grade, "TintColor", mon and Color3.fromRGB(255, 200, 200) or Color3.fromRGB(205, 220, 255), k)
+		bloom.Intensity, bloom.Size, bloom.Threshold = 0.9, 28, 0.9
+		rays.Intensity = 0
+	elseif spectating then
+		Lighting.ClockTime = 0.2
+		lerpTo(Lighting, "Brightness", 1.4, k)
+		lerpTo(Lighting, "ExposureCompensation", 0.5, k)
+		lerpTo(Lighting, "OutdoorAmbient", Color3.fromRGB(70, 80, 110), k)
+		lerpTo(Lighting, "Ambient", Color3.fromRGB(40, 45, 60), k)
+		Lighting.FogEnd = 100000
+		lerpTo(atmosphere, "Density", 0.3, k)
+		lerpTo(atmosphere, "Color", fogColor:Lerp(Color3.fromRGB(120, 130, 160), 0.5), k)
+		lerpTo(atmosphere, "Haze", 1.5, k)
+		lerpTo(grade, "Saturation", -0.7, k)
+		lerpTo(grade, "Contrast", 0.1, k)
+		lerpTo(grade, "TintColor", Color3.fromRGB(190, 205, 255), k)
+		bloom.Intensity, bloom.Size, bloom.Threshold = 0.7, 24, 1
+		rays.Intensity = 0
 	else
-		Lighting.ClockTime = 19.2
-		Lighting.Brightness = 1.2
-		Lighting.EnvironmentDiffuseScale = 0.5
-		Lighting.EnvironmentSpecularScale = 0.5
-		Lighting.OutdoorAmbient = Color3.fromRGB(90, 80, 100)
-		Lighting.Ambient = Color3.fromRGB(50, 45, 60)
-		Lighting.FogEnd = 400
-		Lighting.FogStart = 100
+		-- lobby: dusk with sun rays and soft haze
+		Lighting.ClockTime = 18.4
+		lerpTo(Lighting, "Brightness", 2.2, k)
+		lerpTo(Lighting, "ExposureCompensation", 0, k)
+		Lighting.EnvironmentDiffuseScale = 0.8
+		Lighting.EnvironmentSpecularScale = 0.8
+		lerpTo(Lighting, "OutdoorAmbient", Color3.fromRGB(110, 95, 120), k)
+		lerpTo(Lighting, "Ambient", Color3.fromRGB(45, 40, 55), k)
+		Lighting.FogEnd = 100000
 		Lighting.FogColor = Color3.fromRGB(40, 30, 45)
-		atmosphere.Density = 0.3
-		atmosphere.Color = Color3.fromRGB(80, 60, 80)
-		atmosphere.Haze = 1
+		lerpTo(atmosphere, "Density", 0.32, k)
+		atmosphere.Offset = 0.1
+		lerpTo(atmosphere, "Color", Color3.fromRGB(199, 150, 160), k)
+		lerpTo(atmosphere, "Decay", Color3.fromRGB(106, 70, 110), k)
+		atmosphere.Glare = 0.4
+		lerpTo(atmosphere, "Haze", 1.4, k)
+		lerpTo(grade, "Contrast", 0.12, k)
+		lerpTo(grade, "Saturation", 0.05, k)
+		lerpTo(grade, "Brightness", 0, k)
+		lerpTo(grade, "TintColor", Color3.fromRGB(255, 236, 225), k)
+		bloom.Intensity, bloom.Size, bloom.Threshold = 0.6, 24, 1.4
+		rays.Intensity, rays.Spread = 0.08, 0.8
 	end
 end
 
 ---------------------------------------------------------------------------
--- Input: ability (E / touch button), sprint (Shift / touch button)
+-- Input: keyboard/gamepad + on-screen touch buttons (phone/tablet).
+-- Movement uses Roblox's built-in thumbstick (StarterPlayer.DevTouchMovementMode = Thumbstick).
+-- Buttons are bound only when they make sense: ability for monsters, flashlight for survivors.
 ---------------------------------------------------------------------------
-ContextActionService:BindAction("NH_Ability", function(_, inputState)
+local touch = UserInputService.TouchEnabled
+local function placeButton(name, title, pos, size)
+	ContextActionService:SetTitle(name, title)
+	if touch then
+		ContextActionService:SetPosition(name, pos)
+		local b = ContextActionService:GetButton(name)
+		if b then
+			b.Size = size or UDim2.fromOffset(78, 78)
+			local lbl = b:FindFirstChild("ActionTitle")
+			if lbl and lbl:IsA("TextLabel") then lbl.TextScaled = true; lbl.Font = Enum.Font.GothamBold end
+		end
+	end
+end
+local sprintHeld = false
+local function onSprint(_, inputState, input)
+	if inputState == Enum.UserInputState.Begin then
+		-- touch: tap toggles sprint (holding a button while steering is awkward); keys: hold
+		if input and input.UserInputType == Enum.UserInputType.Touch then sprintHeld = not sprintHeld else sprintHeld = true end
+		Action:FireServer("sprint", sprintHeld)
+	elseif (inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel) and not (input and input.UserInputType == Enum.UserInputType.Touch) then
+		sprintHeld = false
+		Action:FireServer("sprint", false)
+	end
+	return Enum.ContextActionResult.Pass
+end
+ContextActionService:BindAction("NH_Sprint", onSprint, true, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonL3)
+placeButton("NH_Sprint", "RUN", UDim2.new(1, -95, 1, -190), UDim2.fromOffset(70, 70))
+local bound = { ability = false, flash = false }
+local function onAbility(_, inputState)
 	if inputState == Enum.UserInputState.Begin then Action:FireServer("ability") end
 	return Enum.ContextActionResult.Sink
-end, true, Enum.KeyCode.E, Enum.KeyCode.ButtonX)
-ContextActionService:SetTitle("NH_Ability", "Power")
-ContextActionService:SetPosition("NH_Ability", UDim2.new(1, -150, 1, -150))
-ContextActionService:BindAction("NH_Sprint", function(_, inputState)
-	if inputState == Enum.UserInputState.Begin then Action:FireServer("sprint", true)
-	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then Action:FireServer("sprint", false) end
-	return Enum.ContextActionResult.Pass
-end, true, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonL3)
-ContextActionService:SetTitle("NH_Sprint", "Run")
-ContextActionService:SetPosition("NH_Sprint", UDim2.new(1, -210, 1, -90))
+end
+local function onFlash(_, inputState)
+	if inputState == Enum.UserInputState.Begin then Action:FireServer("flashlight") end
+	return Enum.ContextActionResult.Sink
+end
+local function updateBindings()
+	local st = State:GetAttribute("State")
+	local role = player:GetAttribute("Role")
+	local alive = player:GetAttribute("Alive") and not player:GetAttribute("Escaped")
+	local wantAbility = st == "Hunt" and role == "Monster"
+	local wantFlash = st == "Hunt" and role == "Survivor" and alive == true
+	if wantAbility ~= bound.ability then
+		bound.ability = wantAbility
+		if wantAbility then
+			ContextActionService:BindAction("NH_Ability", onAbility, true, Enum.KeyCode.E, Enum.KeyCode.Q, Enum.KeyCode.ButtonX)
+			placeButton("NH_Ability", "POWER", UDim2.new(1, -185, 1, -150), UDim2.fromOffset(90, 90))
+			local b = ContextActionService:GetButton("NH_Ability")
+			if b then b.ImageColor3 = Color3.fromRGB(255, 90, 90) end
+		else
+			ContextActionService:UnbindAction("NH_Ability")
+		end
+	end
+	if wantFlash ~= bound.flash then
+		bound.flash = wantFlash
+		if wantFlash then
+			ContextActionService:BindAction("NH_Flashlight", onFlash, true, Enum.KeyCode.F, Enum.KeyCode.ButtonY)
+			placeButton("NH_Flashlight", "LIGHT", UDim2.new(1, -175, 1, -110), UDim2.fromOffset(64, 64))
+		else
+			ContextActionService:UnbindAction("NH_Flashlight")
+		end
+	end
+	if st ~= "Hunt" and sprintHeld then sprintHeld = false; Action:FireServer("sprint", false) end
+end
+State:GetAttributeChangedSignal("State"):Connect(updateBindings)
+player:GetAttributeChangedSignal("Role"):Connect(updateBindings)
+player:GetAttributeChangedSignal("Alive"):Connect(updateBindings)
+player:GetAttributeChangedSignal("Escaped"):Connect(updateBindings)
+task.defer(updateBindings)
+
+-- scale the UI down on small screens (phones) so panels fit
+local uiScale = Instance.new("UIScale")
+uiScale.Parent = gui
+local function rescale()
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	local v = cam.ViewportSize
+	uiScale.Scale = math.clamp(math.min(v.X / 1100, v.Y / 640), 0.55, 1)
+end
+rescale()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
 
 ---------------------------------------------------------------------------
 -- Server notifications
@@ -486,7 +613,7 @@ RunService.RenderStepped:Connect(function(dt)
 			roleTitle.TextColor3 = Color3.fromRGB(120, 200, 255)
 			roleDesc.Text = State:GetAttribute("ExtractOpen") and "Get to the helicopter - follow the green beam!" or "Hide, run, and survive until extraction."
 			abilityBtn.Visible = false
-			abilityDesc.Text = "Shift: sprint. Hide inside bushes and crates."
+			abilityDesc.Text = touch and "RUN: sprint · LIGHT: flashlight. Hide inside bushes and crates." or "Shift: sprint · F: flashlight. Hide inside bushes and crates."
 		end
 	end
 	staminaFill.Size = UDim2.new((player:GetAttribute("Stamina") or 100) / 100, 0, 1, 0)

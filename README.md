@@ -28,7 +28,18 @@ A fan-made multiplayer monster survival game for playing privately with friends.
 | Demogorgon | Upside Down Portal: place a portal, then jump back to it |
 
 ## Controls
-WASD / arrow keys: move · Shift: sprint (survivors) · Mouse: aim flashlight · Space / E / click: monster ability · Tab: scoreboard · M: mute
+- **Keyboard and mouse:** WASD or the arrow keys to move, Shift to sprint (survivors), the mouse to aim your flashlight, Space, E or click for your monster ability, Tab for the scoreboard, M to mute.
+- **Phone and iPad (shown automatically on touch screens):**
+  - Left thumb: a joystick that moves you, with analog speed.
+  - Right thumb: drag anywhere to aim your flashlight.
+  - Buttons: **Sprint** (tap to toggle), **Power** (monsters), the scoreboard and mute.
+  - Works in landscape or portrait. In Safari, use *Add to Home Screen* to play fullscreen.
+
+## Graphics (v1.2.0)
+- A 3D three.js renderer with fog, a shadow-casting flashlight, moonlight, flickering lamps and textured ground.
+- Detailed 3D monsters and particles (fireflies, dust, embers, rain and static).
+- Film grain, vignette, chromatic aberration and a red danger pulse when a monster is near.
+- Procedural ambience, footsteps, a heartbeat and jumpscare audio.
 
 ## Ways to play
 - **Desktop app (Windows):** unzip `NightHunt-Windows.zip` and double-click `Night Hunt.exe`. Windows may show a "protected your PC" warning; click *More info* then *Run anyway*. When Windows Firewall asks, click Allow.

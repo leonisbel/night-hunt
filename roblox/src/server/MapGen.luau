@@ -23,21 +23,21 @@ end
 
 local THEME = {
 	["Abandoned Pizzeria Town"] = {
-		ground = Color3.fromRGB(45, 42, 40), groundMat = Enum.Material.Asphalt,
+		ground = Color3.fromRGB(45, 42, 40), groundMat = Enum.Material.Asphalt, terrain = Enum.Material.Asphalt, patch = Enum.Material.Ground,
 		wall = Color3.fromRGB(110, 70, 60), wallMat = Enum.Material.Brick,
 		floor = Color3.fromRGB(30, 30, 30), floorMat = Enum.Material.Slate,
 		buildings = 11, trees = 10, hides = 14, fog = 140,
 		lamp = Color3.fromRGB(255, 190, 110), fogColor = Color3.fromRGB(20, 14, 14),
 	},
 	["Foggy Woods"] = {
-		ground = Color3.fromRGB(38, 54, 32), groundMat = Enum.Material.Grass,
+		ground = Color3.fromRGB(38, 54, 32), groundMat = Enum.Material.Grass, terrain = Enum.Material.LeafyGrass, patch = Enum.Material.Mud,
 		wall = Color3.fromRGB(92, 70, 50), wallMat = Enum.Material.WoodPlanks,
 		floor = Color3.fromRGB(70, 52, 36), floorMat = Enum.Material.Wood,
 		buildings = 4, trees = 90, hides = 26, fog = 90,
 		lamp = Color3.fromRGB(255, 170, 90), fogColor = Color3.fromRGB(26, 32, 30),
 	},
 	["Static Fields"] = {
-		ground = Color3.fromRGB(70, 70, 54), groundMat = Enum.Material.Grass,
+		ground = Color3.fromRGB(70, 70, 54), groundMat = Enum.Material.Grass, terrain = Enum.Material.Grass, patch = Enum.Material.Ground,
 		wall = Color3.fromRGB(130, 130, 130), wallMat = Enum.Material.Concrete,
 		floor = Color3.fromRGB(60, 60, 60), floorMat = Enum.Material.Concrete,
 		buildings = 6, trees = 24, hides = 30, fog = 120,
@@ -119,7 +119,34 @@ function MapGen.generate(themeName, seed)
 	local map = Instance.new("Model")
 	map.Name = "NightHuntMap"
 
-	part(map, Vector3.new(S + 20, 2, S + 20), CFrame.new(O + Vector3.new(0, -1, 0)), t.ground, t.groundMat, { name = "Ground" })
+	-- smooth Terrain ground (real grass/asphalt materials) with dirt/mud patches; an invisible slab underneath as a safety floor
+	part(map, Vector3.new(S + 20, 2, S + 20), CFrame.new(O + Vector3.new(0, -1, 0)), t.ground, t.groundMat, { name = "Ground", transp = 1 })
+	local terrain = workspace.Terrain
+	pcall(function() terrain:SetMaterialColor(t.terrain, t.ground) end)
+	terrain:FillBlock(CFrame.new(O + Vector3.new(0, -2, 0)), Vector3.new(S + 40, 4, S + 40), t.terrain)
+	for _ = 1, 26 do
+		local pp = O + Vector3.new(rng:NextNumber(-half, half), 0, rng:NextNumber(-half, half))
+		terrain:FillCylinder(CFrame.new(pp + Vector3.new(0, -1.9, 0)), 0.3, rng:NextNumber(6, 16), t.patch)
+	end
+	-- drifting ground fog
+	for i = 1, 8 do
+		local fp = part(map, Vector3.new(1, 1, 1), CFrame.new(O + Vector3.new(rng:NextNumber(-half, half) * 0.8, 2, rng:NextNumber(-half, half) * 0.8)), Color3.new(), nil, { collide = false, transp = 1, name = "FogEmitter" })
+		fp.CanQuery = false
+		local pe = Instance.new("ParticleEmitter")
+		pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		pe.Color = ColorSequence.new(t.fogColor:Lerp(Color3.new(0.6, 0.6, 0.65), 0.5))
+		pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.4, 0.88), NumberSequenceKeypoint.new(1, 1) })
+		pe.Size = NumberSequence.new(18, 30)
+		pe.Lifetime = NumberRange.new(10, 16)
+		pe.Rate = 1.2
+		pe.Speed = NumberRange.new(0.5, 2)
+		pe.SpreadAngle = Vector2.new(180, 10)
+		pe.Rotation = NumberRange.new(0, 360)
+		pe.RotSpeed = NumberRange.new(-6, 6)
+		pe.LightInfluence = 1
+		pe.Parent = fp
+		_ = i
+	end
 	for _, w in ipairs({
 		{ Vector3.new(S + 20, 40, 2), Vector3.new(0, 20, -half - 10) },
 		{ Vector3.new(S + 20, 40, 2), Vector3.new(0, 20, half + 10) },
@@ -238,6 +265,12 @@ function MapGen.generate(themeName, seed)
 		model = map, spawns = spawns, monsterSpawns = monsterSpawns, vents = vents,
 		extract = ex, theme = themeName, half = half, fog = t.fog, fogColor = t.fogColor,
 	}
+end
+
+-- Remove the terrain a map created.
+function MapGen.clearTerrain()
+	local O, S = Config.MAP_ORIGIN, Config.MAP_SIZE
+	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, -1, 0)), Vector3.new(S + 48, 8, S + 48), Enum.Material.Air)
 end
 
 return MapGen
