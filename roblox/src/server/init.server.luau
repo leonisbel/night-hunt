@@ -347,14 +347,6 @@ local function portalFx(pos, color)
 	ring.Material = Enum.Material.Neon
 	ring.Transparency = 0.25
 	ring.Anchored, ring.CanCollide, ring.CanQuery = true, false, false
-	local pe = Instance.new("ParticleEmitter")
-	pe.Color = ColorSequence.new(Color3.fromRGB(220, 220, 230))
-	pe.Size = NumberSequence.new(0.3)
-	pe.Rate = 60
-	pe.Lifetime = NumberRange.new(1.5, 3)
-	pe.Speed = NumberRange.new(1, 3)
-	pe.SpreadAngle = Vector2.new(180, 180)
-	pe.Parent = ring
 	ring.Parent = roundFolder or workspace
 	Debris:AddItem(ring, 2.5)
 end

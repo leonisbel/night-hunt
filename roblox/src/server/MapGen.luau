@@ -355,25 +355,7 @@ function MapGen.generate(themeName, seed)
 		local pp = O + Vector3.new(rng:NextNumber(-half, half), 0, rng:NextNumber(-half, half))
 		terrain:FillCylinder(CFrame.new(pp + Vector3.new(0, -1.9, 0)), 0.3, rng:NextNumber(6, 16), t.patch)
 	end
-	-- drifting ground fog
-	for i = 1, 8 do
-		local fp = part(map, Vector3.new(1, 1, 1), CFrame.new(O + Vector3.new(rng:NextNumber(-half, half) * 0.8, 2, rng:NextNumber(-half, half) * 0.8)), Color3.new(), nil, { collide = false, transp = 1, name = "FogEmitter" })
-		fp.CanQuery = false
-		local pe = Instance.new("ParticleEmitter")
-		pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
-		pe.Color = ColorSequence.new(t.fogColor:Lerp(Color3.new(0.6, 0.6, 0.65), 0.5))
-		pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.4, 0.88), NumberSequenceKeypoint.new(1, 1) })
-		pe.Size = NumberSequence.new(18, 30)
-		pe.Lifetime = NumberRange.new(10, 16)
-		pe.Rate = 1.2
-		pe.Speed = NumberRange.new(0.5, 2)
-		pe.SpreadAngle = Vector2.new(180, 10)
-		pe.Rotation = NumberRange.new(0, 360)
-		pe.RotSpeed = NumberRange.new(-6, 6)
-		pe.LightInfluence = 1
-		pe.Parent = fp
-		_ = i
-	end
+	-- (v1.3.1) drifting white fog puffs removed at Leo's request
 	for _, w in ipairs({
 		{ Vector3.new(S + 20, 40, 2), Vector3.new(0, 20, -half - 10) },
 		{ Vector3.new(S + 20, 40, 2), Vector3.new(0, 20, half + 10) },

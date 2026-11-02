@@ -132,14 +132,8 @@ export class World {
     this.exSpot = new THREE.SpotLight('#cfffd8', 0, 60, .38, .5, .8); s.add(this.exSpot, this.exSpot.target);
     this.level = new THREE.Group(); s.add(this.level);
     this.dyn = new THREE.Group(); s.add(this.dyn);
-    // ambient particles: dust/fireflies/static + fog wisps
-    const n = this.mobile ? 220 : 500, pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - .5) * 50; pos[i * 3 + 1] = Math.random() * 8; pos[i * 3 + 2] = (Math.random() - .5) * 50; }
-    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.dust = new THREE.Points(pg, new THREE.PointsMaterial({ size: .09, map: softTex(), color: '#fff', transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false }));
-    this.dust.frustumCulled = false; s.add(this.dust);
+    // (v1.3.1) the floating white dust motes and fog-wisp sprites were removed at Leo's request
     this.wisps = [];
-    for (let i = 0; i < 40; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex(), color: '#8890a0', transparent: true, opacity: 0, depthWrite: false })); sp.scale.set(9, 4, 1); sp.userData.v = new THREE.Vector2((Math.random() - .5) * .6, (Math.random() - .5) * .6); s.add(sp); this.wisps.push(sp); }
     // extraction helicopter + beam
     this.exHeli = buildHelicopter('#6a6a2a'); this.exHeli.visible = false; s.add(this.exHeli);
     this.exBeam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 6, 60, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#7dffa0', map: beamTex(), transparent: true, opacity: .12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
@@ -162,7 +156,7 @@ export class World {
     for (const c of this.chars.values()) this.dyn.remove(c.obj); this.chars.clear();
     const s = this.scene; s.fog.color.set(T.fog); s.fog.density = T.dens; s.background.set(T.fog).multiplyScalar(.6);
     this.hemi.color.set(T.sky); this.hemi.groundColor.set(T.gnd); this.hemi.intensity = T.hemi; this.moon.intensity = T.moon;
-    this.dust.material.color.set(T.dust); this.dust.material.size = T.staticNoise ? .06 : T.tree === 'pine' ? .12 : .08;
+
     const R = rng(map.w * 7 + map.walls.length * 131 + map.trees.length * 17 + (map.bushes.length || 1));
     const own = m => { m.userData.own = true; m.receiveShadow = true; return m; };
     // ground (+ a wide apron beyond the walls)
@@ -489,14 +483,6 @@ export class World {
     for (const { m, b } of this.bushes) { const inside = Math.hypot(b.x - md.dx, b.y - md.dy) < b.r; if (m.material.transparent !== inside) { m.material.transparent = inside; m.material.opacity = inside ? .45 : 1; m.material.depthWrite = !inside; m.material.needsUpdate = true; } }
     // effects
     this.updateFx(dt, t); this.updateWitness();
-    // particles around the camera target
-    const pa = this.dust.geometry.attributes.position, arr = pa.array;
-    for (let i = 0; i < arr.length; i += 3) {
-      arr[i] += Math.sin(t * .5 + i) * dt * .3; arr[i + 1] += (this.theme.staticNoise ? Math.sin(t * 30 + i) * .05 : (this.theme.tree === 'pine' ? Math.sin(t + i) * .4 : -.15)) * dt; arr[i + 2] += Math.cos(t * .4 + i) * dt * .3;
-      if (arr[i] - myPos.x > 25) arr[i] -= 50; if (arr[i] - myPos.x < -25) arr[i] += 50; if (arr[i + 2] - myPos.z > 25) arr[i + 2] -= 50; if (arr[i + 2] - myPos.z < -25) arr[i + 2] += 50; if (arr[i + 1] < 0) arr[i + 1] += 8; if (arr[i + 1] > 8) arr[i + 1] -= 8;
-    }
-    pa.needsUpdate = true; this.dust.material.opacity = this.theme.staticNoise ? .3 + Math.random() * .4 : .55;
-    for (const w of this.wisps) { if (!w.visible) continue; w.position.x += w.userData.v.x * dt; w.position.z += w.userData.v.y * dt; if (w.position.distanceTo(myPos) > 32 || w.material.opacity === 0) { const a = Math.random() * 6.28, r = 6 + Math.random() * 24; w.position.set(myPos.x + Math.cos(a) * r, .8 + Math.random() * 1.2, myPos.z + Math.sin(a) * r); } w.material.opacity = .16; }
     // camera
     let fp = false;
     if (v.cam) {
