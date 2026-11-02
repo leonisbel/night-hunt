@@ -11,6 +11,9 @@ local TeleportService = game:GetService("TeleportService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+local Debris = game:GetService("Debris")
 
 local Shared = ReplicatedStorage:WaitForChild("NightHunt")
 local Config = require(Shared:WaitForChild("Config"))
@@ -33,13 +36,14 @@ local Hub = make("RemoteFunction", "Hub", Remotes)      -- hub requests
 local State = make("Folder", "State", Shared)
 local Templates = make("Folder", "Templates", Shared)
 for _, k in ipairs(Config.MONSTER_KEYS) do Models.template(k).Parent = Templates end
+for i = 2, #Config.DN_FORMS do Models.template(Config.DN_FORMS[i].key).Parent = Templates end
 
 local IS_STUDIO = RunService:IsStudio()
 local CAN_TELEPORT = game.PlaceId ~= 0 and not IS_STUDIO
 local IS_RESERVED = game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0
 local IS_VIP = game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0
 
-local settings = { code = "", name = "Night Hunt", max = Config.MAX_PLAYERS, public = false, hostId = 0 }
+local settings = { code = "", name = "Night Hunt", max = Config.MAX_PLAYERS, public = false, hostId = 0, roundLen = Config.ROUND_TIME }
 local function setState(k, v) State:SetAttribute(k, v) end
 local function publishSettings()
 	setState("ServerCode", settings.code)
@@ -47,6 +51,7 @@ local function publishSettings()
 	setState("MaxPlayers", settings.max)
 	setState("IsPublic", settings.public)
 	setState("HostUserId", settings.hostId)
+	setState("RoundLen", settings.roundLen)
 end
 setState("Mode", (IS_RESERVED or IS_VIP) and "Match" or "Hub")
 setState("State", "Lobby")
@@ -169,6 +174,7 @@ end
 -- Round state
 ---------------------------------------------------------------------------
 local fx = {}          -- [player] = { stunUntil, slowUntil, rootUntil, greyUntil, dashUntil, reachUntil, invisUntil, sprint, stamina }
+local profiles = {} -- [player] = { coins, owned, look, pref, skin }
 local currentMap       -- MapGen info
 local roundFolder      -- holds map, traps, portals, extraction heli
 local extractionOpen = false
@@ -243,6 +249,9 @@ local function resetPlayer(p)
 	p:SetAttribute("Escaped", false)
 	p:SetAttribute("AbilityReadyAt", 0)
 	p:SetAttribute("PortalSet", false)
+	p:SetAttribute("Sleeping", false)
+	p:SetAttribute("MonsterHp", nil)
+	p:SetAttribute("RoundCoins", 0)
 	fx[p] = { stamina = 100 }
 	cooldowns[p] = 0
 end
@@ -262,7 +271,7 @@ local function nearestSurvivor(from)
 	return best, bestD
 end
 
-local function survivorsNear(pos, radius)
+local function _survivorsNear(pos, radius)
 	local list = {}
 	for _, s in ipairs(survivors(true)) do
 		local h = hrpOf(s)
@@ -271,7 +280,7 @@ local function survivorsNear(pos, radius)
 	return list
 end
 
-local function setMorphTransparency(p, hidden)
+local function _setMorphTransparency(p, hidden)
 	local morph = p.Character and p.Character:FindFirstChild("NH_Morph")
 	if not morph then return end
 	for _, d in ipairs(morph:GetDescendants()) do
@@ -298,67 +307,65 @@ local function spaceFree(pos)
 end
 
 local ABILITY = {}
-ABILITY.freddy = function(p)
-	for _, s in ipairs(survivors(true)) do
-		local h = hrpOf(s)
-		local fl = h and h:FindFirstChild("NH_Flashlight")
-		if fl then
-			for _, l in ipairs(fl:GetChildren()) do l.Enabled = false end
-			s:SetAttribute("LightsOut", true)
-			task.delay(5, function()
-				s:SetAttribute("LightsOut", nil)
-				if fl.Parent then for _, l in ipairs(fl:GetChildren()) do l.Enabled = not (l:IsA("SpotLight") and s:GetAttribute("FlashOff")) end end
-			end)
+local function sfxAll(kind, pos) Notify:FireAllClients("sfx", kind, pos) end
+local function flatLook(h)
+	local l = h.CFrame.LookVector
+	local f = Vector3.new(l.X, 0, l.Z)
+	return f.Magnitude > 0.01 and f.Unit or Vector3.new(0, 0, -1)
+end
+local function clearLine(a, b, ignore)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local list = { roundFolder and roundFolder:FindFirstChild("Loot") }
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(list, pl.Character) end end
+	for _, x in ipairs(ignore or {}) do table.insert(list, x) end
+	params.FilterDescendantsInstances = list
+	return workspace:Raycast(a, b - a, params) == nil
+end
+-- put monster p somewhere free between d0 and d1 studs from pos, facing it
+local function appearNear(p, pos, d0, d1)
+	for _ = 1, 40 do
+		local a = math.random() * math.pi * 2
+		local d = d0 + math.random() * (d1 - d0)
+		local q = pos + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
+		if currentMap then
+			local o = Config.MAP_ORIGIN
+			q = Vector3.new(math.clamp(q.X, o.X - currentMap.half + 6, o.X + currentMap.half - 6), pos.Y + 1, math.clamp(q.Z, o.Z - currentMap.half + 6, o.Z + currentMap.half - 6))
 		end
-		Notify:FireClient(s, "effect", "lightsout", 5)
-		toast(s, "Freddy: LIGHTS OUT!")
+		if spaceFree(q) then p.Character:PivotTo(CFrame.lookAt(q, Vector3.new(pos.X, q.Y, pos.Z))); return true end
 	end
+	p.Character:PivotTo(CFrame.new(pos + Vector3.new(d0, 2, 0)))
 	return true
 end
-ABILITY.bonnie = function(p)
-	local list = survivorsNear(hrpOf(p).Position, 25)
-	for _, s in ipairs(list) do F(s).stunUntil = now() + 1.8; toast(s, "Bonnie's guitar riff stunned you!") end
-	toast(p, ("Guitar Riff hit %d survivor(s)"):format(#list))
+local function portalFx(pos, color)
+	local ring = Instance.new("Part")
+	ring.Name = "PortalFx"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.4, 9, 9)
+	ring.CFrame = CFrame.new(pos + Vector3.new(0, 4.5, 0)) * CFrame.Angles(0, math.random() * 6, 0)
+	ring.Color = color or Color3.fromRGB(170, 20, 30)
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.25
+	ring.Anchored, ring.CanCollide, ring.CanQuery = true, false, false
+	local pe = Instance.new("ParticleEmitter")
+	pe.Color = ColorSequence.new(Color3.fromRGB(220, 220, 230))
+	pe.Size = NumberSequence.new(0.3)
+	pe.Rate = 60
+	pe.Lifetime = NumberRange.new(1.5, 3)
+	pe.Speed = NumberRange.new(1, 3)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Parent = ring
+	ring.Parent = roundFolder or workspace
+	Debris:AddItem(ring, 2.5)
+end
+local function aftonLaugh(p)
+	-- original synthesized laugh sound + this monster alone sees every survivor for 10s
+	Notify:FireClient(p, "sight", 10)
+	sfxAll("laugh", hrpOf(p).Position)
+	for _, s in ipairs(survivors(true)) do toast(s, "A creepy laugh echoes through the dark...") end
 	return true
 end
-ABILITY.chica = function(p)
-	local h = hrpOf(p)
-	monsterTraps[p] = monsterTraps[p] or {}
-	local traps = monsterTraps[p]
-	if #traps >= 3 then
-		local old = table.remove(traps, 1)
-		if old then old:Destroy() end
-	end
-	local trap = Instance.new("Part")
-	trap.Name = "CupcakeTrap"
-	trap.Shape = Enum.PartType.Cylinder
-	trap.Size = Vector3.new(0.6, 3, 3)
-	trap.CFrame = CFrame.new(h.Position.X, h.Position.Y - 2.7, h.Position.Z) * CFrame.Angles(0, 0, math.rad(90))
-	trap.Color = Color3.fromRGB(255, 122, 182)
-	trap.Material = Enum.Material.Neon
-	trap.Transparency = 0.25
-	trap.Anchored = true
-	trap.CanCollide = false
-	trap.Parent = roundFolder
-	table.insert(traps, trap)
-	toast(p, "Cupcake trap placed")
-	return true
-end
-ABILITY.foxy = function(p) F(p).dashUntil = now() + 1.3; return true end
-ABILITY.springtrap = function(p)
-	local target = nearestSurvivor(hrpOf(p).Position)
-	if not target or not currentMap or #currentMap.vents == 0 then toast(p, "No vents nearby"); return false end
-	local tp = hrpOf(target).Position
-	local best, bestD
-	for _, v in ipairs(currentMap.vents) do
-		local d = (v - tp).Magnitude
-		if not bestD or d < bestD then best, bestD = v, d end
-	end
-	p.Character:PivotTo(CFrame.new(best))
-	toast(p, "You crawled out of a vent")
-	return true
-end
-ABILITY.cartooncat = function(p) F(p).reachUntil = now() + 3; return true end
+for _, k in ipairs({ "freddy", "bonnie", "chica", "foxy", "springtrap" }) do ABILITY[k] = aftonLaugh end
 ABILITY.sirenhead = function(p)
 	for _, s in ipairs(survivors(true)) do
 		if s.Character then
@@ -369,84 +376,179 @@ ABILITY.sirenhead = function(p)
 			hl.FillTransparency = 0.4
 			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 			hl.Parent = s.Character
-			task.delay(5, function() hl:Destroy() end)
+			Debris:AddItem(hl, 8)
 		end
-		Notify:FireClient(s, "effect", "siren", 5)
 		toast(s, "Siren Head's call revealed everyone!")
 	end
-	return true
-end
-ABILITY.boiledone = function(p)
-	local list = survivorsNear(hrpOf(p).Position, 40)
-	for _, s in ipairs(list) do F(s).slowUntil = now() + 4; toast(s, "The Boiled One's gaze slows you...") end
-	toast(p, ("Dread Gaze slowed %d survivor(s)"):format(#list))
-	return true
-end
-ABILITY.drnowhere = function(p)
-	local h = hrpOf(p)
-	local look = h.CFrame.LookVector
-	local flat = Vector3.new(look.X, 0, look.Z)
-	if flat.Magnitude < 0.01 then flat = Vector3.new(0, 0, -1) end
-	flat = flat.Unit
-	for _, dist in ipairs({ 30, 25, 20, 15, 10 }) do
-		local target = h.Position + flat * dist
-		if currentMap then
-			local o = Config.MAP_ORIGIN
-			target = Vector3.new(
-				math.clamp(target.X, o.X - currentMap.half + 4, o.X + currentMap.half - 4),
-				target.Y,
-				math.clamp(target.Z, o.Z - currentMap.half + 4, o.Z + currentMap.half - 4))
-		end
-		if spaceFree(target) then
-			p.Character:PivotTo(CFrame.lookAt(target, target + flat))
-			return true
-		end
-	end
-	toast(p, "Something blocks the warp")
-	return false
-end
-ABILITY.locust = function(p)
-	F(p).invisUntil = now() + 5
-	setMorphTransparency(p, true)
-	task.delay(5, function()
-		if p.Parent and F(p).invisUntil and now() >= F(p).invisUntil - 0.05 then setMorphTransparency(p, false) end
-	end)
-	toast(p, "You faded into static")
+	sfxAll("siren", hrpOf(p).Position)
 	return true
 end
 ABILITY.monochrome = function(p)
 	for _, s in ipairs(survivors(true)) do
-		F(s).greyUntil = now() + 5
-		Notify:FireClient(s, "effect", "grey", 5)
-		toast(s, "Monochrome drained your color - no sprinting!")
+		Notify:FireClient(s, "effect", "dark", 10)
+		toast(s, "Monochrome: TOTAL BLACKOUT")
 	end
+	sfxAll("dark", hrpOf(p).Position)
 	return true
 end
 ABILITY.demogorgon = function(p)
 	local h = hrpOf(p)
-	local portal = portals[p]
-	if portal and portal.Parent then
-		p.Character:PivotTo(CFrame.new(portal.Position + Vector3.new(0, 3, 0)))
-		portal:Destroy()
-		portals[p] = nil
-		p:SetAttribute("PortalSet", false)
-		toast(p, "You came out of the Upside Down")
+	local target = nearestSurvivor(h.Position)
+	if not target then toast(p, "No survivors to hunt"); return 3 end
+	portalFx(h.Position - Vector3.new(0, 3, 0))
+	sfxAll("portal", h.Position)
+	appearNear(p, hrpOf(target).Position, 25, 40)
+	portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0))
+	sfxAll("portal", hrpOf(p).Position)
+	toast(p, "You came out of the Upside Down near " .. target.DisplayName)
+	return true
+end
+local function dnInjection(p)
+	local h = hrpOf(p)
+	local look = flatLook(h)
+	local best, bestD
+	for _, s in ipairs(survivors(true)) do
+		local sh = hrpOf(s)
+		if sh then
+			local v = sh.Position - h.Position
+			local d = v.Magnitude
+			if d < 16 and (d < 7 or look:Dot(Vector3.new(v.X, 0, v.Z).Unit) > 0.45) and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+	end
+	if not best then toast(p, "Injection missed - get closer!"); return 2.5 end
+	F(best).slowUntil = now() + 6
+	toast(best, "Doctor Nowhere injected you! You feel sluggish...")
+	sfxAll("inject", h.Position)
+	return true
+end
+-- Doctor Nowhere: the current form (attribute "Form", 1..4) decides the power
+ABILITY.drnowhere = function(p)
+	local form = p:GetAttribute("Form") or 1
+	local h = hrpOf(p)
+	if form == 2 then -- Cone Zone: ground slam stuns survivors within 36 studs
+		local hit = 0
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh and (sh.Position - h.Position).Magnitude < 36 then F(s).stunUntil = now() + 1.6; hit += 1; toast(s, "Cone Zone's quake knocked you off your feet!") end
+		end
+		portalFx(h.Position - Vector3.new(0, 3, 0), Color3.fromRGB(235, 235, 235))
+		sfxAll("quake", h.Position)
+		if hit == 0 then toast(p, "The quake hit nobody"); return 6 end
+		return true
+	elseif form == 3 then -- Nightmare Man: shadow step up to ~50 studs ahead
+		local look = flatLook(h)
+		for d = 50, 12, -6 do
+			local q = h.Position + look * d
+			if spaceFree(q) and clearLine(h.Position, q) then
+				portalFx(h.Position - Vector3.new(0, 3, 0), Color3.fromRGB(10, 10, 12))
+				p.Character:PivotTo(CFrame.lookAt(q, q + look))
+				portalFx(q - Vector3.new(0, 3, 0), Color3.fromRGB(10, 10, 12))
+				sfxAll("shift", q)
+				return true
+			end
+		end
+		toast(p, "No room to step through the shadows"); return 3
+	elseif form == 4 then -- six arms: paranoia - nearby survivors hallucinate and are revealed
+		local hit = 0
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh and (sh.Position - h.Position).Magnitude < 117 then
+				hit += 1
+				Notify:FireClient(s, "effect", "halluc", 8)
+				toast(s, "You feel watched... is that real?")
+				local hl = Instance.new("Highlight")
+				hl.Name = "NH_Reveal"
+				hl.FillColor = Color3.fromRGB(255, 40, 40)
+				hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				hl.Parent = s.Character
+				Debris:AddItem(hl, 6)
+			end
+		end
+		sfxAll("paranoia", h.Position)
+		if hit == 0 then toast(p, "Nobody close enough to feel paranoid"); return 5 end
 		return true
 	end
-	local part = Instance.new("Part")
-	part.Name = "UpsideDownPortal"
-	part.Shape = Enum.PartType.Cylinder
-	part.Size = Vector3.new(0.3, 7, 7)
-	part.CFrame = CFrame.new(h.Position.X, h.Position.Y - 2.8, h.Position.Z) * CFrame.Angles(0, 0, math.rad(90))
-	part.Color = Color3.fromRGB(150, 20, 30)
-	part.Material = Enum.Material.Neon
-	part.Anchored = true
-	part.CanCollide = false
-	part.Parent = roundFolder
-	portals[p] = part
-	p:SetAttribute("PortalSet", true)
-	toast(p, "Portal placed - use the ability again to jump back to it")
-	return "short"
+	return dnInjection(p)
+end
+local function setDnForm(p, form)
+	local def = Config.DN_FORMS[form]
+	p:SetAttribute("Form", form)
+	F(p).formAt = now() + Config.DN_PERIOD
+	if p.Character and isHunting(p) then
+		Models.morph(p.Character, def.key, profiles[p] and profiles[p].skin)
+		portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(30, 30, 34))
+		sfxAll("shift", hrpOf(p).Position)
+	end
+	toast(p, ("You shapeshift: %s - %s"):format(def.name, def.ability))
+end
+ABILITY.cartooncat = function(p)
+	local h = hrpOf(p)
+	local look = flatLook(h)
+	local best, bestD
+	for _, s in ipairs(survivors(true)) do
+		local sh = hrpOf(s)
+		if sh then
+			local v = sh.Position - h.Position
+			local flat = Vector3.new(v.X, 0, v.Z)
+			local d = flat.Magnitude
+			if d > 0.1 and d < 70 and look:Dot(flat.Unit) > 0.85 and clearLine(h.Position, sh.Position) and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+	end
+	if not best then toast(p, "The rubber arm grabbed nothing"); return 4 end
+	-- stretch a black rubber arm with a white glove out to the survivor, then reel them in
+	local sh = hrpOf(best)
+	local arm = Instance.new("Part")
+	arm.Anchored, arm.CanCollide, arm.CanQuery = true, false, false
+	arm.Color = Color3.fromRGB(10, 10, 10)
+	arm.Material = Enum.Material.Rubber
+	arm.Size = Vector3.new(0.8, 0.8, (sh.Position - h.Position).Magnitude)
+	arm.CFrame = CFrame.lookAt((h.Position + sh.Position) / 2 + Vector3.new(0, 1, 0), sh.Position + Vector3.new(0, 1, 0))
+	arm.Parent = roundFolder or workspace
+	local glove = Instance.new("Part")
+	glove.Shape = Enum.PartType.Ball
+	glove.Anchored, glove.CanCollide, glove.CanQuery = true, false, false
+	glove.Color = Color3.fromRGB(245, 245, 245)
+	glove.Size = Vector3.new(2, 2, 2)
+	glove.Position = sh.Position + Vector3.new(0, 1, 0)
+	glove.Parent = arm
+	Debris:AddItem(arm, 0.45)
+	local dest = h.Position + look * 5
+	best.Character:PivotTo(CFrame.lookAt(dest, h.Position))
+	F(best).stunUntil = now() + 1.2
+	toast(best, "A rubber arm grabbed you!")
+	sfxAll("stretch", h.Position)
+	return true
+end
+ABILITY.locust = function(p)
+	local list = survivors(true)
+	if #list == 0 then return 3 end
+	local target = list[math.random(1, #list)] -- exactly one random survivor
+	local tp = hrpOf(target).Position
+	local tv, tvD
+	for _, v in ipairs(currentMap and currentMap.tvs or {}) do
+		local d = (v - tp).Magnitude
+		if d < 140 and (not tvD or d < tvD) then tv, tvD = v, d end
+	end
+	portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(30, 30, 34))
+	if tv then
+		p.Character:PivotTo(CFrame.lookAt(tv + Vector3.new(0, 3, 0), Vector3.new(tp.X, tv.Y + 3, tp.Z))) -- crawls out of a TV / computer screen
+		toast(p, "You crawl out of a screen near " .. target.DisplayName .. "...")
+	else
+		appearNear(p, tp, 60, 90)
+		toast(p, "You descend on " .. target.DisplayName .. "...")
+	end
+	portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(220, 220, 220))
+	Notify:FireClient(target, "locust")
+	Notify:FireClient(p, "sight", 4, target.UserId)
+	sfxAll("buzz", hrpOf(p).Position)
+	return true
+end
+
+ABILITY.sonicexe = function(p)
+	F(p).dashUntil = now() + 10 -- "You can't run forever": a scary laugh, then much faster for 10s
+	sfxAll("sonic", hrpOf(p).Position)
+	for _, s in ipairs(survivors(true)) do toast(s, "A distorted laugh... something very fast is coming.") end
+	return true
 end
 
 local function useAbility(p)
@@ -458,11 +560,501 @@ local function useAbility(p)
 	if not fn or not def then return end
 	local result = fn(p)
 	if result then
-		local cd = result == "short" and 2 or def.cd
+		local cd = type(result) == "number" and result or def.cd
 		cooldowns[p] = now() + cd
 		p:SetAttribute("AbilityReadyAt", workspace:GetServerTimeNow() + cd)
 		Notify:FireAllClients("ability", p.UserId, kind)
 	end
+end
+
+
+---------------------------------------------------------------------------
+-- Gear: loot chests/bags, tools (melee, guns, food, drinks), armor, combat, beds, coins
+---------------------------------------------------------------------------
+local ITEMS = Config.ITEMS
+local function rollLoot(kind)
+	local tbl = Config.LOOT[kind]
+	local total = 0
+	for _, w in pairs(tbl) do total += w end
+	local r = math.random() * total
+	for k, w in pairs(tbl) do
+		r -= w
+		if r <= 0 then return k end
+	end
+	return "water"
+end
+local function addCoins(p, n, why)
+	local pr = profiles[p]
+	if not pr or n <= 0 then return end
+	pr.coins += n
+	p:SetAttribute("Coins", pr.coins)
+	p:SetAttribute("RoundCoins", (p:GetAttribute("RoundCoins") or 0) + n)
+	if why then Notify:FireClient(p, "coins", n, why) end
+end
+
+local function toolHandle(id)
+	local def = ITEMS[id]
+	local h = Instance.new("Part")
+	h.Name = "Handle"
+	h.CanCollide = false
+	h.Massless = true
+	h.Color = def.color
+	h.Material = Enum.Material.SmoothPlastic
+	if def.type == "melee" then
+		h.Size = id == "knife" and Vector3.new(0.25, 0.25, 1.6) or Vector3.new(0.35, 0.35, 3.6)
+		h.Material = id == "bat" and Enum.Material.Wood or Enum.Material.Metal
+	elseif def.type == "gun" then
+		h.Size = id == "pistol" and Vector3.new(0.35, 0.7, 1.3) or Vector3.new(0.35, 0.55, 3.6)
+		h.Material = Enum.Material.Metal
+	else
+		h.Size = Vector3.new(0.6, 1, 0.6)
+	end
+	if def.type == "melee" and id ~= "knife" then -- a head on the bat / axe / crowbar
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.CanCollide, head.Massless = false, true
+		head.Size = id == "axe" and Vector3.new(0.2, 1.1, 0.9) or Vector3.new(0.5, 0.5, 1)
+		head.Color = id == "axe" and Color3.fromRGB(190, 190, 195) or def.color
+		head.Material = id == "bat" and Enum.Material.Wood or Enum.Material.Metal
+		head.CFrame = h.CFrame * CFrame.new(0, 0, -1.6)
+		local w = Instance.new("WeldConstraint"); w.Part0 = h; w.Part1 = head; w.Parent = head
+		return h, head
+	end
+	return h
+end
+
+local function makeTool(id, count)
+	local def = ITEMS[id]
+	local t = Instance.new("Tool")
+	t.Name = def.name
+	t.ToolTip = def.type == "use" and (def.hp and ("+" .. def.hp .. " hp") or "stamina") or def.name
+	t.CanBeDropped = false
+	t:SetAttribute("ItemId", id)
+	t:SetAttribute("Count", count or 1)
+	local h, extra = toolHandle(id)
+	h.Parent = t
+	if extra then extra.Parent = t end
+	if def.type == "gun" then t.GripPos = Vector3.new(0, -0.1, 0.4) end
+	return t
+end
+
+local function ownedTools(p)
+	local list = {}
+	local bp = p:FindFirstChildOfClass("Backpack")
+	for _, c in ipairs({ bp, p.Character }) do
+		if c then for _, t in ipairs(c:GetChildren()) do if t:IsA("Tool") and t:GetAttribute("ItemId") then table.insert(list, t) end end end
+	end
+	return list
+end
+local function clearGear(p)
+	for _, t in ipairs(ownedTools(p)) do t:Destroy() end
+	for _, a in ipairs({ "Vest", "Helmet", "Ammo_light", "Ammo_shells", "Ammo_heavy" }) do p:SetAttribute(a, 0) end
+	local c = p.Character
+	if c then for _, n in ipairs({ "NH_Vest", "NH_Helmet" }) do local x = c:FindFirstChild(n, true); if x then x:Destroy() end end end
+end
+local function wearArmor(p, slot)
+	local c = p.Character
+	if not c or c:FindFirstChild("NH_" .. slot) then return end
+	local attachTo = slot == "Vest" and (c:FindFirstChild("UpperTorso") or c:FindFirstChild("Torso")) or c:FindFirstChild("Head")
+	if not attachTo then return end
+	local a = Instance.new("Part")
+	a.Name = "NH_" .. slot
+	a.CanCollide, a.Massless, a.CanQuery = false, true, false
+	a.Color = ITEMS[slot == "Vest" and "vest" or "helmet"].color
+	a.Material = slot == "Vest" and Enum.Material.Fabric or Enum.Material.Metal
+	if slot == "Vest" then
+		a.Size = attachTo.Size + Vector3.new(0.3, -0.2, 0.3)
+		a.CFrame = attachTo.CFrame
+	else
+		a.Shape = Enum.PartType.Ball
+		a.Size = Vector3.new(1.45, 1.1, 1.45)
+		a.CFrame = attachTo.CFrame * CFrame.new(0, 0.35, 0)
+	end
+	local w = Instance.new("WeldConstraint"); w.Part0 = attachTo; w.Part1 = a; w.Parent = a
+	a.Parent = c
+end
+
+-- give an item; returns false when there is no room
+local function giveItem(p, id)
+	local def = ITEMS[id]
+	if not def then return false end
+	if def.type == "ammo" then
+		p:SetAttribute("Ammo_" .. def.ammo, (p:GetAttribute("Ammo_" .. def.ammo) or 0) + def.n)
+	elseif def.type == "armor" then
+		if (p:GetAttribute(def.slot) or 0) >= def.dur * 0.8 then return false end
+		p:SetAttribute(def.slot, def.dur)
+		wearArmor(p, def.slot)
+	else
+		local tools = ownedTools(p)
+		for _, t in ipairs(tools) do
+			if t:GetAttribute("ItemId") == id then
+				if def.type == "use" and t:GetAttribute("Count") < 3 then t:SetAttribute("Count", t:GetAttribute("Count") + 1); t.Name = def.name .. " x" .. t:GetAttribute("Count"); return true end
+				if def.type == "gun" then p:SetAttribute("Ammo_" .. def.ammo, (p:GetAttribute("Ammo_" .. def.ammo) or 0) + def.start); return true end
+				if def.type == "melee" then return false end
+			end
+		end
+		if #tools >= Config.SLOTS then return false end
+		makeTool(id).Parent = p:FindFirstChildOfClass("Backpack")
+		if def.type == "gun" then p:SetAttribute("Ammo_" .. def.ammo, (p:GetAttribute("Ammo_" .. def.ammo) or 0) + def.start) end
+	end
+	Notify:FireClient(p, "pickup", id)
+	return true
+end
+
+-- chests and bags with a ProximityPrompt (E on keyboard, a tap button on touch screens)
+local function spawnLoot(list)
+	local folder = Instance.new("Folder")
+	folder.Name = "Loot"
+	folder.Parent = roundFolder
+	for i, l in ipairs(list) do
+		local m = Instance.new("Model")
+		m.Name = l.kind == "chest" and "Chest" or "Bag"
+		local base = Instance.new("Part")
+		base.Anchored = true
+		base.Name = "Base"
+		if l.kind == "chest" then
+			base.Size = Vector3.new(4, 2.4, 2.6)
+			base.Color = Color3.fromRGB(110, 70, 38)
+			base.Material = Enum.Material.WoodPlanks
+			base.CFrame = CFrame.new(l.pos + Vector3.new(0, 1.4, 0)) * CFrame.Angles(0, math.rad((i * 47) % 360), 0)
+			local lid = Instance.new("Part")
+			lid.Name = "Lid"
+			lid.Anchored = true
+			lid.Size = Vector3.new(4.1, 0.7, 2.7)
+			lid.Color = Color3.fromRGB(95, 60, 32)
+			lid.Material = Enum.Material.WoodPlanks
+			lid.CFrame = base.CFrame * CFrame.new(0, 1.55, 0)
+			lid.Parent = m
+			for _, x in ipairs({ -1.4, 1.4 }) do
+				local band = Instance.new("Part")
+				band.Anchored, band.CanCollide = true, false
+				band.Size = Vector3.new(0.3, 3.2, 2.75)
+				band.Color = Color3.fromRGB(60, 60, 64)
+				band.Material = Enum.Material.Metal
+				band.CFrame = base.CFrame * CFrame.new(x, 0.35, 0)
+				band.Parent = m
+			end
+		else
+			base.Shape = Enum.PartType.Ball
+			base.Size = Vector3.new(2.6, 2, 2.2)
+			base.Color = Color3.fromRGB(60, 72, 44)
+			base.Material = Enum.Material.Fabric
+			base.CFrame = CFrame.new(l.pos + Vector3.new(0, 1, 0))
+		end
+		base.Parent = m
+		m.PrimaryPart = base
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = l.kind == "chest" and "Open chest" or "Search bag"
+		prompt.ObjectText = l.kind == "chest" and "Chest" or "Bag"
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.HoldDuration = l.kind == "chest" and 0.6 or 0.3
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = base
+		prompt.Triggered:Connect(function(p)
+			if not isHunting(p) or p:GetAttribute("Role") ~= "Survivor" or m:GetAttribute("Opened") then return end
+			m:SetAttribute("Opened", true)
+			prompt.Enabled = false
+			local got = {}
+			for _ = 1, (l.kind == "chest" and math.random(2, 3) or math.random(1, 2)) do
+				local id = rollLoot(l.kind)
+				if giveItem(p, id) then table.insert(got, ITEMS[id].name) end
+			end
+			toast(p, #got > 0 and ("Found: " .. table.concat(got, ", ")) or "Nothing you can carry...")
+			addCoins(p, Config.EARN.open)
+			sfxAll("open", base.Position)
+			local lid = m:FindFirstChild("Lid")
+			if lid then lid.CFrame = lid.CFrame * CFrame.new(0, 0.9, 1.2) * CFrame.Angles(math.rad(-70), 0, 0) end
+			base.Color = base.Color:Lerp(Color3.new(0, 0, 0), 0.4)
+		end)
+		m.Parent = folder
+	end
+end
+
+-- damage to a survivor: the vest soaks 35% (wears down), the helmet 15%
+local lastHitBy = {}
+local function hurtSurvivor(s, dmg, by)
+	local hum = humOf(s)
+	if not hum or hum.Health <= 0 then return end
+	local red = 0
+	for _, slot in ipairs({ "Vest", "Helmet" }) do
+		local dur = s:GetAttribute(slot) or 0
+		if dur > 0 then
+			local def = ITEMS[slot == "Vest" and "vest" or "helmet"]
+			red += def.red
+			local left = math.max(0, dur - dmg * def.red * 1.6)
+			s:SetAttribute(slot, math.floor(left))
+			if left <= 0 then
+				local x = s.Character and s.Character:FindFirstChild("NH_" .. slot)
+				if x then x:Destroy() end
+				toast(s, "Your " .. def.name:lower() .. " broke!")
+			end
+		end
+	end
+	lastHitBy[s] = by
+	hum.Health = math.max(0, hum.Health - dmg * (1 - red))
+	Notify:FireClient(s, "hurt")
+end
+
+-- monster health and knockdown
+local function hurtMonster(m, dmg, by, stun)
+	local f = F(m)
+	if f.downUntil and now() < f.downUntil then return end
+	local hp = (m:GetAttribute("MonsterHp") or Config.MON_HP) - dmg
+	if stun then f.stunUntil = math.max(f.stunUntil or 0, now() + stun) end
+	if hp <= 0 then
+		hp = 0
+		f.downUntil = now() + Config.DOWN_TIME
+		local def = Config.MONSTERS[m:GetAttribute("Monster")]
+		toast(nil, ("%s knocked down %s! It gets back up in %ds - run!"):format(by.DisplayName, def and def.name or "the monster", Config.DOWN_TIME))
+		addCoins(by, Config.EARN.knockdown, "Knocked down a monster")
+		sfxAll("down", hrpOf(m) and hrpOf(m).Position)
+		task.delay(Config.DOWN_TIME, function()
+			if m.Parent then m:SetAttribute("MonsterHp", m:GetAttribute("MonsterMaxHp") or Config.MON_HP) end
+		end)
+	end
+	m:SetAttribute("MonsterHp", hp)
+end
+
+local function tracer(a, b)
+	local t = Instance.new("Part")
+	t.Anchored, t.CanCollide, t.CanQuery, t.CastShadow = true, false, false, false
+	t.Material = Enum.Material.Neon
+	t.Color = Color3.fromRGB(255, 220, 140)
+	t.Size = Vector3.new(0.08, 0.08, (b - a).Magnitude)
+	t.CFrame = CFrame.lookAt((a + b) / 2, b)
+	t.Parent = roundFolder or workspace
+	Debris:AddItem(t, 0.06)
+end
+
+-- a monster's body as a vertical capsule for hit tests (morphs are far taller than a normal avatar)
+local TALL = { sirenhead = 30, locust = 15, cartooncat = 14 }
+local function rayHitsMonster(origin, dir, range)
+	local best, bestT
+	for _, m in ipairs(monsters()) do
+		local h = hrpOf(m)
+		if h and isHunting(m) then
+			local base = h.Position - Vector3.new(0, 3, 0)
+			local top = (TALL[m:GetAttribute("Monster")] or 9)
+			local t = (base - origin):Dot(dir)
+			if t > 0 and t < range then
+				local p = origin + dir * t
+				local horiz = Vector2.new(p.X - base.X, p.Z - base.Z).Magnitude
+				if horiz < 2.6 and p.Y > base.Y - 1 and p.Y < base.Y + top and (not bestT or t < bestT) then best, bestT = m, t end
+			end
+		end
+	end
+	return best, bestT
+end
+
+local fireReady = {}
+local function useHeld(p, dir)
+	if not isHunting(p) or p:GetAttribute("Role") ~= "Survivor" then return end
+	local c = p.Character
+	local tool = c and c:FindFirstChildOfClass("Tool")
+	local id = tool and tool:GetAttribute("ItemId")
+	local def = id and ITEMS[id]
+	local head = c and c:FindFirstChild("Head")
+	if not def or not head then return end
+	local t = now()
+	if t < (fireReady[p] or 0) then return end
+	fireReady[p] = t + (def.rate or 0.6)
+	if typeof(dir) ~= "Vector3" or dir.Magnitude < 0.5 then dir = hrpOf(p).CFrame.LookVector end
+	dir = dir.Unit
+	if def.type == "use" then
+		local hum = humOf(p)
+		if def.hp then hum.Health = math.min(hum.MaxHealth, hum.Health + def.hp) end
+		if def.stam then F(p).stamina = math.min(100, (F(p).stamina or 0) + def.stam) end
+		if def.boost then F(p).boostUntil = t + def.boost end
+		local n = tool:GetAttribute("Count") - 1
+		if n <= 0 then tool:Destroy() else tool:SetAttribute("Count", n); tool.Name = def.name .. (n > 1 and (" x" .. n) or "") end
+		sfxAll((id == "water" or id == "soda" or id == "energy") and "drink" or "eat", head.Position)
+		return
+	end
+	if def.type == "melee" then
+		sfxAll("swing", head.Position)
+		local h = hrpOf(p)
+		for _, m in ipairs(monsters()) do
+			local mh = hrpOf(m)
+			if mh and isHunting(m) then
+				local v = mh.Position - h.Position
+				local flat = Vector3.new(v.X, 0, v.Z)
+				if flat.Magnitude < def.range + 2 and (flat.Magnitude < 3 or flat.Unit:Dot(Vector3.new(dir.X, 0, dir.Z).Unit) > 0.35) then
+					hurtMonster(m, def.dmg, p, def.stun)
+					sfxAll("hit", mh.Position)
+					break
+				end
+			end
+		end
+		return
+	end
+	-- guns: raycast against the world, then test monster bodies along the ray
+	local key = "Ammo_" .. def.ammo
+	local ammo = p:GetAttribute(key) or 0
+	if ammo <= 0 then Notify:FireClient(p, "sfx", "dry", head.Position); return end
+	p:SetAttribute(key, ammo - 1)
+	sfxAll(id, head.Position)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ex = {}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+	params.FilterDescendantsInstances = ex
+	local origin = head.Position
+	for _ = 1, (def.pellets or 1) do
+		local spread = def.spread or 0.03
+		local d = (dir + Vector3.new((math.random() - 0.5) * spread * 2, (math.random() - 0.5) * spread * 2, (math.random() - 0.5) * spread * 2)).Unit
+		local wall = workspace:Raycast(origin, d * def.range, params)
+		local wallT = wall and (wall.Position - origin).Magnitude or def.range
+		local m, mt = rayHitsMonster(origin, d, wallT)
+		tracer(origin + d * 1.5, origin + d * (mt or wallT))
+		if m then hurtMonster(m, def.dmg, p, def.stun) end
+	end
+end
+
+-- beds: hold the prompt to sleep and heal; moving / jumping / the prompt again wakes you
+local sleepers = {}
+local function wake(p)
+	local sl = sleepers[p]
+	if not sl then return end
+	sleepers[p] = nil
+	p:SetAttribute("Sleeping", false)
+	local h = hrpOf(p)
+	if h then h.Anchored = false; p.Character:PivotTo(CFrame.new(sl.back)) end
+	local hum = humOf(p)
+	if hum then hum.PlatformStand = false end
+end
+local function setupBeds(list)
+	for _, bed in ipairs(list) do
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Sleep (heal)"
+		prompt.ObjectText = "Bed"
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.HoldDuration = 0.5
+		prompt.MaxActivationDistance = 8
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = bed
+		prompt.Triggered:Connect(function(p)
+			if sleepers[p] then wake(p); return end
+			if not isHunting(p) or p:GetAttribute("Role") ~= "Survivor" then return end
+			for _, sl in pairs(sleepers) do if sl.bed == bed then toast(p, "Someone is already sleeping here."); return end end
+			local h = hrpOf(p)
+			sleepers[p] = { bed = bed, back = h.Position + Vector3.new(0, 1, 0), t = now() }
+			p:SetAttribute("Sleeping", true)
+			h.Anchored = true
+			humOf(p).PlatformStand = true
+			p.Character:PivotTo(bed.CFrame * CFrame.new(0, 1.4, 0) * CFrame.Angles(math.rad(-90), 0, 0))
+			toast(p, "You lie down... resting heals you. Move or press E to wake up.")
+		end)
+	end
+end
+
+-- survivor customization (lobby locker), saved in a DataStore with pcall
+local profileStore
+pcall(function() profileStore = DataStoreService:GetDataStore("NightHuntProfile_v1") end)
+local function cleanProfile(d)
+	d = type(d) == "table" and d or {}
+	local look = type(d.look) == "table" and d.look or {}
+	local function n(v, m) return math.clamp(math.floor(tonumber(v) or 1), 1, m) end
+	local owned = {}
+	if type(d.owned) == "table" then for _, k in ipairs(d.owned) do if type(k) == "string" then owned[k] = true end end end
+	local function have(cat, k) return k == "none" or k == "classic" or owned[cat .. ":" .. tostring(k)] end
+	local out = {
+		coins = math.max(0, math.floor(tonumber(d.coins) or 0)),
+		owned = owned,
+		look = { sk = n(look.sk, #Config.SKIN_TONES), hc = n(look.hc, #Config.HAIR_COLORS), hs = n(look.hs, 4),
+			top = n(look.top, #Config.CLOTHES), pants = n(look.pants or 8, #Config.CLOTHES),
+			hat = (type(look.hat) == "string" and Config.SHOP.hat[look.hat] and have("hat", look.hat)) and look.hat or "none",
+			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none" },
+		pref = (type(d.pref) == "string" and Config.MONSTERS[d.pref]) and d.pref or "",
+		skin = (type(d.skin) == "string" and Config.SHOP.skin[d.skin] and have("skin", d.skin)) and d.skin or "classic",
+	}
+	return out
+end
+local function publishProfile(p)
+	local pr = profiles[p]
+	if not pr then return end
+	local owned = {}
+	for k in pairs(pr.owned) do table.insert(owned, k) end
+	p:SetAttribute("Coins", pr.coins)
+	p:SetAttribute("Profile", HttpService:JSONEncode({ coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }))
+end
+local function saveProfile(p)
+	local pr = profiles[p]
+	if not pr or not profileStore then return end
+	local owned = {}
+	for k in pairs(pr.owned) do table.insert(owned, k) end
+	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }) end)
+end
+local function loadProfile(p)
+	local data
+	if profileStore then pcall(function() data = profileStore:GetAsync("u" .. p.UserId) end) end
+	if data and type(data.owned) == "table" then -- stored as a list
+		local list = data.owned
+		data.owned = list
+	end
+	profiles[p] = cleanProfile(data)
+	publishProfile(p)
+end
+
+local HAT_BUILD = {
+	cap = { Vector3.new(1.3, 0.45, 1.3), Vector3.new(0, 0.65, 0), Color3.fromRGB(200, 40, 40) },
+	beanie = { Vector3.new(1.3, 0.7, 1.3), Vector3.new(0, 0.6, 0), Color3.fromRGB(60, 90, 160), true },
+	hardhat = { Vector3.new(1.5, 0.55, 1.5), Vector3.new(0, 0.7, 0), Color3.fromRGB(250, 200, 30), true },
+	cowboy = { Vector3.new(2.4, 0.15, 2.4), Vector3.new(0, 0.6, 0), Color3.fromRGB(140, 95, 50) },
+	headphones = { Vector3.new(1.5, 0.3, 0.3), Vector3.new(0, 0.6, 0), Color3.fromRGB(20, 20, 24) },
+	bunny = { Vector3.new(0.3, 1.4, 0.15), Vector3.new(0.3, 1.2, 0), Color3.fromRGB(250, 230, 240) },
+	crown = { Vector3.new(1.2, 0.5, 1.2), Vector3.new(0, 0.85, 0), Color3.fromRGB(255, 200, 40) },
+}
+local ACC_BUILD = {
+	glasses = { Vector3.new(1.1, 0.25, 0.1), Vector3.new(0, 0.1, -0.6), Color3.fromRGB(15, 15, 15) },
+	scarf = { Vector3.new(1.4, 0.4, 1.4), Vector3.new(0, -0.7, 0), Color3.fromRGB(180, 40, 40) },
+	mask = { Vector3.new(1.05, 0.5, 0.1), Vector3.new(0, -0.25, -0.6), Color3.fromRGB(230, 230, 230) },
+	goggles = { Vector3.new(1.25, 0.35, 0.2), Vector3.new(0, 0.15, -0.6), Color3.fromRGB(60, 160, 200) },
+}
+local function applyLook(p)
+	local pr = profiles[p]
+	local c = p.Character
+	if not pr or not c then return end
+	local L = pr.look
+	local skin, top, pants = Config.SKIN_TONES[L.sk], Config.CLOTHES[L.top], Config.CLOTHES[L.pants]
+	for _, d in ipairs(c:GetChildren()) do
+		if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Accessory") then d:Destroy() end
+		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
+			local n = d.Name
+			if n == "Head" or n:find("Hand") then d.Color = skin
+			elseif n:find("Torso") or n:find("UpperArm") or n:find("LowerArm") or n:find("Arm") then d.Color = top
+			elseif n:find("Leg") or n:find("Foot") then d.Color = pants end
+		end
+	end
+	local head = c:FindFirstChild("Head")
+	if not head then return end
+	local function stick(name, size, off, color, ball, mat)
+		local x = Instance.new("Part")
+		x.Name = name
+		x.CanCollide, x.Massless, x.CanQuery = false, true, false
+		x.Size, x.Color = size, color
+		x.Material = mat or Enum.Material.SmoothPlastic
+		if ball then x.Shape = Enum.PartType.Ball end
+		x.CFrame = head.CFrame * CFrame.new(off)
+		local w = Instance.new("WeldConstraint"); w.Part0 = head; w.Part1 = x; w.Parent = x
+		x.Parent = c
+		return x
+	end
+	local hair = Config.HAIR_COLORS[L.hc]
+	if L.hs == 1 then stick("NH_Hair", Vector3.new(1.25, 0.5, 1.25), Vector3.new(0, 0.45, 0.05), hair, true, Enum.Material.Fabric)
+	elseif L.hs == 2 then stick("NH_Hair", Vector3.new(1.3, 0.6, 1.3), Vector3.new(0, 0.4, 0.05), hair, true, Enum.Material.Fabric); stick("NH_Hair2", Vector3.new(1.2, 1.4, 0.4), Vector3.new(0, -0.3, 0.55), hair, false, Enum.Material.Fabric)
+	elseif L.hs == 3 then stick("NH_Hair", Vector3.new(1.25, 0.5, 1.25), Vector3.new(0, 0.45, 0.05), hair, true, Enum.Material.Fabric); stick("NH_Bun", Vector3.new(0.6, 0.6, 0.6), Vector3.new(0, 0.6, 0.55), hair, true, Enum.Material.Fabric)
+	else stick("NH_Hair", Vector3.new(1.2, 0.3, 1.2), Vector3.new(0, 0.5, 0.02), hair, true, Enum.Material.Sand) end
+	local hb = HAT_BUILD[L.hat]
+	if hb then
+		stick("NH_Hat", hb[1], hb[2], hb[3], hb[4])
+		if L.hat == "cowboy" then stick("NH_Hat2", Vector3.new(1.2, 0.7, 1.2), Vector3.new(0, 0.95, 0), hb[3]) end
+		if L.hat == "cap" then stick("NH_Hat2", Vector3.new(1, 0.1, 0.7), Vector3.new(0, 0.5, -0.8), hb[3]) end
+		if L.hat == "bunny" then stick("NH_Hat2", hb[1], Vector3.new(-0.3, 1.2, 0), hb[3]) end
+		if L.hat == "headphones" then for _, x in ipairs({ -0.7, 0.7 }) do stick("NH_Hat3", Vector3.new(0.3, 0.6, 0.6), Vector3.new(x, 0, 0), hb[3]) end end
+	end
+	local ab = ACC_BUILD[L.acc]
+	if ab then stick("NH_Acc", ab[1], ab[2], ab[3], false, L.acc == "goggles" and Enum.Material.Glass or nil) end
 end
 
 ---------------------------------------------------------------------------
@@ -488,13 +1080,54 @@ end
 
 local function catchSurvivor(victim, monster)
 	if not isHunting(victim) then return end
+	wake(victim)
 	victim:SetAttribute("Alive", false)
 	local kind = monster and monster:GetAttribute("Monster") or ""
 	local mname = Config.MONSTERS[kind] and Config.MONSTERS[kind].name or "the dark"
-	Notify:FireClient(victim, "jumpscare", kind)
+	Notify:FireClient(victim, "jumpscare", kind, monster and monster:GetAttribute("Form") or 1)
+	-- everyone nearby sees the catch: the victim is animated in the world per monster, then vanishes
+	local vh, mh = hrpOf(victim), monster and hrpOf(monster)
+	if vh then
+		Notify:FireAllClients("scare", victim.UserId, kind, vh.Position)
+		if monster then Notify:FireClient(monster, "kill", kind, victim.UserId, victim.DisplayName) end -- the catcher sees the kill from its own view
+		task.spawn(function()
+			vh.Anchored = true
+			local c0 = vh.CFrame
+			local toM = mh and Vector3.new(mh.Position.X - c0.X, 0, mh.Position.Z - c0.Z) or Vector3.zero
+			local blood = Instance.new("Part") -- teen-level blood mark on the ground (clients hide it when Blood effects are off)
+			blood.Name = "NH_Blood"
+			blood.Shape = Enum.PartType.Cylinder
+			blood.Size = Vector3.new(0.1, 5, 5)
+			blood.CFrame = CFrame.new(c0.Position - Vector3.new(0, 2.9, 0)) * CFrame.Angles(0, 0, math.rad(90))
+			blood.Color = Color3.fromRGB(110, 8, 10)
+			blood.Material = Enum.Material.SmoothPlastic
+			blood.Anchored, blood.CanCollide, blood.CanQuery, blood.CanTouch = true, false, false, false
+			blood.Parent = roundFolder or workspace
+			Debris:AddItem(blood, 25)
+			local saved = {}
+			local t0 = os.clock()
+			while os.clock() - t0 < 2 and vh.Parent and victim.Character do
+				local e = os.clock() - t0
+				local cf
+				if kind == "sirenhead" then cf = c0 + Vector3.new(0, math.min(22, e * 12), 0)
+				elseif kind == "cartooncat" then cf = c0 + toM * math.min(0.8, e * 0.6) + Vector3.new(0, math.min(4, e * 3), 0)
+					pcall(function() victim.Character:ScaleTo(1 + e * 0.5) end)
+				elseif kind == "monochrome" then cf = c0
+					for _, d in ipairs(victim.Character:GetDescendants()) do if d:IsA("BasePart") and d ~= vh then if saved[d] == nil then saved[d] = d.Transparency end; d.Transparency = math.max(d.Transparency, e / 1.8) end end
+				elseif kind == "locust" then cf = c0 * CFrame.new((math.random() - 0.5) * 0.6, 0, (math.random() - 0.5) * 0.6) * CFrame.Angles(0, 0, (math.random() - 0.5) * 0.5)
+				else cf = (c0 + toM * math.min(0.7, e * 0.6)) * CFrame.Angles(-math.min(1.3, e * 1.4), 0, 0) end
+				vh.CFrame = cf
+				task.wait()
+			end
+			if vh.Parent then vh.Anchored = false end
+			task.wait(0.4)
+			for d, v in pairs(saved) do if d.Parent then d.Transparency = v end end
+		end)
+	end
 	toast(nil, ("%s was caught by %s!"):format(victim.DisplayName, mname))
-	if monster then monster:SetAttribute("Catches", (monster:GetAttribute("Catches") or 0) + 1) end
+	if monster then monster:SetAttribute("Catches", (monster:GetAttribute("Catches") or 0) + 1); addCoins(monster, Config.EARN.catch, "Caught a survivor") end
 	task.delay(2.2, function()
+		if victim.Parent and victim.Character then pcall(function() victim.Character:ScaleTo(1) end) end
 		if victim.Parent then sendToLobby(victim) end
 	end)
 end
@@ -556,11 +1189,19 @@ local function placeInMap(p)
 	if role == "Monster" then
 		local sp = currentMap.monsterSpawns[math.random(1, #currentMap.monsterSpawns)]
 		c:PivotTo(CFrame.lookAt(sp, Config.MAP_ORIGIN + Vector3.new(0, 4, 0)))
-		Models.morph(c, p:GetAttribute("Monster"))
+		Models.morph(c, p:GetAttribute("Monster"), profiles[p] and profiles[p].skin)
+		p:SetAttribute("Form", 1)
+		F(p).formAt = now() + Config.DN_PERIOD
+		p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
+		p:SetAttribute("MonsterMaxHp", Config.MON_HP)
+		if p:GetAttribute("MonsterHp") == nil then p:SetAttribute("MonsterHp", Config.MON_HP) end
 	else
 		local sp = currentMap.spawns[math.random(1, #currentMap.spawns)]
 		c:PivotTo(CFrame.new(sp))
 		giveFlashlight(p)
+		applyLook(p)
+		local hum = humOf(p)
+		if hum then hum.MaxHealth = 100; hum.Health = 100; hum.BreakJointsOnDeath = false end
 	end
 end
 
@@ -575,6 +1216,16 @@ local function endRound(reason)
 		if s:GetAttribute("Escaped") then table.insert(escaped, s.DisplayName)
 		elseif s:GetAttribute("Alive") then table.insert(survived, s.DisplayName)
 		else table.insert(caught, s.DisplayName) end
+	end
+	for _, s in ipairs(survivors(false)) do
+		wake(s)
+		if s:GetAttribute("Escaped") then addCoins(s, Config.EARN.escape, "Escaped") elseif s:GetAttribute("Alive") then addCoins(s, Config.EARN.survive, "Survived") end
+	end
+	for _, m in ipairs(monsters()) do addCoins(m, Config.EARN.monster, "Hunted") end
+	for _, p in ipairs(Players:GetPlayers()) do
+		local n = p:GetAttribute("RoundCoins") or 0
+		if n > 0 then Notify:FireClient(p, "toast", ("+%d coins this round"):format(n)) end
+		task.spawn(saveProfile, p)
 	end
 	local headline
 	if #escaped + #survived > 0 then headline = "SURVIVORS WIN" else headline = "MONSTERS WIN" end
@@ -593,6 +1244,7 @@ local function endRound(reason)
 		if token ~= roundToken then return end
 		cleanupRound()
 		for _, p in ipairs(Players:GetPlayers()) do
+			clearGear(p)
 			resetPlayer(p)
 			p:SetAttribute("Catches", 0)
 			task.spawn(function() p:LoadCharacter() end)
@@ -615,7 +1267,7 @@ local function startRound(starter)
 	roundToken += 1
 	local token = roundToken
 	cleanupRound()
-	local theme = Config.THEMES[math.random(1, #Config.THEMES)]
+	local theme = math.random() < 0.5 and Config.MAIN_THEME or Config.THEMES[math.random(1, #Config.THEMES)]
 	setState("Theme", theme)
 	setState("State", "Flight")
 	setState("TimeLeft", Config.FLIGHT_TIME)
@@ -624,6 +1276,9 @@ local function startRound(starter)
 	roundFolder.Name = "Round"
 	currentMap = MapGen.generate(theme, math.random(1, 1e9))
 	currentMap.model.Parent = roundFolder
+	spawnLoot(currentMap.loot or {})
+	setupBeds(currentMap.beds or {})
+	sleepers = {}
 	setState("FogEnd", currentMap.fog)
 	setState("FogColor", currentMap.fogColor)
 	roundFolder.Parent = workspace
@@ -631,10 +1286,14 @@ local function startRound(starter)
 	local isMonster = pickRoles(list)
 	local kinds = table.clone(Config.MONSTER_KEYS)
 	for _, p in ipairs(list) do
+		clearGear(p)
 		resetPlayer(p)
 		p:SetAttribute("Catches", 0)
 		if isMonster[p] then
-			local k = table.remove(kinds, math.random(1, #kinds))
+			-- the monster the player picked in the lobby locker, if nobody else already has it
+			local want = profiles[p] and profiles[p].pref or ""
+			local idx = table.find(kinds, want) or math.random(1, #kinds)
+			local k = table.remove(kinds, idx)
 			p:SetAttribute("Role", "Monster")
 			p:SetAttribute("Monster", k)
 			cooldowns[p] = now() + Config.FLIGHT_TIME + 5
@@ -652,7 +1311,7 @@ local function startRound(starter)
 			if p:GetAttribute("Role") ~= "" then placeInMap(p) end
 		end
 		setState("State", "Hunt")
-		setState("TimeLeft", Config.ROUND_TIME)
+		setState("TimeLeft", settings.roundLen)
 		toast(nil, "Survive until the extraction helicopter arrives!")
 		-- countdown
 		task.spawn(function()
@@ -661,7 +1320,7 @@ local function startRound(starter)
 				if token ~= roundToken or State:GetAttribute("State") ~= "Hunt" then break end
 				local t = State:GetAttribute("TimeLeft") - 1
 				setState("TimeLeft", t)
-				if t == Config.EXTRACT_AT then openExtraction() end
+				if t == math.min(Config.EXTRACT_AT, settings.roundLen - 30) then openExtraction() end
 				if t <= 0 then endRound("Dawn breaks - time is up."); break end
 			end
 		end)
@@ -689,12 +1348,25 @@ RunService.Heartbeat:Connect(function(dt)
 			if st == "Hunt" and p:GetAttribute("Role") == "Monster" and isHunting(p) then
 				local def = Config.MONSTERS[p:GetAttribute("Monster")]
 				speed = def and def.speed or 19
-				if f.dashUntil and t < f.dashUntil then speed *= 2.6 end
+				if f.dashUntil and t < f.dashUntil then speed *= (p:GetAttribute("Monster") == "sonicexe") and 1.9 or 2.6 end
 				canSprint = false
+				if p:GetAttribute("Monster") == "drnowhere" and f.formAt and t >= f.formAt then
+					setDnForm(p, (p:GetAttribute("Form") or 1) % #Config.DN_FORMS + 1)
+					p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
+				end
+				if (f.downUntil and t < f.downUntil) or (f.stunUntil and t < f.stunUntil) then frozen = true end
+				local down = f.downUntil ~= nil and t < f.downUntil
+				if p:GetAttribute("Down") ~= down then p:SetAttribute("Down", down) end
 			elseif st == "Hunt" and isHunting(p) then
 				if f.greyUntil and t < f.greyUntil then canSprint = false end
 				if f.slowUntil and t < f.slowUntil then speed *= 0.5 end
 				if (f.stunUntil and t < f.stunUntil) or (f.rootUntil and t < f.rootUntil) then frozen = true end
+				if f.boostUntil and t < f.boostUntil then speed *= 1.15 end
+				if sleepers[p] and hum.MoveDirection.Magnitude > 0.1 and t - sleepers[p].t > 1 then wake(p) end
+				if sleepers[p] then
+					hum.Health = math.min(hum.MaxHealth, hum.Health + 6 * step)
+					f.stamina = math.min(100, f.stamina + 20 * step)
+				end
 			end
 			local moving = hum.MoveDirection.Magnitude > 0.1
 			if f.sprint and canSprint and moving and f.stamina > 0 and not frozen then
@@ -723,15 +1395,21 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 
 	if st ~= "Hunt" then return end
-	-- catches
+	-- monster attacks: hits that deal damage (armor absorbs some); a downed / stunned monster can't attack
 	for _, m in ipairs(monsters()) do
 		local mh = hrpOf(m)
-		if mh and isHunting(m) then
-			local f = F(m)
-			local reach = Config.CATCH_REACH * ((f.reachUntil and t < f.reachUntil) and 3 or 1)
+		local f = F(m)
+		if mh and isHunting(m) and not (f.downUntil and t < f.downUntil) and not (f.stunUntil and t < f.stunUntil) and t >= (f.nextHit or 0) then
+			local reach = Config.CATCH_REACH + ((TALL[m:GetAttribute("Monster")] or 9) > 12 and 2 or 0)
 			for _, s in ipairs(survivors(true)) do
 				local sh = hrpOf(s)
-				if sh and (sh.Position - mh.Position).Magnitude <= reach then catchSurvivor(s, m) end
+				if sh and (Vector3.new(sh.Position.X, 0, sh.Position.Z) - Vector3.new(mh.Position.X, 0, mh.Position.Z)).Magnitude <= reach then
+					if sleepers[s] then wake(s) end
+					hurtSurvivor(s, Config.MON_DMG, m)
+					sfxAll("hit", sh.Position)
+					f.nextHit = t + Config.MON_HIT_RATE
+					break
+				end
 			end
 		end
 	end
@@ -788,6 +1466,7 @@ local function onPlayerAdded(p)
 	resetPlayer(p)
 	p:SetAttribute("Catches", 0)
 	p:SetAttribute("Boarded", false)
+	task.spawn(loadProfile, p)
 
 	if State:GetAttribute("Mode") == "Match" then
 		local jd = p:GetJoinData()
@@ -819,7 +1498,7 @@ local function onPlayerAdded(p)
 		if not hum then return end
 		hum.Died:Connect(function()
 			if State:GetAttribute("State") == "Hunt" and p:GetAttribute("Role") == "Survivor" and isHunting(p) then
-				catchSurvivor(p, nil)
+				catchSurvivor(p, lastHitBy[p])
 			end
 		end)
 		-- a monster that died (e.g. fell) respawns back into the hunt
@@ -833,6 +1512,11 @@ Players.PlayerAdded:Connect(onPlayerAdded)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayerAdded, p) end
 
 Players.PlayerRemoving:Connect(function(p)
+	saveProfile(p)
+	profiles[p] = nil
+	sleepers[p] = nil
+	lastHitBy[p] = nil
+	fireReady[p] = nil
 	fx[p] = nil
 	cooldowns[p] = nil
 	if monsterTraps[p] then for _, tr in ipairs(monsterTraps[p]) do tr:Destroy() end end
@@ -863,6 +1547,47 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		if not p:GetAttribute("LightsOut") then
 			for _, l in ipairs(fl:GetChildren()) do if l:IsA("SpotLight") then l.Enabled = on end end
 		end
+	elseif kind == "fire" then
+		useHeld(p, data)
+	elseif kind == "wake" then
+		wake(p)
+	elseif kind == "buy" or kind == "equip" then
+		-- lobby shop / locker: in-game coins only (no Robux, no real money)
+		local pr = profiles[p]
+		if not pr or type(data) ~= "table" then return end
+		local cat, id = data.cat, data.id
+		if (cat ~= "hat" and cat ~= "acc" and cat ~= "skin") or type(id) ~= "string" then return end
+		local free = id == "none" or id == "classic"
+		local price = Config.SHOP[cat][id]
+		if not free and not price then return end
+		local key = cat .. ":" .. id
+		if kind == "buy" and not free and not pr.owned[key] then
+			if pr.coins < price then toast(p, "Not enough coins."); return end
+			pr.coins -= price
+			pr.owned[key] = true
+			toast(p, "Bought " .. id .. "!")
+		end
+		if free or pr.owned[key] then
+			if cat == "skin" then pr.skin = id else pr.look[cat] = id end
+		end
+		publishProfile(p)
+		task.spawn(saveProfile, p)
+	elseif kind == "look" then
+		local pr = profiles[p]
+		if not pr or type(data) ~= "table" then return end
+		for _, k in ipairs({ "sk", "hc", "hs", "top", "pants" }) do
+			if data[k] ~= nil then
+				local c = cleanProfile({ look = { [k] = data[k] } }).look[k]
+				pr.look[k] = c
+			end
+		end
+		publishProfile(p)
+	elseif kind == "pref" then
+		local pr = profiles[p]
+		if not pr then return end
+		pr.pref = (type(data) == "string" and Config.MONSTERS[data]) and data or ""
+		publishProfile(p)
+		task.spawn(saveProfile, p)
 	elseif kind == "start" then
 		if State:GetAttribute("Mode") ~= "Match" then return end
 		if p.UserId ~= settings.hostId then toast(p, "Only the host can take off."); return end
@@ -875,6 +1600,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 			settings.max = m
 		end
 		if data.public ~= nil then settings.public = data.public == true end
+		if data.roundLen ~= nil and table.find(Config.ROUND_LENGTHS, tonumber(data.roundLen)) then settings.roundLen = tonumber(data.roundLen) end
 		publishSettings()
 		updateRegistry()
 	end
@@ -997,6 +1723,7 @@ task.spawn(function()
 end)
 
 game:BindToClose(function()
+	for _, p in ipairs(Players:GetPlayers()) do saveProfile(p) end
 	if registry and settings.code ~= "" and CAN_TELEPORT then
 		pcall(function() registry:RemoveAsync(settings.code) end)
 	end

@@ -2,13 +2,19 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#050307"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">
 <title>Night Hunt</title><link rel="stylesheet" href="style.css"><link rel="icon" href="favicon.svg"></head><body>
 <canvas id="c"></canvas>
-<div id="menu" class="panel">
-  <h1>NIGHT HUNT</h1><p class="sub">a multiplayer monster survival game (fan-made, play with friends)</p>
+<div id="warn" class="panel"><h1>WARNING</h1><p class="rating"><span class="r13">13+</span> Rated 13+ (teen)</p>
+  <p>Night Hunt contains <b>flashing and strobing lights</b> that may trigger seizures in people with photosensitive epilepsy. If you feel dizzy, get a headache, have blurred vision, twitching or any discomfort, <b>stop playing immediately</b>. It also contains <b>blood and gore</b>, sudden <b>jumpscares</b> and <b>loud sounds</b>. The game is rated <b>13+</b>. If this is too much for you, please leave now.</p>
+  <button id="bwarn" class="big">Continue</button></div>
+<div id="menu" class="panel hide">
+  <h1>NIGHT HUNT <span class="r13" title="Rated 13+">13+</span></h1><p class="sub">a multiplayer monster survival game (fan-made, play with friends)</p>
   <label>Your name <input id="pname" maxlength="16" placeholder="Player"></label>
+  <div class="lockrow"><button class="blocker">🎨 Customize · Monster · Shop</button><span class="coinpill">🪙 <b class="coinv">0</b></span></div>
   <label>Play mode <select id="mode"><option value="online">🌐 Online (internet, peer-to-peer)</option><option value="server">📶 This server (Wi-Fi / LAN)</option></select></label>
+  <label class="chk"><input type="checkbox" id="optblood" checked> Blood effects (jumpscares)</label>
   <div class="tabs"><button data-tab="create" class="on">Create Server</button><button data-tab="join">Join with Code</button><button data-tab="browse">Public Servers</button></div>
   <div id="tab-create" class="tab">
     <label>Server name <input id="sname" maxlength="24" placeholder="Night Hunt Server"></label>
+    <label>Round length <select id="sround"><option value="300">5 minutes</option><option value="420" selected>7 minutes</option><option value="600">10 minutes</option></select></label>
     <label>Max players: <b id="maxv">4</b><input id="smax" type="range" min="2" max="15" value="4"></label>
     <div class="priv"><label><input type="radio" name="priv" value="friends" checked> 🔒 Friends only <small>(join with private code / invite link)</small></label>
     <label><input type="radio" name="priv" value="public"> 🌍 Public <small>(shows in the public server list)</small></label></div>
@@ -18,17 +24,22 @@
   <div id="tab-browse" class="tab hide"><div id="slist">Loading…</div><button id="brefresh">Refresh</button></div>
   <div id="merr" class="err"></div>
   <div id="dlwin" style="text-align:center;margin-top:12px"><a href="https://github.com/leonisbel/night-hunt/releases/latest/download/NightHunt-Windows.zip" style="display:inline-block;background:#1f6feb;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-weight:bold">⬇ Download for Windows</a></div>
-  <div class="help desk"><b>Controls:</b> WASD / arrows move · Shift sprint · Mouse aims flashlight · Space or click = monster ability · Tab = scoreboard · M = mute</div>
-  <div class="help mob"><b>Touch controls:</b> left thumb = joystick (move) · right side = drag to aim your flashlight · 🏃 = sprint · ⚡ = monster ability · 📋 = players</div>
+  <div class="help desk"><b>Controls:</b> WASD / arrows move · Shift sprint · Click the game to lock the mouse, then move it to look around (Esc frees it) · Mouse wheel = zoom from first to third person · Click / Space = attack, shoot or eat/drink the selected item · E = open chest/bag · 1–6 = pick a hotbar slot · E near a bed = sleep (heals) · G = drop · Monsters: Space / click = ability · Tab = scoreboard · M = mute</div>
+  <div class="help mob"><b>Touch controls:</b> left thumb = joystick (move) · right side = drag to look around, pinch to zoom · ⚔️ = attack/use · 📦 = open chest/bag · tap a hotbar slot to select it · 🏃 = sprint · ⚡ = monster ability · 📋 = players</div>
 </div>
 <div id="hud" class="hide">
   <div id="topbar"><span id="hcode"></span><button id="binvite">Copy invite link</button><span id="hcount"></span></div>
   <div id="timer"></div>
   <div id="rolebox"></div>
   <div id="stam"><div></div></div>
+  <div id="vitals" class="hide"><div id="hpbar"><div></div><span></span></div><div id="armor"></div></div>
+  <div id="hotbar" class="hide"></div>
+  <div id="prompt" class="hide"></div>
+  <button class="blocker lobbyonly" id="blocker2">🎨 Locker &amp; Shop · 🪙 <b class="coinv">0</b></button>
   <div id="ability"></div>
   <div id="hostbox" class="hide"><b>Host controls</b><div><button id="bstart" class="big">🚁 Take off!</button></div>
     <div><button id="baddbot">+ Bot</button><button id="bkick">− Bot</button></div>
+    <label>Round <select id="hround"><option value="300">5 min</option><option value="420">7 min</option><option value="600">10 min</option></select></label>
     <label>Max <input id="hmax" type="number" min="2" max="15"></label> <label><input type="checkbox" id="hpub"> Public</label></div>
   <div id="lobbyhint"></div>
   <div id="events"></div>
@@ -36,13 +47,17 @@
   <button id="bleave">Leave</button>
 </div>
 <div id="overlay" class="hide"></div>
+<div id="darkover" class="fxo hide"><span>BLACKOUT</span></div><div id="hallucover" class="fxo hide"></div><canvas id="scareover" class="fxo hide"></canvas><div id="sleepover" class="fxo hide"><span>Zzz… sleeping (healing)<br><small>move or press open to wake up</small></span></div><canvas id="locustover" class="fxo hide"></canvas>
+<div id="locker" class="panel hide"><div class="lhead"><b>Locker</b><span class="coinpill">🪙 <b id="coins">0</b></span><button id="lclose">✕</button></div><div id="lbody"></div></div>
 <div id="flightcard" class="hide"></div>
 <div id="arrows"></div>
 <div id="touch">
   <div id="joyzone"><div id="joybase"><div id="joyknob"></div></div><span class="zl">MOVE</span></div>
-  <div id="aimzone"><div id="aimring"><b></b></div><span class="zl">AIM</span></div>
+  <div id="aimzone"><div id="aimring"><b></b></div><span class="zl">LOOK · PINCH ZOOM</span></div>
   <button id="tsprint" class="tb">🏃<small>SPRINT</small></button>
   <button id="tability" class="tb hide">⚡<small>ABILITY</small></button>
+  <button id="tattack" class="tb hide">⚔️<small>ATTACK</small></button>
+  <button id="topen" class="tb hide">📦<small>OPEN</small></button>
   <button id="tboard" class="tb sm">📋</button>
   <button id="tmute" class="tb sm">🔊</button>
 </div>

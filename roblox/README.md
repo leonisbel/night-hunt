@@ -1,70 +1,74 @@
-# Night Hunt — Roblox version (fan-made)
+# Night Hunt: Roblox version (fan-made, v1.3.0, rated 13+)
 
-A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, take off together, and land in one of 3 maps. Each round, every player has a random chance to become a monster. Survivors have to hide until the extraction helicopter lands, then get to it.
+A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out together and land in a generated map; the main one is a dense power-line forest. Every player has a random chance to be a monster. Survivors loot chests and bags, fight back and get to the extraction helicopter.
 
-Fan-made for private play. Freddy, Bonnie, Chica, Foxy and Springtrap belong to Scott Cawthon. Cartoon Cat and Siren Head belong to Trevor Henderson. The Boiled One belongs to Anna LaCour. Doctor Nowhere, the Locust, the Monochrome Roblox monster and the Demogorgon also belong to their creators. Every model here is a simple part-built look-alike: there are no copied assets.
+> **Rated 13+:**
+> - A warning screen (flashing lights and epilepsy risk, blood, jumpscares, loud sounds) has to be dismissed with **Continue** before play.
+> - Jumpscares include teen-level blood splatter. There is a **Blood effects** on/off button at the top left; it is on by default.
+> - When you publish, fill in Roblox's **Maturity & Compliance questionnaire** in the Creator Dashboard so the experience gets the matching age rating.
 
 ## What's in it
-- **Hub server, the game's start place.** From here you can:
-  - **Create** a server: pick a name, 2–15 max players, and *Friends only* or *Public*.
-  - **Join** a server by its 5-letter code.
-  - **Browse** public servers.
-- **Every match is its own reserved server.** Matches use `TeleportService:ReserveServer` and `TeleportAsync`, and they're tracked in a `MemoryStoreService` sorted map. Friends-only servers can only be joined with the code or with the in-game **Invite friends** button. The invite carries the code, so the friend is sent straight into that server.
-- **Match lobby:**
-  - Everyone stands on the helipad to board.
-  - The host can change max players and privacy, then press **Take off**. You need at least 2 players, and everyone has to be on board.
-- **Roles and rounds:**
-  - Each player has a 20% chance to be a monster. There's at most 1 monster per 3 players and always at least 1 monster.
-  - A round lasts 150 s. The extraction helicopter lands with 60 s left (follow the green beam).
-  - Caught players get a jumpscare and go back to the lobby to watch.
-- **The 12 monsters and their powers (press E or the touch "Power" button):**
+- **Hub, servers and invites.**
+  - Create, join by code, or browse public servers.
+  - Every match is its own reserved server, with *Friends only* or *Public* privacy.
+  - The **Invite friends** button sends the join code along with the invite.
+- **Lobby.**
+  - Board on the helipad.
+  - The host sets max players, privacy and **round length** (5/7/10 min).
+  - **Locker & shop**: skin tone, hair, clothes, and hats, accessories and monster skins bought with in-game **coins** (no Robux). It also sets your monster preference. Everything is saved with DataStore.
+- **Survivors.**
+  - Hold **E** on chests and bags (ProximityPrompts) for:
+    - food and drinks;
+    - vest and helmet armor (worn visibly);
+    - knife, bat, crowbar and axe;
+    - pistol, shotgun and rifle, plus ammo.
+  - Items are Roblox Tools in your hotbar: click, or the touch **ATTACK** button, to use them.
+  - The HUD shows HP, armor and ammo. Beds heal you while you sleep.
+- **Monsters.**
+  - Each has a health bar.
+  - Melee and guns can **knock a monster down and stun it**, and it recovers after a few seconds.
 
-| Monster | Power |
-|---|---|
-| Freddy | Lights Out: every survivor's flashlight goes dark for 5 s |
-| Bonnie | Guitar Riff: stuns nearby survivors |
-| Chica | Cupcake Trap: up to 3 traps that root survivors |
-| Foxy | Pirate Dash: a burst of speed |
-| Springtrap | Vent Crawl: pops out of the vent nearest a survivor |
-| Cartoon Cat | Rubber Arms: 3× catch reach |
-| Siren Head | Siren Call: reveals every survivor through walls |
-| The Boiled One | Dread Gaze: slows nearby survivors |
-| Doctor Nowhere | Nowhere Warp: blinks forward |
-| The Locust | Static Fade: turns invisible |
-| Monochrome | Color Drain: survivors' screens go grey and they can't sprint |
-| Demogorgon | Upside Down Portal: place a portal, then jump back to it |
+| Monster | Power (every power has a 20 s cooldown) | Jumpscare |
+|---|---|---|
+| Freddy, Bonnie, Chica, Foxy, Springtrap | Afton Laugh: a creepy laugh, and you see every survivor for 10 s | classic screaming rush with the jaw wide open |
+| Cartoon Cat | Rubber Grab: a rubber arm yanks the survivor in front of you to your feet | grabs you and stretches you out |
+| Siren Head | Siren Call: reveals every survivor (even hidden ones) for 8 s | lifts you up to its speaker head |
+| Doctor Nowhere | Shapeshift: changes form every 30 s, and each form has its own power (see below) | a different one per form |
+| The Locust | Swarm Omen: one random survivor's TV/phone/computer shows an old wallpaper and a child-like voice, then it slams their screen | possession: the screen tears and distorts |
+| Monochrome | Total Blackout: every survivor's screen goes pitch black for 10 s | you dissolve into grey blocks |
+| Sonic.exe (fan-made creepypasta) | You Can't Run: a distorted laugh, then you run much faster for 10 s | grabs, then lunges |
+| Demogorgon | Upside Down Portal: come out of a portal near the closest survivor | the petal face blooms open as it lunges |
 
-- **Maps:** Abandoned Pizzeria Town, Foggy Woods and Static Fields. They're generated fresh every round, with buildings, trees, hiding bushes and crates, vents and flickering lights.
-- **Controls:**
-  - **PC:** WASD to move, Shift to sprint (survivors have stamina), E to use your power, F to switch your flashlight on or off.
-  - **Phone and iPad:** the Roblox thumbstick moves you (forced on with `DevTouchMovementMode = Thumbstick`). On-screen **RUN** (tap to toggle sprint), **POWER** (monsters only) and **LIGHT** (survivors only) buttons appear when they apply. The UI scales down to fit small screens.
-  - **Gamepad:** left stick, L3 sprint, X power, Y flashlight.
-- **Graphics (v1.2.0):**
-  - Future lighting, Atmosphere fog, colour grading, Bloom and SunRays. Each one changes smoothly between the lobby (dusk), hunting (dark fog, cold tint for survivors, red tint for monsters) and spectating.
-  - Smooth Terrain ground (LeafyGrass, Grass or Asphalt) with mud and dirt patches, plus drifting ground-fog particles.
-  - Shadow-casting flashlights, Fabric, Rubber, Slate and Metal materials, and more detailed monsters: joints, hands, feet, jaws, teeth, wires, and extras for each character (Freddy's mic, Springtrap's endoskeleton, Siren Head's speakers and ribs, the Locust's wings, Monochrome's glitch cubes and more).
+**Doctor Nowhere's forms** (fan horror art by Silas Orion):
+- The Doctor (white coat): Injection slows the survivor in front of you for 6 s.
+- Cone Zone (tall white cone head): Cone Quake stuns every survivor close by.
+- Nightmare Man (smoky black figure): Shadow Step blinks you far ahead.
+- The six-armed Doctor: Paranoia makes nearby survivors hallucinate and reveals them to you.
+
+Every jumpscare cuts to black at the moment of impact. With **Blood effects** on (the default), it adds teen-level red splatter and drips; there is no dismemberment and no detailed gore. You can turn this off in the menu (browser) or with the top-left button (Roblox). Players near the catch see the victim lifted, stretched, dissolved or dragged away, and hear the scream.
 
 ## Files
-- `NightHunt.rbxlx`: the place file, ready to open in Studio. It's built with Rojo 7.7.1 from `default.project.json`.
-- `src/shared/Config.luau`: the settings and the monster table.
-- `src/server/init.server.luau`: hub, teleports, the server registry, the round loop, abilities and catching.
-- `src/server/Models.luau`: part-built monsters and helicopters.
-- `src/server/MapGen.luau`: the 3 themed maps.
-- `src/client/init.client.luau`: UI, lighting, input, jumpscare and effects.
+- `NightHunt.rbxlx`: the place file, built with Rojo 7 from `default.project.json`.
+- `src/shared/Config.luau`: settings, monsters, Doctor Nowhere's forms, items, loot tables, shop and optional sound ids.
+- `src/server/init.server.luau`: hub and teleports, rounds, abilities, gear and combat, catches and witness animations, coins and DataStore.
+- `src/server/Models.luau`: part-built monsters (including Doctor Nowhere's forms and Sonic.exe) and helicopters.
+- `src/server/MapGen.luau`: the maps (power-line forest, houses, facilities, loot spots).
+- `src/client/init.client.luau`:
+  - the warning screen, HUD, locker and shop;
+  - jumpscares (a ViewportFrame animation for each monster, then a black cut and optional blood);
+  - effects (blackout, the Locust's wallpaper and slam, hallucinations, sight highlights);
+  - sounds and touch buttons.
 
-## Open it and publish it from your own account
-1. Install **Roblox Studio** from <https://create.roblox.com> and sign in.
-2. Download `NightHunt.rbxlx` and open it with **File → Open from File…**.
-3. **Test it right away:** in the **Test** tab, choose **Clients and Servers → 2 Players → Start**.
-   - Studio can't teleport, so **Create server** turns the test server itself into your match. After that you can board and press **Take off**.
-   - In Studio a single player can start a round too.
-4. **Publish:** File → **Publish to Roblox**, then choose *New experience* and name it, for example "Night Hunt".
-5. Open **Home → Game Settings**:
-   - **Security:** turn on **Enable Studio Access to API Services**. MemoryStore needs this for the server list and the codes, so it works in Studio tests too.
-   - **Places → (your place) → … → Edit/Configure:** set **Server Size to 15**.
-   - **Permissions** (or Creator Hub → your experience → Access): set the experience to **Public**, or to Private/Friends while you test. Private experiences can only be played by you and the people you allow.
-   - Save, then publish again.
-6. Teleports to reserved servers inside the same experience need no extra setting. You only have to enable *Allow Third Party Teleports* if you ever teleport to a different game.
-7. Play from the Roblox website or app. Create a server, share the 5-letter code (or press **Invite friends**), and take off once at least 2 players are on board.
+## Open and publish
+1. Install **Roblox Studio** and open `NightHunt.rbxlx` (File → Open from File).
+2. Test it: **Test → Clients and Servers → 2 Players → Start**.
+   - In Studio, *Create server* turns the test server into your match.
+   - A single player can start a round.
+3. Publish it: **File → Publish to Roblox**. Then in **Game Settings**:
+   - **Security**: enable *Studio Access to API Services* (needed for MemoryStore and DataStore);
+   - **Server Size**: 15;
+   - set the permissions you want.
+4. Complete the **Maturity & Compliance** questionnaire (Creator Dashboard → your experience) for the 13+ content.
+5. Optional: the sounds are built-in Roblox fallbacks. Upload your own and paste the asset ids into `Config.SOUNDS`.
 
-Join codes, the public server browser and invites only work in the published game, not in Studio.
+Join codes, the server browser and invites only work in the published game.

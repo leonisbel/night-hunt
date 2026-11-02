@@ -36,7 +36,7 @@ const NET = (() => {
     tx = { send: o => h.message(JSON.stringify(o)), close: () => hostStop() };
     // create the room first so we learn its code, then register the PeerJS id for it
     const origOnMsg = onMsg;
-    h.message(JSON.stringify({ t: 'create', player: opts.player, name: opts.name, max: opts.max, isPublic: opts.isPublic }));
+    h.message(JSON.stringify({ t: 'create', player: opts.player, name: opts.name, max: opts.max, isPublic: opts.isPublic, roundLen: opts.roundLen }));
     const room = [...core.rooms.values()][0];
     const peer = new Peer(PEER_PREFIX + room.code.toLowerCase());
     hub.peer = peer;

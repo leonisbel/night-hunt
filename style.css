@@ -99,3 +99,56 @@ body.cutscene #hostbox,body.cutscene #lobbyhint,body.cutscene #rolebox,body.cuts
   .panel button{padding:7px 10px}
 }
 body.touchmode #hostbox,body.touchmode #topbar,body.touchmode #board,body.touchmode .panel,body.touchmode #flightcard{z-index:6}
+/* ---- v1.3: health, hotbar, loot prompt, locker/shop ---- */
+#vitals{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center;z-index:3;pointer-events:none}
+#hpbar{position:relative;width:260px;height:18px;background:#200a;border:1px solid #a33;border-radius:9px;overflow:hidden}#hpbar div{height:100%;width:100%;background:linear-gradient(#5f5,#2a2);transition:width .2s}
+#hpbar span{position:absolute;inset:0;text-align:center;font:bold 12px/18px sans-serif;color:#fff;text-shadow:0 1px 2px #000}
+#armor{font:bold 13px sans-serif;color:#cde;text-shadow:0 1px 2px #000;white-space:nowrap}
+#hotbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(40px + env(safe-area-inset-bottom));display:flex;gap:6px;z-index:5}
+#hotbar .slot{position:relative;width:58px;height:58px;border-radius:10px;background:#000b;border:2px solid #fff3;color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;padding:0;touch-action:none}
+#hotbar .slot.on{border-color:#ffd76b;box-shadow:0 0 14px #ffd76b88;background:#2a2008cc}
+#hotbar .slot i{position:absolute;left:4px;top:1px;font:bold 10px sans-serif;color:#fff8;font-style:normal}
+#hotbar .slot b{position:absolute;right:4px;bottom:2px;font:bold 11px sans-serif;color:#fff;text-shadow:0 1px 2px #000}
+#hotbar .ammo{align-self:center;font:bold 13px sans-serif;color:#ffd76b;text-shadow:0 1px 2px #000;margin-left:6px;white-space:nowrap}
+#prompt{position:fixed;left:50%;bottom:calc(190px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000c;border:1px solid #ffd76b;color:#ffd76b;padding:8px 14px;border-radius:8px;font:bold 15px sans-serif;z-index:3;pointer-events:none}
+#hpbar.hurt{animation:hurt .35s}@keyframes hurt{0%{box-shadow:0 0 0 #f00}40%{box-shadow:0 0 20px #f00}100%{box-shadow:0 0 0 #f00}}
+#tattack{right:calc(118px + env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));width:100px;height:100px;background:#5a1a0ccc;border-color:#ff9a5a;box-shadow:0 0 18px #f60a}
+#topen{right:calc(134px + env(safe-area-inset-right));bottom:calc(178px + env(safe-area-inset-bottom));width:72px;height:72px;background:#4a3a08cc;border-color:#ffd76b;box-shadow:0 0 18px #fc3a;animation:pulse 1s infinite alternate}
+@keyframes pulse{to{transform:scale(1.08)}}
+body.touchmode #vitals{left:calc(10px + env(safe-area-inset-left));transform:none;top:calc(44px + env(safe-area-inset-top));bottom:auto;flex-direction:column;align-items:flex-start;gap:3px}
+body.touchmode #hpbar{width:min(200px,30vw);height:16px}
+body.touchmode #hotbar{bottom:calc(34px + env(safe-area-inset-bottom))}
+body.touchmode #hotbar .slot{width:48px;height:48px;font-size:23px}
+body.touchmode #prompt{display:none}
+body.touchmode #rolebox{top:calc(86px + env(safe-area-inset-top))}
+@media (max-width:700px),(max-height:500px){#tattack{width:84px;height:84px;right:calc(100px + env(safe-area-inset-right))}#topen{width:60px;height:60px;right:calc(112px + env(safe-area-inset-right));bottom:calc(158px + env(safe-area-inset-bottom))}
+  body.touchmode #hotbar .slot{width:42px;height:42px;font-size:20px}#hotbar{gap:4px}}
+body.cutscene #vitals,body.cutscene #hotbar,body.cutscene #prompt,body.cutscene .blocker{display:none!important}
+.lockrow{display:flex;gap:8px;align-items:center;margin:6px 0}.lockrow .blocker{flex:1}
+.coinpill{background:#3a2a08;border:1px solid #ffd76b;color:#ffd76b;border-radius:14px;padding:4px 10px;font-weight:bold;white-space:nowrap}
+#blocker2{position:fixed;left:calc(10px + env(safe-area-inset-left));top:calc(44px + env(safe-area-inset-top));z-index:6;display:none;background:#2a1a3acc;color:#fff;border:1px solid #b08aff;border-radius:8px;padding:7px 10px;font-size:13px}
+body.inlobby #blocker2{display:block}
+#locker{position:fixed;z-index:20;right:calc(10px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));bottom:calc(10px + env(safe-area-inset-bottom));width:min(400px,62vw);overflow-y:auto;left:auto;transform:none;max-height:none}
+.lhead{display:flex;align-items:center;gap:10px}.lhead b{flex:1;font-size:20px}#lclose{padding:4px 10px}
+.ltabs{display:flex;gap:4px;margin:8px 0}.ltabs button{flex:1;padding:7px 4px;font-size:13px}.ltabs button.on,.opts button.on,.mgrid button.on{background:#7a2a2a;border-color:#ffd76b}
+.lt{margin:10px 0 4px;font-size:13px;color:#ccc}
+.sw{display:flex;flex-wrap:wrap;gap:6px}.sw button{width:32px;height:32px;padding:0;border:2px solid #fff3;border-radius:6px;color:#fff}.sw button.on{border-color:#ffd76b;box-shadow:0 0 8px #ffd76b}
+.opts{display:flex;flex-wrap:wrap;gap:5px}.opts button{padding:6px 9px;font-size:15px}.opts button.lock{opacity:.55}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}.mgrid button{padding:6px;text-align:left;font-size:13px;display:flex;flex-direction:column}.mgrid small{color:#bbb;font-size:11px}
+.shop{display:grid;grid-template-columns:1fr 1fr;gap:6px}.si{background:#0006;border:1px solid #fff2;border-radius:8px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;font-size:12px}.si span{font-size:26px}.si em{color:#6f6;font-style:normal;font-size:12px}.si button{padding:4px 8px;font-size:12px}
+body.lockeron #touch{display:none!important}
+.fxo{position:fixed;inset:0;z-index:2;pointer-events:none;display:flex;align-items:center;justify-content:center;text-align:center;font:bold 22px sans-serif;letter-spacing:3px}
+#darkover{background:#000;color:#ffffff10}
+#sleepover{background:radial-gradient(circle,#0a1430aa 20%,#000814ee 80%);color:#9fc0ff;font-size:18px}
+#locustover{width:100vw;height:100vh;z-index:7}
+body.cutscene .fxo:not(#scareover){display:none!important}
+#warn{max-width:560px;text-align:center;z-index:60}#warn p{line-height:1.5;font-size:15px}#warn h1{color:#ff3b3b}
+.r13{display:inline-block;background:#c0392b;color:#fff;border:2px solid #fff;border-radius:6px;padding:0 6px;font:bold 16px system-ui;vertical-align:middle;letter-spacing:0}
+.rating{font-weight:bold}.chk{display:flex;align-items:center;gap:8px}.chk input{width:auto}
+#hallucover{background:radial-gradient(circle,transparent 30%,#2a003a99 90%);mix-blend-mode:normal;animation:halluc 1.3s infinite alternate;pointer-events:none}
+@keyframes halluc{0%{backdrop-filter:hue-rotate(0deg) blur(0px)}50%{backdrop-filter:hue-rotate(90deg) blur(2px) saturate(2)}100%{backdrop-filter:hue-rotate(-60deg) blur(1px) invert(.15)}}
+body.halluc #c{animation:wobble 2.2s infinite ease-in-out}@keyframes wobble{0%,100%{transform:scale(1.02) skewX(0deg)}33%{transform:scale(1.05) skewX(2deg) rotate(.6deg)}66%{transform:scale(1.03) skewX(-2deg) rotate(-.6deg)}}
+#scareover{z-index:40;pointer-events:none}
+body.cutscene #topbar,body.cutscene #bleave{visibility:hidden}
+@media (max-height:500px){body.touchmode.ingame #hostbox{transform:scale(.8);transform-origin:top right;padding:6px}}
+body.killcam #ability,body.killcam #topbar,body.killcam #bleave,body.killcam #rolebox{visibility:hidden}

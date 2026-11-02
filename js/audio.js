@@ -80,6 +80,20 @@ export function setRotor(vol) {
   rotor.g.gain.setTargetAtTime(Math.max(0, Math.min(1, vol)) * .6, AC.currentTime, .15);
 }
 
+// original synthesized "ha… ha… ha…" laugh: a glottal sawtooth through two vowel formants, pitch sagging, drenched in reverb
+function laugh(v = 1) {
+  const t0 = AC.currentTime, n = 5;
+  for (let i = 0; i < n; i++) {
+    const t = t0 + i * .34 + (i > 2 ? .1 : 0), o = AC.createOscillator(), g = AC.createGain(), f1 = AC.createBiquadFilter(), f2 = AC.createBiquadFilter(), d = distortion(30);
+    o.type = 'sawtooth'; const p = 118 - i * 9; o.frequency.setValueAtTime(p * 1.15, t); o.frequency.exponentialRampToValueAtTime(p * .82, t + .26);
+    const vib = AC.createOscillator(), vg = AC.createGain(); vib.frequency.value = 7; vg.gain.value = 4; vib.connect(vg).connect(o.frequency);
+    f1.type = 'bandpass'; f1.frequency.value = 760; f1.Q.value = 6; f2.type = 'bandpass'; f2.frequency.value = 1150; f2.Q.value = 8;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.5 * v, t + .03); g.gain.exponentialRampToValueAtTime(.0001, t + .3);
+    o.connect(d); d.connect(f1).connect(g); d.connect(f2).connect(g); out(g, .9); o.start(t); vib.start(t); o.stop(t + .35); vib.stop(t + .35);
+    burst(.08, .12 * v, 2400, 2, 'bandpass', .6, 0, t - t0); // breathy "h"
+  }
+  tone(55, 2.2, 'sine', .25 * v, 40, .8);
+}
 export function sfx(k, o = {}) {
   if (!AC || muted) return; const pan = o.pan || 0, v = o.vol ?? 1;
   switch (k) {
@@ -98,6 +112,45 @@ export function sfx(k, o = {}) {
     case 'escape': [523, 659, 784, 1046].forEach((f, i) => tone(f, .5, 'triangle', .1, 0, .5, 0, i * .12)); break;
     case 'click': tone(900, .04, 'square', .05, 0, 0); break;
     case 'whisper': burst(1.4, .05 * v, 2200, 6, 'bandpass', .9, pan); break;
+    case 'gun': burst(.12, .5 * v, 1800, .6, 'lowpass', .12, pan); tone(140, .1, 'square', .2 * v, 50, .1, pan); break;
+    case 'shotgun': burst(.3, .7 * v, 1100, .5, 'lowpass', .3, pan); tone(80, .2, 'sawtooth', .25 * v, 35, .2, pan); break;
+    case 'rifle': burst(.09, .45 * v, 2600, .6, 'lowpass', .08, pan); tone(200, .07, 'square', .15 * v, 70, .07, pan); break;
+    case 'swing': burst(.18, .18 * v, 900, 2, 'bandpass', .16, pan); break;
+    case 'hit': burst(.12, .35 * v, 300, 1, 'lowpass', .12, pan); tone(90, .12, 'sine', .3 * v, 50, .1, pan); break;
+    case 'hurt': tone(160, .25, 'sawtooth', .18, 70, .25); burst(.15, .25, 500, 1, 'lowpass', .15); break;
+    case 'open': burst(.35, .15, 600, 2, 'bandpass', .35, pan); tone(300, .2, 'triangle', .08, 500, .2, pan, .1); break;
+    case 'pickup': tone(660, .08, 'triangle', .1, 0, .08); tone(990, .1, 'triangle', .1, 0, .1, 0, .07); break;
+    case 'eat': for (let i = 0; i < 4; i++) burst(.06, .12, 1400, 3, 'bandpass', .05, 0, i * .12); break;
+    case 'drink': for (let i = 0; i < 4; i++) tone(320 + i * 30, .1, 'sine', .1, 260, .1, 0, i * .13); break;
+    case 'dry': tone(1200, .03, 'square', .06, 0, .02, pan); break;
+    case 'down': tone(110, 1, 'sawtooth', .2, 40, 1, pan); burst(.6, .2, 300, 1, 'lowpass', .6, pan); break;
+    case 'coin': [988, 1319].forEach((f, i) => tone(f, .15, 'square', .06, 0, .15, 0, i * .08)); break;
+    case 'laugh': laugh(v); break;
+    case 'sonlaugh': { // original 'creepypasta' laugh: a high, pitch-wobbling, bit-crushed giggle that slides down into a growl
+      const t0 = AC.currentTime;
+      for (let i = 0; i < 7; i++) { const t = t0 + i * .2, o = AC.createOscillator(), g = AC.createGain(), d = distortion(80), f = AC.createBiquadFilter();
+        o.type = 'square'; const p = 420 - i * 38; o.frequency.setValueAtTime(p * 1.3, t); o.frequency.exponentialRampToValueAtTime(p * .7, t + .16);
+        f.type = 'bandpass'; f.frequency.value = 1500 - i * 120; f.Q.value = 3; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.32 * v, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + .18);
+        o.connect(d).connect(f).connect(g); out(g, .8); o.start(t); o.stop(t + .2); }
+      tone(70, 1.4, 'sawtooth', .22 * v, 38, .7, 0, 1.35); burst(1, .12 * v, 400, 2, 'bandpass', .8, 0, 1.35); break; }
+    case 'quake': tone(40, 1.2, 'sine', .6 * v, 25, .6, pan); burst(1, .4 * v, 160, 1, 'lowpass', .6, pan); break;
+    case 'shift': tone(300, .9, 'sawtooth', .12 * v, 60, .9, pan); burst(.8, .1 * v, 1500, 6, 'bandpass', .9, pan); break;
+    case 'paranoia': for (let i = 0; i < 6; i++) tone(500 + Math.random() * 900, .7, 'sine', .05 * v, 200 + Math.random() * 600, .95, (Math.random() - .5) * 1.6, i * .18); break;
+    case 'scream': burst(.9, .3 * v, 1800, 3, 'bandpass', .6, pan); tone(700, .9, 'sawtooth', .1 * v, 300, .6, pan); break;
+    case 'scare2': { sfx('scare'); burst(.6, .3, 900, 1, 'lowpass', .5, 0, 1.6); tone(50, .8, 'sine', .7, 28, .3, 0, 1.6); break; }
+    case 'dark': tone(90, 1.6, 'sawtooth', .18, 30, .8); burst(1.2, .15, 300, 1, 'lowpass', .8); tone(1400, .05, 'square', .08, 0, .2); break;
+    case 'portal': tone(70, 1.1, 'sawtooth', .2 * v, 220, .8, pan); burst(1, .2 * v, 900, 4, 'bandpass', .8, pan); tone(330, .9, 'sine', .1 * v, 60, .9, pan, .2); break;
+    case 'inject': burst(.12, .2 * v, 4000, 3, 'highpass', .2, pan); tone(1800, .15, 'sine', .06 * v, 900, .3, pan); break;
+    case 'dream': for (let i = 0; i < 4; i++) tone(220 - i * 30, 1.4, 'sine', .14, 110 - i * 20, .95, 0, i * .25); burst(2, .12, 500, 2, 'bandpass', .95); break;
+    case 'buzz': for (let i = 0; i < 8; i++) tone(180 + Math.random() * 60, .25, 'sawtooth', .05 * v, 160, .5, pan, i * .09); break;
+    case 'stretch': tone(160, .5, 'triangle', .2 * v, 900, .3, pan); tone(900, .25, 'triangle', .15 * v, 120, .3, pan, .5); break;
+    case 'sleep': tone(330, .8, 'sine', .05, 220, .7); break;
+    case 'childvoice': { // original synth: a sing-song, high, friendly 'la-la' (no samples)
+      [[660, 0], [784, .22], [660, .44], [880, .7]].forEach(([f, d]) => { tone(f, .2, 'triangle', .07, f * 1.04, .6, 0, d); tone(f * 2.01, .18, 'sine', .025, 0, .6, 0, d); }); break; }
+    case 'locust': { // scream + glass crack
+      for (const [f, f2] of [[1300, 420], [1700, 600], [900, 300]]) tone(f, 1.1, 'sawtooth', .14, f2, .6);
+      burst(.25, .7, 3500, .7, 'highpass', .4); for (let i = 0; i < 6; i++) burst(.04, .35, 5000, 2, 'bandpass', .3, (Math.random() - .5), .05 + i * .03);
+      tone(60, .5, 'sine', .5, 35, .3); break; }
     default: tone(220, .3, 'triangle', .12, 90, .3);
   }
 }

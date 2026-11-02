@@ -1,4 +1,4 @@
--- Part-built models: the 12 monsters (welded onto a player's character) and helicopters.
+-- Part-built models: the 11 monsters (welded onto a player's character) and helicopters.
 local Models = {}
 
 local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
@@ -11,7 +11,7 @@ local FABRIC, RUST, SLATE, PLASTIC = Enum.Material.Fabric, Enum.Material.Corrode
 -- default surface material per monster (fur-like fabric for animatronics, rough skin for creatures)
 local SKIN = {
 	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
-	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, boiledone = Enum.Material.Pebble, drnowhere = FABRIC,
+	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
 	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Pebble,
 }
 local defaultMat = PLASTIC
@@ -67,6 +67,7 @@ local function humanoidBody(P, body, opts)
 	P(Vector3.new(0.75, 2.8 * h, 0.75), at(1.7, 0.2, 0, 0, 0, 8), opts.arms or body)
 end
 
+local animatronicDetail -- defined below
 local function animatronic(P, body, belly, eyeColor)
 	humanoidBody(P, body)
 	P(Vector3.new(1.9, 2, 0.3), at(0, -0.1, -0.85), belly)                                      -- belly
@@ -78,7 +79,7 @@ local function animatronic(P, body, belly, eyeColor)
 end
 
 -- extra detail shared by the animatronics: rusty endoskeleton joints, hands, feet, cheeks, brows
-local function animatronicDetail(P, body, belly)
+animatronicDetail = function(P, body, belly)
 	for _, x in ipairs({ -0.65, 0.65 }) do
 		P(Vector3.new(0.55, 0.55, 0.55), at(x, -1.1, -0.1), rgb(70, 66, 60), { shape = BALL, mat = RUST })      -- knees
 		P(Vector3.new(1.1, 0.55, 1.6), at(x, -3.05, -0.3), body)                                               -- feet
@@ -187,15 +188,6 @@ BUILD.sirenhead = function(P)
 	P(Vector3.new(0.9, 3, 0.9), at(0, 9.6, 0), rgb(122, 92, 69))                                 -- neck flesh
 	for _, x in ipairs({ -0.6, 0.6 }) do P(Vector3.new(1, 0.8, 1.8), at(x, -3.1, -0.4), skin) end  -- feet
 end
-BUILD.boiledone = function(P)
-	local red = rgb(59, 8, 8)
-	humanoidBody(P, red, { arms = rgb(45, 5, 5) })
-	P(Vector3.new(2.5, 2.5, 2.5), at(0, 3.1, 0), rgb(74, 10, 10), { shape = BALL })
-	eyes(P, 3.35, -1.05, 0.4, 0.3, false, 0.3, rgb(255, 255, 255), true)
-	for i = 1, 6 do P(Vector3.new(0.35, 0.35, 0.35), at(math.sin(i * 7) * 1.1, math.cos(i * 3) * 1.4, -0.85), rgb(140, 0, 0), { shape = BALL, mat = NEON }) end
-	for i = 1, 8 do P(Vector3.new(0.18, 0.5 + (i % 3) * 0.3, 0.18), at(math.sin(i * 2.3) * 1.1, -1.5 - (i % 3) * 0.2, math.cos(i * 2.3) * 0.7), rgb(90, 0, 0), { mat = Enum.Material.Glass, transp = 0.2 }) end -- dripping
-	P(Vector3.new(1.4, 0.25, 0.1), at(0, 2.6, -1.22), rgb(20, 0, 0))                             -- gaping mouth
-end
 BUILD.drnowhere = function(P)
 	humanoidBody(P, rgb(232, 232, 232), { legs = rgb(40, 40, 50) })
 	P(Vector3.new(2.8, 1.6, 1.7), at(0, -1.2, 0), rgb(232, 232, 232))                           -- coat tail
@@ -213,22 +205,80 @@ BUILD.drnowhere = function(P)
 	P(Vector3.new(0.18, 0.18, 0.18), at(-0.45, 3.1, -1.12), rgb(255, 255, 255), { shape = BALL, mat = NEON, noShadow = true }) -- tiny pupils
 	P(Vector3.new(0.18, 0.18, 0.18), at(0.45, 3.1, -1.12), rgb(255, 255, 255), { shape = BALL, mat = NEON, noShadow = true })
 end
-BUILD.locust = function(P)
-	local black = rgb(21, 21, 21)
-	P(Vector3.new(0.5, 2.4, 0.5), at(-0.5, -1.9, 0), black)
-	P(Vector3.new(0.5, 2.4, 0.5), at(0.5, -1.9, 0), black)
-	P(Vector3.new(1.8, 4, 1.2), at(0, 0.9, 0), black)
-	P(Vector3.new(2.1, 2.1, 2.1), at(0, 3.9, 0), rgb(28, 28, 28), { shape = BALL })
-	eyes(P, 4.1, -0.9, 0.42, 0.45, false, 0.45, rgb(212, 255, 58), true)
-	P(Vector3.new(0.12, 2.6, 0.12), at(-0.6, 5.8, 0, 0, 0, 25), black)                           -- antennae
-	P(Vector3.new(0.12, 2.6, 0.12), at(0.6, 5.8, 0, 0, 0, -25), black)
-	for i, y in ipairs({ 1.8, 0.8, -0.2 }) do                                                    -- insect arms
-		P(Vector3.new(0.25, 2.6, 0.25), at(-1.6, y, 0, 0, 0, -60 + i * 10), black)
-		P(Vector3.new(0.25, 2.6, 0.25), at(1.6, y, 0, 0, 0, 60 - i * 10), black)
+-- Doctor Nowhere's other forms
+BUILD.dn_conezone = function(P)
+	-- very tall, thin white figure whose head is one long pale cone
+	local white = rgb(236, 236, 232)
+	for _, x in ipairs({ -1, 1 }) do
+		P(Vector3.new(0.5, 4.6, 0.5), at(x * 0.5, -0.8, 0), white)
+		P(Vector3.new(0.35, 5, 0.35), at(x * 1.25, 3.2, -0.1, 6, 0, x * 6), white)
+		for f = -1, 1 do P(Vector3.new(0.1, 1.2, 0.1), at(x * 1.5 + f * 0.12, 0.2, -0.4, 10, 0, f * 6), white) end
 	end
-	for i = 1, 5 do P(Vector3.new(1.4, 0.06, 0.05), at(math.sin(i * 5) * 0.6, i * 0.8 - 1.5, -0.62), rgb(220, 220, 220), { mat = NEON, transp = 0.4, noShadow = true }) end -- static lines
-	for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.1, 3.4, 1.6), at(x * 0.7, 1.4, 0.9, 0, x * 25, x * 10), rgb(160, 170, 120), { mat = GLASS, transp = 0.55 }) end -- translucent wings
-	P(Vector3.new(1.3, 0.4, 0.6), at(0, 3.4, -0.85), rgb(10, 10, 10))                            -- mandibles
+	P(Vector3.new(1.6, 4, 1), at(0, 3.5, 0), white)
+	P(Vector3.new(2.2, 0.5, 1.1), at(0, 5.6, 0), white)
+	P(Vector3.new(0.5, 1.2, 0.5), at(0, 6.4, 0), white)
+	for i = 0, 6 do -- stacked shrinking discs = a long cone head leaning forward
+		local r = 1.7 - i * 0.22
+		P(Vector3.new(0.7, r, r), at(0, 7.3 + i * 0.65, -0.12 * i, 0, 0, 90), white, { shape = CYL })
+	end
+	P(Vector3.new(0.3, 0.3, 0.3), at(0, 7.4, -0.85), rgb(0, 0, 0), { shape = BALL })
+end
+BUILD.dn_nightmare = function(P)
+	-- smoky black figure with a pale, too-wide grin
+	local black = rgb(8, 8, 10)
+	humanoidBody(P, black, { height = 1.25 })
+	P(Vector3.new(2.4, 2.6, 2.3), at(0, 3.4, 0), black, { shape = BALL })
+	P(Vector3.new(1.7, 0.3, 0.2), at(0, 3.0, -1.12), rgb(235, 235, 225), { mat = NEON, noShadow = true })
+	P(Vector3.new(0.35, 0.2, 0.2), at(-0.5, 3.8, -1.1), rgb(235, 235, 225), { mat = NEON, noShadow = true })
+	P(Vector3.new(0.35, 0.2, 0.2), at(0.5, 3.8, -1.1), rgb(235, 235, 225), { mat = NEON, noShadow = true })
+	for i = 1, 8 do P(Vector3.new(1, 1, 1), at(math.sin(i * 2.3) * 1.4, -2 + i * 0.7, math.cos(i * 1.9) * 0.8), black, { shape = BALL, transp = 0.4, noShadow = true }) end -- smoke
+end
+BUILD.dn_sixarm = function(P)
+	-- the huge six-armed Doctor in a white coat
+	local coat = rgb(232, 232, 232)
+	P(Vector3.new(3.2, 6, 2), at(0, 2, 0), coat)
+	P(Vector3.new(1, 3, 1), at(-0.8, -2.3, 0), rgb(40, 40, 50))
+	P(Vector3.new(1, 3, 1), at(0.8, -2.3, 0), rgb(40, 40, 50))
+	for i = 0, 2 do
+		for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.6, 4.4, 0.6), at(x * (2 + i * 0.3), 3 - i * 1.3, -0.3, 20, 0, x * (25 + i * 22)), coat) end
+	end
+	P(Vector3.new(2.6, 2.6, 2.6), at(0, 6.3, 0), rgb(240, 230, 210), { shape = BALL })
+	P(Vector3.new(0.7, 0.9, 0.4), at(-0.5, 6.5, -1.05), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(0.7, 0.9, 0.4), at(0.5, 6.5, -1.05), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(1.3, 0.12, 0.1), at(0, 5.8, -1.25), rgb(0, 0, 0))
+end
+BUILD.locust = function(P)
+	-- the Locust's true form: a very tall, thin black figure with a stretched grey human-like face,
+	-- hollow black eyes and mouth, and dark cable-like tubes coiled around its head and neck (no gore)
+	local black, tube, face = rgb(12, 12, 14), rgb(34, 35, 40), rgb(150, 145, 140)
+	for _, x in ipairs({ -1, 1 }) do
+		P(Vector3.new(0.38, 3.4, 0.38), at(x * 0.45, -1.3, 0, 0, 0, x * 3), black)             -- long shins
+		P(Vector3.new(0.45, 3.2, 0.45), at(x * 0.5, 1.9, 0, 0, 0, x * 2), black)               -- thighs
+		P(Vector3.new(0.7, 0.25, 1.1), at(x * 0.45, -2.95, -0.25), black)                      -- narrow feet
+		P(Vector3.new(0.3, 3.6, 0.3), at(x * 1.25, 4.6, -0.15, 8, 0, x * 8), black)           -- upper arms
+		P(Vector3.new(0.26, 3.6, 0.26), at(x * 1.55, 1.2, -0.45, 14, 0, x * 4), black)        -- forearms (hang low)
+		for f = -1, 1 do P(Vector3.new(0.08, 1.2, 0.08), at(x * 1.65 + f * 0.12, -1.0, -0.7, 18, 0, f * 6), black) end -- long fingers
+	end
+	P(Vector3.new(1.5, 1, 0.8), at(0, 3.6, 0), black)                                           -- hips
+	P(Vector3.new(1.4, 3.2, 0.9), at(0, 5.3, 0), black)                                         -- gaunt chest
+	P(Vector3.new(2.3, 0.6, 1), at(0, 6.8, 0), black)                                           -- bony shoulders
+	P(Vector3.new(0.55, 2.4, 0.55), at(0, 8.1, -0.1, 6, 0, 0), black)                           -- long neck
+	for i = 0, 7 do                                                                             -- tubes coiled around the neck
+		P(Vector3.new(1.15, 0.22, 1.15), at(0, 7.2 + i * 0.28, -0.1, 0, i * 40, (i % 2 == 0) and 10 or -10), tube, { shape = CYL, mat = Enum.Material.Rubber })
+	end
+	P(Vector3.new(1.9, 2.9, 1.7), at(0, 10.4, -0.1), black, { shape = BALL })                  -- long black head
+	P(Vector3.new(1.5, 2.4, 0.5), at(0.05, 10.3, -0.85, 0, 0, 4), face, { shape = BALL, mat = Enum.Material.Concrete }) -- stretched pale face
+	P(Vector3.new(0.45, 0.85, 0.3), at(-0.33, 10.8, -1.05, 0, 0, -6), rgb(0, 0, 0), { shape = BALL })  -- hollow eyes (asymmetric)
+	P(Vector3.new(0.52, 0.95, 0.3), at(0.38, 10.75, -1.05, 0, 0, 8), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(0.42, 0.6, 0.3), at(0.06, 9.55, -1.03, 0, 0, 10), rgb(0, 0, 0), { shape = BALL })    -- hollow open mouth
+	P(Vector3.new(0.1, 0.5, 0.1), at(0.02, 10.15, -1.1), rgb(110, 105, 100))                   -- thin nose ridge
+	for i, r in ipairs({ { 11.4, 25 }, { 10.6, -30 }, { 9.8, 15 } }) do                          -- cables wrapped around the head
+		P(Vector3.new(0.22, 2.3, 2.3), at(0, r[1], -0.1, 0, 90, r[2]), tube, { shape = CYL, mat = Enum.Material.Rubber, transp = 0 })
+		_ = i
+	end
+	P(Vector3.new(0.2, 2.2, 0.2), at(0.7, 12.1, 0.2, 0, 0, -30), tube, { mat = Enum.Material.Rubber }) -- loose cable ends
+	P(Vector3.new(0.2, 1.8, 0.2), at(-0.6, 12.0, 0.3, 0, 0, 35), tube, { mat = Enum.Material.Rubber })
+	for i = 1, 4 do P(Vector3.new(1.3, 0.05, 0.05), at(math.sin(i * 5) * 0.3, 3.5 + i * 1.6, -0.5), rgb(220, 220, 220), { mat = NEON, transp = 0.5, noShadow = true }) end -- screen static clinging to it
 end
 BUILD.monochrome = function(P)
 	humanoidBody(P, rgb(154, 154, 154), { legs = rgb(110, 110, 110), arms = rgb(190, 190, 190) })
@@ -264,8 +314,56 @@ BUILD.demogorgon = function(P)
 	for i = 0, 3 do P(Vector3.new(2.05, 0.1, 1.35), at(0, 0.2 + i * 0.6, 0), rgb(85, 70, 64)) end       -- sinewy ridges
 end
 
+BUILD.sonicexe = function(P)
+	-- fan-made creepypasta hedgehog: blue quills, black eye sockets with glowing red pupils, a too-wide grin
+	local blue, peach, white = rgb(28, 52, 150), rgb(226, 182, 140), rgb(240, 240, 240)
+	for _, x in ipairs({ -1, 1 }) do
+		P(Vector3.new(0.55, 2.4, 0.55), at(x * 0.5, -1.7, 0), blue)                                -- thin legs
+		P(Vector3.new(1, 0.8, 1.9), at(x * 0.55, -2.9, -0.4), rgb(180, 20, 25))                     -- red shoes
+		P(Vector3.new(1.05, 0.3, 0.5), at(x * 0.55, -2.65, -0.2), white)                            -- shoe strap
+		P(Vector3.new(0.4, 2.6, 0.4), at(x * 1.25, 0.6, 0, 0, 0, x * 12), blue)                      -- arms
+		P(Vector3.new(0.85, 0.85, 0.85), at(x * 1.55, -0.75, -0.1), white, { shape = BALL })        -- white gloves
+	end
+	P(Vector3.new(1.8, 2.4, 1.3), at(0, 0.7, 0), blue, { shape = BALL })                           -- torso
+	P(Vector3.new(1.2, 1.6, 0.4), at(0, 0.6, -0.55), peach, { shape = BALL })                      -- belly
+	P(Vector3.new(3, 2.8, 2.6), at(0, 3.3, 0), blue, { shape = BALL })                             -- big head
+	for i = 0, 2 do                                                                                -- swept-back quills
+		P(Vector3.new(0.9 - i * 0.15, 0.9 - i * 0.15, 2.6), at(0, 4.2 - i * 0.9, 1.6, -25 + i * 18, 0, 0), blue)
+		for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.7, 0.7, 2), at(x * 0.8, 3.9 - i * 0.9, 1.4, -15 + i * 15, x * 20, 0), blue) end
+	end
+	for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.5, 1.1, 0.5), at(x * 0.95, 4.9, 0.2, 0, 0, x * -20), blue) end -- ears
+	P(Vector3.new(2.1, 1.3, 0.6), at(0, 3.55, -1.05), white, { shape = BALL })                     -- eye patch
+	P(Vector3.new(0.7, 0.9, 0.3), at(-0.45, 3.6, -1.32), rgb(0, 0, 0), { shape = BALL })           -- black sockets
+	P(Vector3.new(0.7, 0.9, 0.3), at(0.45, 3.6, -1.32), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(0.22, 0.22, 0.22), at(-0.45, 3.55, -1.46), rgb(255, 20, 20), { shape = BALL, mat = NEON, noShadow = true }) -- red pupils
+	P(Vector3.new(0.22, 0.22, 0.22), at(0.45, 3.55, -1.46), rgb(255, 20, 20), { shape = BALL, mat = NEON, noShadow = true })
+	P(Vector3.new(1.8, 1, 0.9), at(0, 2.75, -1.05), peach, { shape = BALL })                       -- muzzle
+	P(Vector3.new(0.35, 0.28, 0.3), at(0, 3.05, -1.5), rgb(10, 10, 10), { shape = BALL })          -- nose
+	P(Vector3.new(1.5, 0.22, 0.1), at(0, 2.55, -1.5, 0, 0, 0), rgb(10, 10, 10))                   -- too-wide grin
+	for i = -3, 3 do P(Vector3.new(0.12, 0.16, 0.06), at(i * 0.2, 2.62, -1.55), white) end          -- teeth
+end
+
 -- Weld a monster model onto a character. Returns the model.
-function Models.morph(character, kind)
+-- lobby-shop monster skins (cosmetic colour grades, bought with in-game coins)
+local SKINS = {
+	shadow = { tint = Color3.fromRGB(10, 10, 14), k = 0.65 },
+	toxic = { tint = Color3.fromRGB(90, 220, 60), k = 0.45 },
+	frost = { tint = Color3.fromRGB(150, 210, 255), k = 0.5 },
+	blood = { tint = Color3.fromRGB(150, 10, 10), k = 0.5 },
+	golden = { tint = Color3.fromRGB(255, 200, 60), k = 0.6, mat = Enum.Material.Foil },
+}
+function Models.applySkin(model, skin)
+	local s = SKINS[skin]
+	if not s or not model then return end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") and d.Material ~= NEON and d.Transparency < 1 then
+			d.Color = d.Color:Lerp(s.tint, s.k)
+			if s.mat then d.Material = s.mat end
+		end
+	end
+end
+
+function Models.morph(character, kind, skin)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return nil end
 	local old = character:FindFirstChild("NH_Morph")
@@ -295,6 +393,7 @@ function Models.morph(character, kind)
 	(BUILD[kind] or BUILD.freddy)(P)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
+	Models.applySkin(model, skin)
 	-- hide the player's own avatar
 	for _, d in ipairs(character:GetDescendants()) do
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and not d:IsDescendantOf(model) then
@@ -304,7 +403,7 @@ function Models.morph(character, kind)
 		end
 	end
 	local glow = Instance.new("PointLight")
-	glow.Color = kind == "locust" and Color3.fromRGB(200, 255, 80) or Color3.fromRGB(255, 40, 40)
+	glow.Color = kind == "locust" and Color3.fromRGB(190, 200, 220) or Color3.fromRGB(255, 40, 40)
 	glow.Range = 14
 	glow.Brightness = 0.7
 	glow.Parent = root

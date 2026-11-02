@@ -98,38 +98,98 @@ local C = {}
 
 C.MIN_PLAYERS = 2        -- to take off (1 is allowed when testing in Studio)
 C.MAX_PLAYERS = 15       -- hard cap per server
-C.ROUND_TIME = 150       -- seconds survivors must last
-C.EXTRACT_AT = 60        -- extraction helicopter lands with this many seconds left
+C.ROUND_LENGTHS = { 300, 420, 600 } -- host picks 5, 7 or 10 minutes in the lobby
+C.ROUND_TIME = 420       -- default round length (7 minutes)
+C.EXTRACT_AT = 90        -- extraction helicopter lands with this many seconds left
 C.FLIGHT_TIME = 4
 C.RESULTS_TIME = 9
 C.MONSTER_CHANCE = 0.2   -- each player's chance to become a monster
 C.SURVIVOR_SPEED = 16
 C.SPRINT_MULT = 1.55
-C.CATCH_REACH = 6
+C.CATCH_REACH = 6        -- monster melee reach (studs)
+C.MON_DMG = 34           -- damage per monster hit (armor absorbs some)
+C.MON_HIT_RATE = 1.0     -- seconds between monster hits
+C.MON_HP = 300           -- monster health; at 0 it is knocked down
+C.DOWN_TIME = 6          -- seconds a knocked-down monster stays down
+C.SLOTS = 6              -- survivor inventory slots (Roblox backpack hotbar)
 C.LOBBY_PAD = Vector3.new(0, 0, 0)
 C.PAD_RADIUS = 16
 C.MAP_ORIGIN = Vector3.new(1200, 0, 0)
 C.MAP_SIZE = 360
 
-C.THEMES = { "Abandoned Pizzeria Town", "Foggy Woods", "Static Fields" }
+C.THEMES = { "Powerline Forest", "Abandoned Pizzeria Town", "Foggy Woods", "Static Fields" }
+C.MAIN_THEME = "Powerline Forest" -- picked half of the time
 
 C.MONSTER_KEYS = { "freddy", "bonnie", "chica", "foxy", "springtrap", "cartooncat",
-	"sirenhead", "boiledone", "drnowhere", "locust", "monochrome", "demogorgon" }
+	"sirenhead", "drnowhere", "locust", "monochrome", "demogorgon", "sonicexe" }
 
+local AFTON = { ability = "Afton Laugh", desc = "A creepy laugh echoes - you see every survivor for 10s", cd = 20 }
+local function afton(name, speed) return { name = name, ability = AFTON.ability, desc = AFTON.desc, cd = AFTON.cd, speed = speed } end
 C.MONSTERS = {
-	freddy     = { name = "Freddy",         ability = "Lights Out",         desc = "Every survivor's flashlight dies for 5s",          cd = 18, speed = 19 },
-	bonnie     = { name = "Bonnie",         ability = "Guitar Riff",        desc = "Stun survivors near you for 1.8s",                 cd = 14, speed = 19 },
-	chica      = { name = "Chica",          ability = "Cupcake Trap",       desc = "Drop a cupcake trap (max 3) that roots survivors", cd = 7,  speed = 18.5 },
-	foxy       = { name = "Foxy",           ability = "Pirate Dash",        desc = "Run super fast for 1.3s",                          cd = 10, speed = 19.5 },
-	springtrap = { name = "Springtrap",     ability = "Vent Crawl",         desc = "Teleport to a vent near the closest survivor",     cd = 16, speed = 18.5 },
-	cartooncat = { name = "Cartoon Cat",    ability = "Rubber Arms",        desc = "Triple catch reach for 3s",                        cd = 14, speed = 20 },
-	sirenhead  = { name = "Siren Head",     ability = "Siren Call",         desc = "Reveal every survivor for 5s",                     cd = 18, speed = 18 },
-	boiledone  = { name = "The Boiled One", ability = "Dread Gaze",         desc = "Survivors near you move 50% slower for 4s",        cd = 15, speed = 18.5 },
-	drnowhere  = { name = "Doctor Nowhere", ability = "Nowhere Warp",       desc = "Blink forward, even through walls",                cd = 9,  speed = 19 },
-	locust     = { name = "The Locust",     ability = "Static Fade",        desc = "Turn invisible for 5s",                            cd = 17, speed = 19 },
-	monochrome = { name = "Monochrome",     ability = "Color Drain",        desc = "Survivors go grey and can't sprint for 5s",        cd = 16, speed = 19 },
-	demogorgon = { name = "Demogorgon",     ability = "Upside Down Portal", desc = "Place a portal, use again to jump back to it",     cd = 14, speed = 19.5 },
+	freddy     = afton("Freddy", 19),
+	bonnie     = afton("Bonnie", 19),
+	chica      = afton("Chica", 18.5),
+	foxy       = afton("Foxy", 19.5),
+	springtrap = afton("Springtrap", 18.5),
+	cartooncat = { name = "Cartoon Cat",    ability = "Rubber Grab",        desc = "Stretch a rubber arm and pull a survivor in front of you", cd = 20, speed = 20 },
+	sirenhead  = { name = "Siren Head",     ability = "Siren Call",         desc = "A deafening siren reveals every survivor for 8s",       cd = 20, speed = 18 },
+	drnowhere  = { name = "Doctor Nowhere", ability = "Shapeshift",         desc = "Changes form every 30s; each form has its own power", cd = 20, speed = 19 },
+	locust     = { name = "The Locust",     ability = "Swarm Omen",         desc = "Crawl out of a screen near one random survivor and slam their screen", cd = 20, speed = 19 },
+	monochrome = { name = "Monochrome",     ability = "Total Blackout",     desc = "Every survivor's screen goes pitch black for 10s",     cd = 20, speed = 19 },
+	sonicexe   = { name = "Sonic.exe",      ability = "You Can't Run",      desc = "A scary laugh, then you run much faster for 10s",      cd = 20, speed = 19.5 },
+	demogorgon = { name = "Demogorgon",     ability = "Upside Down Portal", desc = "Open a portal and come out near the nearest survivor", cd = 20, speed = 19.5 },
 }
+
+-- Doctor Nowhere (fan horror art by Silas Orion) shapeshifts every DN_PERIOD seconds between these forms
+C.DN_PERIOD = 30
+C.DN_FORMS = {
+	{ key = "drnowhere",    name = "The Doctor",           ability = "Injection",   desc = "Inject the survivor in front of you - slowed for 6s" },
+	{ key = "dn_conezone",  name = "Cone Zone",            ability = "Cone Quake",  desc = "Slam the ground - survivors close to you are stunned" },
+	{ key = "dn_nightmare", name = "Nightmare Man",        ability = "Shadow Step", desc = "Melt into shadow and reappear far ahead" },
+	{ key = "dn_sixarm",    name = "The Doctor (six arms)", ability = "Paranoia",   desc = "Nearby survivors hallucinate and are revealed to you" },
+}
+
+-- loot (same items as the browser version). Studs: ~3.6 studs per metre of the browser game.
+C.ITEMS = {
+	knife   = { name = "Knife",          type = "melee", dmg = 22, range = 7,   rate = 0.34, color = Color3.fromRGB(190, 190, 200) },
+	bat     = { name = "Baseball Bat",   type = "melee", dmg = 30, range = 8.5, rate = 0.62, stun = 0.7, color = Color3.fromRGB(170, 120, 70) },
+	crowbar = { name = "Crowbar",        type = "melee", dmg = 36, range = 8,   rate = 0.7, stun = 0.4, color = Color3.fromRGB(180, 40, 40) },
+	axe     = { name = "Fire Axe",       type = "melee", dmg = 52, range = 9,   rate = 0.95, stun = 0.3, color = Color3.fromRGB(200, 30, 30) },
+	pistol  = { name = "Pistol",         type = "gun", dmg = 24, range = 160, rate = 0.3,  ammo = "light",  start = 12, spread = 0.035, color = Color3.fromRGB(40, 40, 44) },
+	shotgun = { name = "Shotgun",        type = "gun", dmg = 12, pellets = 7, range = 90, rate = 0.95, ammo = "shells", start = 6, spread = 0.12, stun = 0.45, color = Color3.fromRGB(90, 60, 40) },
+	rifle   = { name = "Rifle",          type = "gun", dmg = 22, range = 220, rate = 0.15, ammo = "heavy",  start = 30, spread = 0.03, color = Color3.fromRGB(50, 56, 44) },
+	water   = { name = "Water Bottle",   type = "use", hp = 15, stam = 45, color = Color3.fromRGB(120, 190, 255) },
+	soda    = { name = "Soda",           type = "use", hp = 10, stam = 60, color = Color3.fromRGB(220, 40, 40) },
+	energy  = { name = "Energy Drink",   type = "use", stam = 100, boost = 8, color = Color3.fromRGB(80, 255, 80) },
+	chips   = { name = "Chips",          type = "use", hp = 20, color = Color3.fromRGB(255, 200, 40) },
+	choco   = { name = "Chocolate Bar",  type = "use", hp = 15, stam = 25, color = Color3.fromRGB(110, 60, 30) },
+	beans   = { name = "Canned Beans",   type = "use", hp = 35, color = Color3.fromRGB(200, 200, 210) },
+	medkit  = { name = "First Aid Kit",  type = "use", hp = 70, color = Color3.fromRGB(240, 240, 240) },
+	vest    = { name = "Bulletproof Vest", type = "armor", slot = "Vest", dur = 100, red = 0.35, color = Color3.fromRGB(60, 70, 50) },
+	helmet  = { name = "Helmet",         type = "armor", slot = "Helmet", dur = 60, red = 0.15, color = Color3.fromRGB(70, 80, 60) },
+	ammo_light  = { name = "Pistol Ammo",    type = "ammo", ammo = "light",  n = 18, color = Color3.fromRGB(230, 200, 60) },
+	ammo_shells = { name = "Shotgun Shells", type = "ammo", ammo = "shells", n = 8,  color = Color3.fromRGB(200, 50, 40) },
+	ammo_heavy  = { name = "Rifle Ammo",     type = "ammo", ammo = "heavy",  n = 30, color = Color3.fromRGB(80, 200, 80) },
+}
+C.LOOT = {
+	chest = { knife = 6, bat = 6, crowbar = 5, axe = 4, pistol = 6, shotgun = 4, rifle = 2.5, vest = 5, helmet = 5, medkit = 3, ammo_light = 5, ammo_shells = 3.5, ammo_heavy = 2.5, beans = 3, energy = 3 },
+	bag = { water = 8, soda = 8, chips = 7, choco = 7, beans = 5, energy = 4, medkit = 1.5, ammo_light = 5, ammo_shells = 3, ammo_heavy = 2, knife = 3, pistol = 1.5, helmet = 1.5 },
+}
+
+-- lobby shop: cosmetics and monster skins bought with coins earned in rounds (no real money, no Robux)
+C.SHOP = {
+	hat = { cap = 50, beanie = 50, hardhat = 100, cowboy = 120, headphones = 150, bunny = 200, crown = 500 },
+	acc = { glasses = 40, scarf = 60, mask = 80, goggles = 120 },
+	skin = { shadow = 250, toxic = 300, frost = 300, blood = 350, golden = 600 },
+}
+C.EARN = { open = 5, catch = 40, knockdown = 25, escape = 60, survive = 10, monster = 15 }
+C.SKIN_TONES = { Color3.fromRGB(241, 204, 170), Color3.fromRGB(224, 172, 130), Color3.fromRGB(198, 134, 90), Color3.fromRGB(150, 98, 64), Color3.fromRGB(105, 70, 48), Color3.fromRGB(250, 220, 200) }
+C.HAIR_COLORS = { Color3.fromRGB(40, 28, 20), Color3.fromRGB(90, 60, 35), Color3.fromRGB(20, 20, 22), Color3.fromRGB(170, 110, 50), Color3.fromRGB(210, 170, 100), Color3.fromRGB(70, 50, 45) }
+C.CLOTHES = { Color3.fromRGB(200, 60, 50), Color3.fromRGB(40, 120, 200), Color3.fromRGB(40, 170, 90), Color3.fromRGB(140, 70, 180), Color3.fromRGB(240, 160, 30), Color3.fromRGB(30, 160, 150), Color3.fromRGB(210, 90, 20), Color3.fromRGB(40, 52, 70), Color3.fromRGB(130, 140, 140), Color3.fromRGB(230, 80, 150), Color3.fromRGB(240, 240, 240), Color3.fromRGB(30, 30, 32) }
+
+-- Optional sound uploads: the Afton laugh etc. are original sounds rendered from the browser synth
+-- (roblox/sounds/*.wav). Upload them in Studio and paste the asset ids here; empty = built-in fallback.
+C.SOUNDS = { laugh = "", siren = "", locust = "", portal = "", sonic = "", scream = "", quake = "", shift = "" }
 
 return C
 ]]></string>
@@ -158,6 +218,9 @@ local TeleportService = game:GetService("TeleportService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+local Debris = game:GetService("Debris")
 
 local Shared = ReplicatedStorage:WaitForChild("NightHunt")
 local Config = require(Shared:WaitForChild("Config"))
@@ -180,13 +243,14 @@ local Hub = make("RemoteFunction", "Hub", Remotes)      -- hub requests
 local State = make("Folder", "State", Shared)
 local Templates = make("Folder", "Templates", Shared)
 for _, k in ipairs(Config.MONSTER_KEYS) do Models.template(k).Parent = Templates end
+for i = 2, #Config.DN_FORMS do Models.template(Config.DN_FORMS[i].key).Parent = Templates end
 
 local IS_STUDIO = RunService:IsStudio()
 local CAN_TELEPORT = game.PlaceId ~= 0 and not IS_STUDIO
 local IS_RESERVED = game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0
 local IS_VIP = game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0
 
-local settings = { code = "", name = "Night Hunt", max = Config.MAX_PLAYERS, public = false, hostId = 0 }
+local settings = { code = "", name = "Night Hunt", max = Config.MAX_PLAYERS, public = false, hostId = 0, roundLen = Config.ROUND_TIME }
 local function setState(k, v) State:SetAttribute(k, v) end
 local function publishSettings()
 	setState("ServerCode", settings.code)
@@ -194,6 +258,7 @@ local function publishSettings()
 	setState("MaxPlayers", settings.max)
 	setState("IsPublic", settings.public)
 	setState("HostUserId", settings.hostId)
+	setState("RoundLen", settings.roundLen)
 end
 setState("Mode", (IS_RESERVED or IS_VIP) and "Match" or "Hub")
 setState("State", "Lobby")
@@ -316,6 +381,7 @@ end
 -- Round state
 ---------------------------------------------------------------------------
 local fx = {}          -- [player] = { stunUntil, slowUntil, rootUntil, greyUntil, dashUntil, reachUntil, invisUntil, sprint, stamina }
+local profiles = {} -- [player] = { coins, owned, look, pref, skin }
 local currentMap       -- MapGen info
 local roundFolder      -- holds map, traps, portals, extraction heli
 local extractionOpen = false
@@ -390,6 +456,9 @@ local function resetPlayer(p)
 	p:SetAttribute("Escaped", false)
 	p:SetAttribute("AbilityReadyAt", 0)
 	p:SetAttribute("PortalSet", false)
+	p:SetAttribute("Sleeping", false)
+	p:SetAttribute("MonsterHp", nil)
+	p:SetAttribute("RoundCoins", 0)
 	fx[p] = { stamina = 100 }
 	cooldowns[p] = 0
 end
@@ -409,7 +478,7 @@ local function nearestSurvivor(from)
 	return best, bestD
 end
 
-local function survivorsNear(pos, radius)
+local function _survivorsNear(pos, radius)
 	local list = {}
 	for _, s in ipairs(survivors(true)) do
 		local h = hrpOf(s)
@@ -418,7 +487,7 @@ local function survivorsNear(pos, radius)
 	return list
 end
 
-local function setMorphTransparency(p, hidden)
+local function _setMorphTransparency(p, hidden)
 	local morph = p.Character and p.Character:FindFirstChild("NH_Morph")
 	if not morph then return end
 	for _, d in ipairs(morph:GetDescendants()) do
@@ -445,67 +514,65 @@ local function spaceFree(pos)
 end
 
 local ABILITY = {}
-ABILITY.freddy = function(p)
-	for _, s in ipairs(survivors(true)) do
-		local h = hrpOf(s)
-		local fl = h and h:FindFirstChild("NH_Flashlight")
-		if fl then
-			for _, l in ipairs(fl:GetChildren()) do l.Enabled = false end
-			s:SetAttribute("LightsOut", true)
-			task.delay(5, function()
-				s:SetAttribute("LightsOut", nil)
-				if fl.Parent then for _, l in ipairs(fl:GetChildren()) do l.Enabled = not (l:IsA("SpotLight") and s:GetAttribute("FlashOff")) end end
-			end)
+local function sfxAll(kind, pos) Notify:FireAllClients("sfx", kind, pos) end
+local function flatLook(h)
+	local l = h.CFrame.LookVector
+	local f = Vector3.new(l.X, 0, l.Z)
+	return f.Magnitude > 0.01 and f.Unit or Vector3.new(0, 0, -1)
+end
+local function clearLine(a, b, ignore)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local list = { roundFolder and roundFolder:FindFirstChild("Loot") }
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(list, pl.Character) end end
+	for _, x in ipairs(ignore or {}) do table.insert(list, x) end
+	params.FilterDescendantsInstances = list
+	return workspace:Raycast(a, b - a, params) == nil
+end
+-- put monster p somewhere free between d0 and d1 studs from pos, facing it
+local function appearNear(p, pos, d0, d1)
+	for _ = 1, 40 do
+		local a = math.random() * math.pi * 2
+		local d = d0 + math.random() * (d1 - d0)
+		local q = pos + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
+		if currentMap then
+			local o = Config.MAP_ORIGIN
+			q = Vector3.new(math.clamp(q.X, o.X - currentMap.half + 6, o.X + currentMap.half - 6), pos.Y + 1, math.clamp(q.Z, o.Z - currentMap.half + 6, o.Z + currentMap.half - 6))
 		end
-		Notify:FireClient(s, "effect", "lightsout", 5)
-		toast(s, "Freddy: LIGHTS OUT!")
+		if spaceFree(q) then p.Character:PivotTo(CFrame.lookAt(q, Vector3.new(pos.X, q.Y, pos.Z))); return true end
 	end
+	p.Character:PivotTo(CFrame.new(pos + Vector3.new(d0, 2, 0)))
 	return true
 end
-ABILITY.bonnie = function(p)
-	local list = survivorsNear(hrpOf(p).Position, 25)
-	for _, s in ipairs(list) do F(s).stunUntil = now() + 1.8; toast(s, "Bonnie's guitar riff stunned you!") end
-	toast(p, ("Guitar Riff hit %d survivor(s)"):format(#list))
+local function portalFx(pos, color)
+	local ring = Instance.new("Part")
+	ring.Name = "PortalFx"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.4, 9, 9)
+	ring.CFrame = CFrame.new(pos + Vector3.new(0, 4.5, 0)) * CFrame.Angles(0, math.random() * 6, 0)
+	ring.Color = color or Color3.fromRGB(170, 20, 30)
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.25
+	ring.Anchored, ring.CanCollide, ring.CanQuery = true, false, false
+	local pe = Instance.new("ParticleEmitter")
+	pe.Color = ColorSequence.new(Color3.fromRGB(220, 220, 230))
+	pe.Size = NumberSequence.new(0.3)
+	pe.Rate = 60
+	pe.Lifetime = NumberRange.new(1.5, 3)
+	pe.Speed = NumberRange.new(1, 3)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Parent = ring
+	ring.Parent = roundFolder or workspace
+	Debris:AddItem(ring, 2.5)
+end
+local function aftonLaugh(p)
+	-- original synthesized laugh sound + this monster alone sees every survivor for 10s
+	Notify:FireClient(p, "sight", 10)
+	sfxAll("laugh", hrpOf(p).Position)
+	for _, s in ipairs(survivors(true)) do toast(s, "A creepy laugh echoes through the dark...") end
 	return true
 end
-ABILITY.chica = function(p)
-	local h = hrpOf(p)
-	monsterTraps[p] = monsterTraps[p] or {}
-	local traps = monsterTraps[p]
-	if #traps >= 3 then
-		local old = table.remove(traps, 1)
-		if old then old:Destroy() end
-	end
-	local trap = Instance.new("Part")
-	trap.Name = "CupcakeTrap"
-	trap.Shape = Enum.PartType.Cylinder
-	trap.Size = Vector3.new(0.6, 3, 3)
-	trap.CFrame = CFrame.new(h.Position.X, h.Position.Y - 2.7, h.Position.Z) * CFrame.Angles(0, 0, math.rad(90))
-	trap.Color = Color3.fromRGB(255, 122, 182)
-	trap.Material = Enum.Material.Neon
-	trap.Transparency = 0.25
-	trap.Anchored = true
-	trap.CanCollide = false
-	trap.Parent = roundFolder
-	table.insert(traps, trap)
-	toast(p, "Cupcake trap placed")
-	return true
-end
-ABILITY.foxy = function(p) F(p).dashUntil = now() + 1.3; return true end
-ABILITY.springtrap = function(p)
-	local target = nearestSurvivor(hrpOf(p).Position)
-	if not target or not currentMap or #currentMap.vents == 0 then toast(p, "No vents nearby"); return false end
-	local tp = hrpOf(target).Position
-	local best, bestD
-	for _, v in ipairs(currentMap.vents) do
-		local d = (v - tp).Magnitude
-		if not bestD or d < bestD then best, bestD = v, d end
-	end
-	p.Character:PivotTo(CFrame.new(best))
-	toast(p, "You crawled out of a vent")
-	return true
-end
-ABILITY.cartooncat = function(p) F(p).reachUntil = now() + 3; return true end
+for _, k in ipairs({ "freddy", "bonnie", "chica", "foxy", "springtrap" }) do ABILITY[k] = aftonLaugh end
 ABILITY.sirenhead = function(p)
 	for _, s in ipairs(survivors(true)) do
 		if s.Character then
@@ -516,84 +583,179 @@ ABILITY.sirenhead = function(p)
 			hl.FillTransparency = 0.4
 			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 			hl.Parent = s.Character
-			task.delay(5, function() hl:Destroy() end)
+			Debris:AddItem(hl, 8)
 		end
-		Notify:FireClient(s, "effect", "siren", 5)
 		toast(s, "Siren Head's call revealed everyone!")
 	end
-	return true
-end
-ABILITY.boiledone = function(p)
-	local list = survivorsNear(hrpOf(p).Position, 40)
-	for _, s in ipairs(list) do F(s).slowUntil = now() + 4; toast(s, "The Boiled One's gaze slows you...") end
-	toast(p, ("Dread Gaze slowed %d survivor(s)"):format(#list))
-	return true
-end
-ABILITY.drnowhere = function(p)
-	local h = hrpOf(p)
-	local look = h.CFrame.LookVector
-	local flat = Vector3.new(look.X, 0, look.Z)
-	if flat.Magnitude < 0.01 then flat = Vector3.new(0, 0, -1) end
-	flat = flat.Unit
-	for _, dist in ipairs({ 30, 25, 20, 15, 10 }) do
-		local target = h.Position + flat * dist
-		if currentMap then
-			local o = Config.MAP_ORIGIN
-			target = Vector3.new(
-				math.clamp(target.X, o.X - currentMap.half + 4, o.X + currentMap.half - 4),
-				target.Y,
-				math.clamp(target.Z, o.Z - currentMap.half + 4, o.Z + currentMap.half - 4))
-		end
-		if spaceFree(target) then
-			p.Character:PivotTo(CFrame.lookAt(target, target + flat))
-			return true
-		end
-	end
-	toast(p, "Something blocks the warp")
-	return false
-end
-ABILITY.locust = function(p)
-	F(p).invisUntil = now() + 5
-	setMorphTransparency(p, true)
-	task.delay(5, function()
-		if p.Parent and F(p).invisUntil and now() >= F(p).invisUntil - 0.05 then setMorphTransparency(p, false) end
-	end)
-	toast(p, "You faded into static")
+	sfxAll("siren", hrpOf(p).Position)
 	return true
 end
 ABILITY.monochrome = function(p)
 	for _, s in ipairs(survivors(true)) do
-		F(s).greyUntil = now() + 5
-		Notify:FireClient(s, "effect", "grey", 5)
-		toast(s, "Monochrome drained your color - no sprinting!")
+		Notify:FireClient(s, "effect", "dark", 10)
+		toast(s, "Monochrome: TOTAL BLACKOUT")
 	end
+	sfxAll("dark", hrpOf(p).Position)
 	return true
 end
 ABILITY.demogorgon = function(p)
 	local h = hrpOf(p)
-	local portal = portals[p]
-	if portal and portal.Parent then
-		p.Character:PivotTo(CFrame.new(portal.Position + Vector3.new(0, 3, 0)))
-		portal:Destroy()
-		portals[p] = nil
-		p:SetAttribute("PortalSet", false)
-		toast(p, "You came out of the Upside Down")
+	local target = nearestSurvivor(h.Position)
+	if not target then toast(p, "No survivors to hunt"); return 3 end
+	portalFx(h.Position - Vector3.new(0, 3, 0))
+	sfxAll("portal", h.Position)
+	appearNear(p, hrpOf(target).Position, 25, 40)
+	portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0))
+	sfxAll("portal", hrpOf(p).Position)
+	toast(p, "You came out of the Upside Down near " .. target.DisplayName)
+	return true
+end
+local function dnInjection(p)
+	local h = hrpOf(p)
+	local look = flatLook(h)
+	local best, bestD
+	for _, s in ipairs(survivors(true)) do
+		local sh = hrpOf(s)
+		if sh then
+			local v = sh.Position - h.Position
+			local d = v.Magnitude
+			if d < 16 and (d < 7 or look:Dot(Vector3.new(v.X, 0, v.Z).Unit) > 0.45) and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+	end
+	if not best then toast(p, "Injection missed - get closer!"); return 2.5 end
+	F(best).slowUntil = now() + 6
+	toast(best, "Doctor Nowhere injected you! You feel sluggish...")
+	sfxAll("inject", h.Position)
+	return true
+end
+-- Doctor Nowhere: the current form (attribute "Form", 1..4) decides the power
+ABILITY.drnowhere = function(p)
+	local form = p:GetAttribute("Form") or 1
+	local h = hrpOf(p)
+	if form == 2 then -- Cone Zone: ground slam stuns survivors within 36 studs
+		local hit = 0
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh and (sh.Position - h.Position).Magnitude < 36 then F(s).stunUntil = now() + 1.6; hit += 1; toast(s, "Cone Zone's quake knocked you off your feet!") end
+		end
+		portalFx(h.Position - Vector3.new(0, 3, 0), Color3.fromRGB(235, 235, 235))
+		sfxAll("quake", h.Position)
+		if hit == 0 then toast(p, "The quake hit nobody"); return 6 end
+		return true
+	elseif form == 3 then -- Nightmare Man: shadow step up to ~50 studs ahead
+		local look = flatLook(h)
+		for d = 50, 12, -6 do
+			local q = h.Position + look * d
+			if spaceFree(q) and clearLine(h.Position, q) then
+				portalFx(h.Position - Vector3.new(0, 3, 0), Color3.fromRGB(10, 10, 12))
+				p.Character:PivotTo(CFrame.lookAt(q, q + look))
+				portalFx(q - Vector3.new(0, 3, 0), Color3.fromRGB(10, 10, 12))
+				sfxAll("shift", q)
+				return true
+			end
+		end
+		toast(p, "No room to step through the shadows"); return 3
+	elseif form == 4 then -- six arms: paranoia - nearby survivors hallucinate and are revealed
+		local hit = 0
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh and (sh.Position - h.Position).Magnitude < 117 then
+				hit += 1
+				Notify:FireClient(s, "effect", "halluc", 8)
+				toast(s, "You feel watched... is that real?")
+				local hl = Instance.new("Highlight")
+				hl.Name = "NH_Reveal"
+				hl.FillColor = Color3.fromRGB(255, 40, 40)
+				hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				hl.Parent = s.Character
+				Debris:AddItem(hl, 6)
+			end
+		end
+		sfxAll("paranoia", h.Position)
+		if hit == 0 then toast(p, "Nobody close enough to feel paranoid"); return 5 end
 		return true
 	end
-	local part = Instance.new("Part")
-	part.Name = "UpsideDownPortal"
-	part.Shape = Enum.PartType.Cylinder
-	part.Size = Vector3.new(0.3, 7, 7)
-	part.CFrame = CFrame.new(h.Position.X, h.Position.Y - 2.8, h.Position.Z) * CFrame.Angles(0, 0, math.rad(90))
-	part.Color = Color3.fromRGB(150, 20, 30)
-	part.Material = Enum.Material.Neon
-	part.Anchored = true
-	part.CanCollide = false
-	part.Parent = roundFolder
-	portals[p] = part
-	p:SetAttribute("PortalSet", true)
-	toast(p, "Portal placed - use the ability again to jump back to it")
-	return "short"
+	return dnInjection(p)
+end
+local function setDnForm(p, form)
+	local def = Config.DN_FORMS[form]
+	p:SetAttribute("Form", form)
+	F(p).formAt = now() + Config.DN_PERIOD
+	if p.Character and isHunting(p) then
+		Models.morph(p.Character, def.key, profiles[p] and profiles[p].skin)
+		portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(30, 30, 34))
+		sfxAll("shift", hrpOf(p).Position)
+	end
+	toast(p, ("You shapeshift: %s - %s"):format(def.name, def.ability))
+end
+ABILITY.cartooncat = function(p)
+	local h = hrpOf(p)
+	local look = flatLook(h)
+	local best, bestD
+	for _, s in ipairs(survivors(true)) do
+		local sh = hrpOf(s)
+		if sh then
+			local v = sh.Position - h.Position
+			local flat = Vector3.new(v.X, 0, v.Z)
+			local d = flat.Magnitude
+			if d > 0.1 and d < 70 and look:Dot(flat.Unit) > 0.85 and clearLine(h.Position, sh.Position) and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+	end
+	if not best then toast(p, "The rubber arm grabbed nothing"); return 4 end
+	-- stretch a black rubber arm with a white glove out to the survivor, then reel them in
+	local sh = hrpOf(best)
+	local arm = Instance.new("Part")
+	arm.Anchored, arm.CanCollide, arm.CanQuery = true, false, false
+	arm.Color = Color3.fromRGB(10, 10, 10)
+	arm.Material = Enum.Material.Rubber
+	arm.Size = Vector3.new(0.8, 0.8, (sh.Position - h.Position).Magnitude)
+	arm.CFrame = CFrame.lookAt((h.Position + sh.Position) / 2 + Vector3.new(0, 1, 0), sh.Position + Vector3.new(0, 1, 0))
+	arm.Parent = roundFolder or workspace
+	local glove = Instance.new("Part")
+	glove.Shape = Enum.PartType.Ball
+	glove.Anchored, glove.CanCollide, glove.CanQuery = true, false, false
+	glove.Color = Color3.fromRGB(245, 245, 245)
+	glove.Size = Vector3.new(2, 2, 2)
+	glove.Position = sh.Position + Vector3.new(0, 1, 0)
+	glove.Parent = arm
+	Debris:AddItem(arm, 0.45)
+	local dest = h.Position + look * 5
+	best.Character:PivotTo(CFrame.lookAt(dest, h.Position))
+	F(best).stunUntil = now() + 1.2
+	toast(best, "A rubber arm grabbed you!")
+	sfxAll("stretch", h.Position)
+	return true
+end
+ABILITY.locust = function(p)
+	local list = survivors(true)
+	if #list == 0 then return 3 end
+	local target = list[math.random(1, #list)] -- exactly one random survivor
+	local tp = hrpOf(target).Position
+	local tv, tvD
+	for _, v in ipairs(currentMap and currentMap.tvs or {}) do
+		local d = (v - tp).Magnitude
+		if d < 140 and (not tvD or d < tvD) then tv, tvD = v, d end
+	end
+	portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(30, 30, 34))
+	if tv then
+		p.Character:PivotTo(CFrame.lookAt(tv + Vector3.new(0, 3, 0), Vector3.new(tp.X, tv.Y + 3, tp.Z))) -- crawls out of a TV / computer screen
+		toast(p, "You crawl out of a screen near " .. target.DisplayName .. "...")
+	else
+		appearNear(p, tp, 60, 90)
+		toast(p, "You descend on " .. target.DisplayName .. "...")
+	end
+	portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(220, 220, 220))
+	Notify:FireClient(target, "locust")
+	Notify:FireClient(p, "sight", 4, target.UserId)
+	sfxAll("buzz", hrpOf(p).Position)
+	return true
+end
+
+ABILITY.sonicexe = function(p)
+	F(p).dashUntil = now() + 10 -- "You can't run forever": a scary laugh, then much faster for 10s
+	sfxAll("sonic", hrpOf(p).Position)
+	for _, s in ipairs(survivors(true)) do toast(s, "A distorted laugh... something very fast is coming.") end
+	return true
 end
 
 local function useAbility(p)
@@ -605,11 +767,501 @@ local function useAbility(p)
 	if not fn or not def then return end
 	local result = fn(p)
 	if result then
-		local cd = result == "short" and 2 or def.cd
+		local cd = type(result) == "number" and result or def.cd
 		cooldowns[p] = now() + cd
 		p:SetAttribute("AbilityReadyAt", workspace:GetServerTimeNow() + cd)
 		Notify:FireAllClients("ability", p.UserId, kind)
 	end
+end
+
+
+---------------------------------------------------------------------------
+-- Gear: loot chests/bags, tools (melee, guns, food, drinks), armor, combat, beds, coins
+---------------------------------------------------------------------------
+local ITEMS = Config.ITEMS
+local function rollLoot(kind)
+	local tbl = Config.LOOT[kind]
+	local total = 0
+	for _, w in pairs(tbl) do total += w end
+	local r = math.random() * total
+	for k, w in pairs(tbl) do
+		r -= w
+		if r <= 0 then return k end
+	end
+	return "water"
+end
+local function addCoins(p, n, why)
+	local pr = profiles[p]
+	if not pr or n <= 0 then return end
+	pr.coins += n
+	p:SetAttribute("Coins", pr.coins)
+	p:SetAttribute("RoundCoins", (p:GetAttribute("RoundCoins") or 0) + n)
+	if why then Notify:FireClient(p, "coins", n, why) end
+end
+
+local function toolHandle(id)
+	local def = ITEMS[id]
+	local h = Instance.new("Part")
+	h.Name = "Handle"
+	h.CanCollide = false
+	h.Massless = true
+	h.Color = def.color
+	h.Material = Enum.Material.SmoothPlastic
+	if def.type == "melee" then
+		h.Size = id == "knife" and Vector3.new(0.25, 0.25, 1.6) or Vector3.new(0.35, 0.35, 3.6)
+		h.Material = id == "bat" and Enum.Material.Wood or Enum.Material.Metal
+	elseif def.type == "gun" then
+		h.Size = id == "pistol" and Vector3.new(0.35, 0.7, 1.3) or Vector3.new(0.35, 0.55, 3.6)
+		h.Material = Enum.Material.Metal
+	else
+		h.Size = Vector3.new(0.6, 1, 0.6)
+	end
+	if def.type == "melee" and id ~= "knife" then -- a head on the bat / axe / crowbar
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.CanCollide, head.Massless = false, true
+		head.Size = id == "axe" and Vector3.new(0.2, 1.1, 0.9) or Vector3.new(0.5, 0.5, 1)
+		head.Color = id == "axe" and Color3.fromRGB(190, 190, 195) or def.color
+		head.Material = id == "bat" and Enum.Material.Wood or Enum.Material.Metal
+		head.CFrame = h.CFrame * CFrame.new(0, 0, -1.6)
+		local w = Instance.new("WeldConstraint"); w.Part0 = h; w.Part1 = head; w.Parent = head
+		return h, head
+	end
+	return h
+end
+
+local function makeTool(id, count)
+	local def = ITEMS[id]
+	local t = Instance.new("Tool")
+	t.Name = def.name
+	t.ToolTip = def.type == "use" and (def.hp and ("+" .. def.hp .. " hp") or "stamina") or def.name
+	t.CanBeDropped = false
+	t:SetAttribute("ItemId", id)
+	t:SetAttribute("Count", count or 1)
+	local h, extra = toolHandle(id)
+	h.Parent = t
+	if extra then extra.Parent = t end
+	if def.type == "gun" then t.GripPos = Vector3.new(0, -0.1, 0.4) end
+	return t
+end
+
+local function ownedTools(p)
+	local list = {}
+	local bp = p:FindFirstChildOfClass("Backpack")
+	for _, c in ipairs({ bp, p.Character }) do
+		if c then for _, t in ipairs(c:GetChildren()) do if t:IsA("Tool") and t:GetAttribute("ItemId") then table.insert(list, t) end end end
+	end
+	return list
+end
+local function clearGear(p)
+	for _, t in ipairs(ownedTools(p)) do t:Destroy() end
+	for _, a in ipairs({ "Vest", "Helmet", "Ammo_light", "Ammo_shells", "Ammo_heavy" }) do p:SetAttribute(a, 0) end
+	local c = p.Character
+	if c then for _, n in ipairs({ "NH_Vest", "NH_Helmet" }) do local x = c:FindFirstChild(n, true); if x then x:Destroy() end end end
+end
+local function wearArmor(p, slot)
+	local c = p.Character
+	if not c or c:FindFirstChild("NH_" .. slot) then return end
+	local attachTo = slot == "Vest" and (c:FindFirstChild("UpperTorso") or c:FindFirstChild("Torso")) or c:FindFirstChild("Head")
+	if not attachTo then return end
+	local a = Instance.new("Part")
+	a.Name = "NH_" .. slot
+	a.CanCollide, a.Massless, a.CanQuery = false, true, false
+	a.Color = ITEMS[slot == "Vest" and "vest" or "helmet"].color
+	a.Material = slot == "Vest" and Enum.Material.Fabric or Enum.Material.Metal
+	if slot == "Vest" then
+		a.Size = attachTo.Size + Vector3.new(0.3, -0.2, 0.3)
+		a.CFrame = attachTo.CFrame
+	else
+		a.Shape = Enum.PartType.Ball
+		a.Size = Vector3.new(1.45, 1.1, 1.45)
+		a.CFrame = attachTo.CFrame * CFrame.new(0, 0.35, 0)
+	end
+	local w = Instance.new("WeldConstraint"); w.Part0 = attachTo; w.Part1 = a; w.Parent = a
+	a.Parent = c
+end
+
+-- give an item; returns false when there is no room
+local function giveItem(p, id)
+	local def = ITEMS[id]
+	if not def then return false end
+	if def.type == "ammo" then
+		p:SetAttribute("Ammo_" .. def.ammo, (p:GetAttribute("Ammo_" .. def.ammo) or 0) + def.n)
+	elseif def.type == "armor" then
+		if (p:GetAttribute(def.slot) or 0) >= def.dur * 0.8 then return false end
+		p:SetAttribute(def.slot, def.dur)
+		wearArmor(p, def.slot)
+	else
+		local tools = ownedTools(p)
+		for _, t in ipairs(tools) do
+			if t:GetAttribute("ItemId") == id then
+				if def.type == "use" and t:GetAttribute("Count") < 3 then t:SetAttribute("Count", t:GetAttribute("Count") + 1); t.Name = def.name .. " x" .. t:GetAttribute("Count"); return true end
+				if def.type == "gun" then p:SetAttribute("Ammo_" .. def.ammo, (p:GetAttribute("Ammo_" .. def.ammo) or 0) + def.start); return true end
+				if def.type == "melee" then return false end
+			end
+		end
+		if #tools >= Config.SLOTS then return false end
+		makeTool(id).Parent = p:FindFirstChildOfClass("Backpack")
+		if def.type == "gun" then p:SetAttribute("Ammo_" .. def.ammo, (p:GetAttribute("Ammo_" .. def.ammo) or 0) + def.start) end
+	end
+	Notify:FireClient(p, "pickup", id)
+	return true
+end
+
+-- chests and bags with a ProximityPrompt (E on keyboard, a tap button on touch screens)
+local function spawnLoot(list)
+	local folder = Instance.new("Folder")
+	folder.Name = "Loot"
+	folder.Parent = roundFolder
+	for i, l in ipairs(list) do
+		local m = Instance.new("Model")
+		m.Name = l.kind == "chest" and "Chest" or "Bag"
+		local base = Instance.new("Part")
+		base.Anchored = true
+		base.Name = "Base"
+		if l.kind == "chest" then
+			base.Size = Vector3.new(4, 2.4, 2.6)
+			base.Color = Color3.fromRGB(110, 70, 38)
+			base.Material = Enum.Material.WoodPlanks
+			base.CFrame = CFrame.new(l.pos + Vector3.new(0, 1.4, 0)) * CFrame.Angles(0, math.rad((i * 47) % 360), 0)
+			local lid = Instance.new("Part")
+			lid.Name = "Lid"
+			lid.Anchored = true
+			lid.Size = Vector3.new(4.1, 0.7, 2.7)
+			lid.Color = Color3.fromRGB(95, 60, 32)
+			lid.Material = Enum.Material.WoodPlanks
+			lid.CFrame = base.CFrame * CFrame.new(0, 1.55, 0)
+			lid.Parent = m
+			for _, x in ipairs({ -1.4, 1.4 }) do
+				local band = Instance.new("Part")
+				band.Anchored, band.CanCollide = true, false
+				band.Size = Vector3.new(0.3, 3.2, 2.75)
+				band.Color = Color3.fromRGB(60, 60, 64)
+				band.Material = Enum.Material.Metal
+				band.CFrame = base.CFrame * CFrame.new(x, 0.35, 0)
+				band.Parent = m
+			end
+		else
+			base.Shape = Enum.PartType.Ball
+			base.Size = Vector3.new(2.6, 2, 2.2)
+			base.Color = Color3.fromRGB(60, 72, 44)
+			base.Material = Enum.Material.Fabric
+			base.CFrame = CFrame.new(l.pos + Vector3.new(0, 1, 0))
+		end
+		base.Parent = m
+		m.PrimaryPart = base
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = l.kind == "chest" and "Open chest" or "Search bag"
+		prompt.ObjectText = l.kind == "chest" and "Chest" or "Bag"
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.HoldDuration = l.kind == "chest" and 0.6 or 0.3
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = base
+		prompt.Triggered:Connect(function(p)
+			if not isHunting(p) or p:GetAttribute("Role") ~= "Survivor" or m:GetAttribute("Opened") then return end
+			m:SetAttribute("Opened", true)
+			prompt.Enabled = false
+			local got = {}
+			for _ = 1, (l.kind == "chest" and math.random(2, 3) or math.random(1, 2)) do
+				local id = rollLoot(l.kind)
+				if giveItem(p, id) then table.insert(got, ITEMS[id].name) end
+			end
+			toast(p, #got > 0 and ("Found: " .. table.concat(got, ", ")) or "Nothing you can carry...")
+			addCoins(p, Config.EARN.open)
+			sfxAll("open", base.Position)
+			local lid = m:FindFirstChild("Lid")
+			if lid then lid.CFrame = lid.CFrame * CFrame.new(0, 0.9, 1.2) * CFrame.Angles(math.rad(-70), 0, 0) end
+			base.Color = base.Color:Lerp(Color3.new(0, 0, 0), 0.4)
+		end)
+		m.Parent = folder
+	end
+end
+
+-- damage to a survivor: the vest soaks 35% (wears down), the helmet 15%
+local lastHitBy = {}
+local function hurtSurvivor(s, dmg, by)
+	local hum = humOf(s)
+	if not hum or hum.Health <= 0 then return end
+	local red = 0
+	for _, slot in ipairs({ "Vest", "Helmet" }) do
+		local dur = s:GetAttribute(slot) or 0
+		if dur > 0 then
+			local def = ITEMS[slot == "Vest" and "vest" or "helmet"]
+			red += def.red
+			local left = math.max(0, dur - dmg * def.red * 1.6)
+			s:SetAttribute(slot, math.floor(left))
+			if left <= 0 then
+				local x = s.Character and s.Character:FindFirstChild("NH_" .. slot)
+				if x then x:Destroy() end
+				toast(s, "Your " .. def.name:lower() .. " broke!")
+			end
+		end
+	end
+	lastHitBy[s] = by
+	hum.Health = math.max(0, hum.Health - dmg * (1 - red))
+	Notify:FireClient(s, "hurt")
+end
+
+-- monster health and knockdown
+local function hurtMonster(m, dmg, by, stun)
+	local f = F(m)
+	if f.downUntil and now() < f.downUntil then return end
+	local hp = (m:GetAttribute("MonsterHp") or Config.MON_HP) - dmg
+	if stun then f.stunUntil = math.max(f.stunUntil or 0, now() + stun) end
+	if hp <= 0 then
+		hp = 0
+		f.downUntil = now() + Config.DOWN_TIME
+		local def = Config.MONSTERS[m:GetAttribute("Monster")]
+		toast(nil, ("%s knocked down %s! It gets back up in %ds - run!"):format(by.DisplayName, def and def.name or "the monster", Config.DOWN_TIME))
+		addCoins(by, Config.EARN.knockdown, "Knocked down a monster")
+		sfxAll("down", hrpOf(m) and hrpOf(m).Position)
+		task.delay(Config.DOWN_TIME, function()
+			if m.Parent then m:SetAttribute("MonsterHp", m:GetAttribute("MonsterMaxHp") or Config.MON_HP) end
+		end)
+	end
+	m:SetAttribute("MonsterHp", hp)
+end
+
+local function tracer(a, b)
+	local t = Instance.new("Part")
+	t.Anchored, t.CanCollide, t.CanQuery, t.CastShadow = true, false, false, false
+	t.Material = Enum.Material.Neon
+	t.Color = Color3.fromRGB(255, 220, 140)
+	t.Size = Vector3.new(0.08, 0.08, (b - a).Magnitude)
+	t.CFrame = CFrame.lookAt((a + b) / 2, b)
+	t.Parent = roundFolder or workspace
+	Debris:AddItem(t, 0.06)
+end
+
+-- a monster's body as a vertical capsule for hit tests (morphs are far taller than a normal avatar)
+local TALL = { sirenhead = 30, locust = 15, cartooncat = 14 }
+local function rayHitsMonster(origin, dir, range)
+	local best, bestT
+	for _, m in ipairs(monsters()) do
+		local h = hrpOf(m)
+		if h and isHunting(m) then
+			local base = h.Position - Vector3.new(0, 3, 0)
+			local top = (TALL[m:GetAttribute("Monster")] or 9)
+			local t = (base - origin):Dot(dir)
+			if t > 0 and t < range then
+				local p = origin + dir * t
+				local horiz = Vector2.new(p.X - base.X, p.Z - base.Z).Magnitude
+				if horiz < 2.6 and p.Y > base.Y - 1 and p.Y < base.Y + top and (not bestT or t < bestT) then best, bestT = m, t end
+			end
+		end
+	end
+	return best, bestT
+end
+
+local fireReady = {}
+local function useHeld(p, dir)
+	if not isHunting(p) or p:GetAttribute("Role") ~= "Survivor" then return end
+	local c = p.Character
+	local tool = c and c:FindFirstChildOfClass("Tool")
+	local id = tool and tool:GetAttribute("ItemId")
+	local def = id and ITEMS[id]
+	local head = c and c:FindFirstChild("Head")
+	if not def or not head then return end
+	local t = now()
+	if t < (fireReady[p] or 0) then return end
+	fireReady[p] = t + (def.rate or 0.6)
+	if typeof(dir) ~= "Vector3" or dir.Magnitude < 0.5 then dir = hrpOf(p).CFrame.LookVector end
+	dir = dir.Unit
+	if def.type == "use" then
+		local hum = humOf(p)
+		if def.hp then hum.Health = math.min(hum.MaxHealth, hum.Health + def.hp) end
+		if def.stam then F(p).stamina = math.min(100, (F(p).stamina or 0) + def.stam) end
+		if def.boost then F(p).boostUntil = t + def.boost end
+		local n = tool:GetAttribute("Count") - 1
+		if n <= 0 then tool:Destroy() else tool:SetAttribute("Count", n); tool.Name = def.name .. (n > 1 and (" x" .. n) or "") end
+		sfxAll((id == "water" or id == "soda" or id == "energy") and "drink" or "eat", head.Position)
+		return
+	end
+	if def.type == "melee" then
+		sfxAll("swing", head.Position)
+		local h = hrpOf(p)
+		for _, m in ipairs(monsters()) do
+			local mh = hrpOf(m)
+			if mh and isHunting(m) then
+				local v = mh.Position - h.Position
+				local flat = Vector3.new(v.X, 0, v.Z)
+				if flat.Magnitude < def.range + 2 and (flat.Magnitude < 3 or flat.Unit:Dot(Vector3.new(dir.X, 0, dir.Z).Unit) > 0.35) then
+					hurtMonster(m, def.dmg, p, def.stun)
+					sfxAll("hit", mh.Position)
+					break
+				end
+			end
+		end
+		return
+	end
+	-- guns: raycast against the world, then test monster bodies along the ray
+	local key = "Ammo_" .. def.ammo
+	local ammo = p:GetAttribute(key) or 0
+	if ammo <= 0 then Notify:FireClient(p, "sfx", "dry", head.Position); return end
+	p:SetAttribute(key, ammo - 1)
+	sfxAll(id, head.Position)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ex = {}
+	for _, pl in ipairs(Players:GetPlayers()) do if pl.Character then table.insert(ex, pl.Character) end end
+	params.FilterDescendantsInstances = ex
+	local origin = head.Position
+	for _ = 1, (def.pellets or 1) do
+		local spread = def.spread or 0.03
+		local d = (dir + Vector3.new((math.random() - 0.5) * spread * 2, (math.random() - 0.5) * spread * 2, (math.random() - 0.5) * spread * 2)).Unit
+		local wall = workspace:Raycast(origin, d * def.range, params)
+		local wallT = wall and (wall.Position - origin).Magnitude or def.range
+		local m, mt = rayHitsMonster(origin, d, wallT)
+		tracer(origin + d * 1.5, origin + d * (mt or wallT))
+		if m then hurtMonster(m, def.dmg, p, def.stun) end
+	end
+end
+
+-- beds: hold the prompt to sleep and heal; moving / jumping / the prompt again wakes you
+local sleepers = {}
+local function wake(p)
+	local sl = sleepers[p]
+	if not sl then return end
+	sleepers[p] = nil
+	p:SetAttribute("Sleeping", false)
+	local h = hrpOf(p)
+	if h then h.Anchored = false; p.Character:PivotTo(CFrame.new(sl.back)) end
+	local hum = humOf(p)
+	if hum then hum.PlatformStand = false end
+end
+local function setupBeds(list)
+	for _, bed in ipairs(list) do
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Sleep (heal)"
+		prompt.ObjectText = "Bed"
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.HoldDuration = 0.5
+		prompt.MaxActivationDistance = 8
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = bed
+		prompt.Triggered:Connect(function(p)
+			if sleepers[p] then wake(p); return end
+			if not isHunting(p) or p:GetAttribute("Role") ~= "Survivor" then return end
+			for _, sl in pairs(sleepers) do if sl.bed == bed then toast(p, "Someone is already sleeping here."); return end end
+			local h = hrpOf(p)
+			sleepers[p] = { bed = bed, back = h.Position + Vector3.new(0, 1, 0), t = now() }
+			p:SetAttribute("Sleeping", true)
+			h.Anchored = true
+			humOf(p).PlatformStand = true
+			p.Character:PivotTo(bed.CFrame * CFrame.new(0, 1.4, 0) * CFrame.Angles(math.rad(-90), 0, 0))
+			toast(p, "You lie down... resting heals you. Move or press E to wake up.")
+		end)
+	end
+end
+
+-- survivor customization (lobby locker), saved in a DataStore with pcall
+local profileStore
+pcall(function() profileStore = DataStoreService:GetDataStore("NightHuntProfile_v1") end)
+local function cleanProfile(d)
+	d = type(d) == "table" and d or {}
+	local look = type(d.look) == "table" and d.look or {}
+	local function n(v, m) return math.clamp(math.floor(tonumber(v) or 1), 1, m) end
+	local owned = {}
+	if type(d.owned) == "table" then for _, k in ipairs(d.owned) do if type(k) == "string" then owned[k] = true end end end
+	local function have(cat, k) return k == "none" or k == "classic" or owned[cat .. ":" .. tostring(k)] end
+	local out = {
+		coins = math.max(0, math.floor(tonumber(d.coins) or 0)),
+		owned = owned,
+		look = { sk = n(look.sk, #Config.SKIN_TONES), hc = n(look.hc, #Config.HAIR_COLORS), hs = n(look.hs, 4),
+			top = n(look.top, #Config.CLOTHES), pants = n(look.pants or 8, #Config.CLOTHES),
+			hat = (type(look.hat) == "string" and Config.SHOP.hat[look.hat] and have("hat", look.hat)) and look.hat or "none",
+			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none" },
+		pref = (type(d.pref) == "string" and Config.MONSTERS[d.pref]) and d.pref or "",
+		skin = (type(d.skin) == "string" and Config.SHOP.skin[d.skin] and have("skin", d.skin)) and d.skin or "classic",
+	}
+	return out
+end
+local function publishProfile(p)
+	local pr = profiles[p]
+	if not pr then return end
+	local owned = {}
+	for k in pairs(pr.owned) do table.insert(owned, k) end
+	p:SetAttribute("Coins", pr.coins)
+	p:SetAttribute("Profile", HttpService:JSONEncode({ coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }))
+end
+local function saveProfile(p)
+	local pr = profiles[p]
+	if not pr or not profileStore then return end
+	local owned = {}
+	for k in pairs(pr.owned) do table.insert(owned, k) end
+	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }) end)
+end
+local function loadProfile(p)
+	local data
+	if profileStore then pcall(function() data = profileStore:GetAsync("u" .. p.UserId) end) end
+	if data and type(data.owned) == "table" then -- stored as a list
+		local list = data.owned
+		data.owned = list
+	end
+	profiles[p] = cleanProfile(data)
+	publishProfile(p)
+end
+
+local HAT_BUILD = {
+	cap = { Vector3.new(1.3, 0.45, 1.3), Vector3.new(0, 0.65, 0), Color3.fromRGB(200, 40, 40) },
+	beanie = { Vector3.new(1.3, 0.7, 1.3), Vector3.new(0, 0.6, 0), Color3.fromRGB(60, 90, 160), true },
+	hardhat = { Vector3.new(1.5, 0.55, 1.5), Vector3.new(0, 0.7, 0), Color3.fromRGB(250, 200, 30), true },
+	cowboy = { Vector3.new(2.4, 0.15, 2.4), Vector3.new(0, 0.6, 0), Color3.fromRGB(140, 95, 50) },
+	headphones = { Vector3.new(1.5, 0.3, 0.3), Vector3.new(0, 0.6, 0), Color3.fromRGB(20, 20, 24) },
+	bunny = { Vector3.new(0.3, 1.4, 0.15), Vector3.new(0.3, 1.2, 0), Color3.fromRGB(250, 230, 240) },
+	crown = { Vector3.new(1.2, 0.5, 1.2), Vector3.new(0, 0.85, 0), Color3.fromRGB(255, 200, 40) },
+}
+local ACC_BUILD = {
+	glasses = { Vector3.new(1.1, 0.25, 0.1), Vector3.new(0, 0.1, -0.6), Color3.fromRGB(15, 15, 15) },
+	scarf = { Vector3.new(1.4, 0.4, 1.4), Vector3.new(0, -0.7, 0), Color3.fromRGB(180, 40, 40) },
+	mask = { Vector3.new(1.05, 0.5, 0.1), Vector3.new(0, -0.25, -0.6), Color3.fromRGB(230, 230, 230) },
+	goggles = { Vector3.new(1.25, 0.35, 0.2), Vector3.new(0, 0.15, -0.6), Color3.fromRGB(60, 160, 200) },
+}
+local function applyLook(p)
+	local pr = profiles[p]
+	local c = p.Character
+	if not pr or not c then return end
+	local L = pr.look
+	local skin, top, pants = Config.SKIN_TONES[L.sk], Config.CLOTHES[L.top], Config.CLOTHES[L.pants]
+	for _, d in ipairs(c:GetChildren()) do
+		if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Accessory") then d:Destroy() end
+		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
+			local n = d.Name
+			if n == "Head" or n:find("Hand") then d.Color = skin
+			elseif n:find("Torso") or n:find("UpperArm") or n:find("LowerArm") or n:find("Arm") then d.Color = top
+			elseif n:find("Leg") or n:find("Foot") then d.Color = pants end
+		end
+	end
+	local head = c:FindFirstChild("Head")
+	if not head then return end
+	local function stick(name, size, off, color, ball, mat)
+		local x = Instance.new("Part")
+		x.Name = name
+		x.CanCollide, x.Massless, x.CanQuery = false, true, false
+		x.Size, x.Color = size, color
+		x.Material = mat or Enum.Material.SmoothPlastic
+		if ball then x.Shape = Enum.PartType.Ball end
+		x.CFrame = head.CFrame * CFrame.new(off)
+		local w = Instance.new("WeldConstraint"); w.Part0 = head; w.Part1 = x; w.Parent = x
+		x.Parent = c
+		return x
+	end
+	local hair = Config.HAIR_COLORS[L.hc]
+	if L.hs == 1 then stick("NH_Hair", Vector3.new(1.25, 0.5, 1.25), Vector3.new(0, 0.45, 0.05), hair, true, Enum.Material.Fabric)
+	elseif L.hs == 2 then stick("NH_Hair", Vector3.new(1.3, 0.6, 1.3), Vector3.new(0, 0.4, 0.05), hair, true, Enum.Material.Fabric); stick("NH_Hair2", Vector3.new(1.2, 1.4, 0.4), Vector3.new(0, -0.3, 0.55), hair, false, Enum.Material.Fabric)
+	elseif L.hs == 3 then stick("NH_Hair", Vector3.new(1.25, 0.5, 1.25), Vector3.new(0, 0.45, 0.05), hair, true, Enum.Material.Fabric); stick("NH_Bun", Vector3.new(0.6, 0.6, 0.6), Vector3.new(0, 0.6, 0.55), hair, true, Enum.Material.Fabric)
+	else stick("NH_Hair", Vector3.new(1.2, 0.3, 1.2), Vector3.new(0, 0.5, 0.02), hair, true, Enum.Material.Sand) end
+	local hb = HAT_BUILD[L.hat]
+	if hb then
+		stick("NH_Hat", hb[1], hb[2], hb[3], hb[4])
+		if L.hat == "cowboy" then stick("NH_Hat2", Vector3.new(1.2, 0.7, 1.2), Vector3.new(0, 0.95, 0), hb[3]) end
+		if L.hat == "cap" then stick("NH_Hat2", Vector3.new(1, 0.1, 0.7), Vector3.new(0, 0.5, -0.8), hb[3]) end
+		if L.hat == "bunny" then stick("NH_Hat2", hb[1], Vector3.new(-0.3, 1.2, 0), hb[3]) end
+		if L.hat == "headphones" then for _, x in ipairs({ -0.7, 0.7 }) do stick("NH_Hat3", Vector3.new(0.3, 0.6, 0.6), Vector3.new(x, 0, 0), hb[3]) end end
+	end
+	local ab = ACC_BUILD[L.acc]
+	if ab then stick("NH_Acc", ab[1], ab[2], ab[3], false, L.acc == "goggles" and Enum.Material.Glass or nil) end
 end
 
 ---------------------------------------------------------------------------
@@ -635,13 +1287,54 @@ end
 
 local function catchSurvivor(victim, monster)
 	if not isHunting(victim) then return end
+	wake(victim)
 	victim:SetAttribute("Alive", false)
 	local kind = monster and monster:GetAttribute("Monster") or ""
 	local mname = Config.MONSTERS[kind] and Config.MONSTERS[kind].name or "the dark"
-	Notify:FireClient(victim, "jumpscare", kind)
+	Notify:FireClient(victim, "jumpscare", kind, monster and monster:GetAttribute("Form") or 1)
+	-- everyone nearby sees the catch: the victim is animated in the world per monster, then vanishes
+	local vh, mh = hrpOf(victim), monster and hrpOf(monster)
+	if vh then
+		Notify:FireAllClients("scare", victim.UserId, kind, vh.Position)
+		if monster then Notify:FireClient(monster, "kill", kind, victim.UserId, victim.DisplayName) end -- the catcher sees the kill from its own view
+		task.spawn(function()
+			vh.Anchored = true
+			local c0 = vh.CFrame
+			local toM = mh and Vector3.new(mh.Position.X - c0.X, 0, mh.Position.Z - c0.Z) or Vector3.zero
+			local blood = Instance.new("Part") -- teen-level blood mark on the ground (clients hide it when Blood effects are off)
+			blood.Name = "NH_Blood"
+			blood.Shape = Enum.PartType.Cylinder
+			blood.Size = Vector3.new(0.1, 5, 5)
+			blood.CFrame = CFrame.new(c0.Position - Vector3.new(0, 2.9, 0)) * CFrame.Angles(0, 0, math.rad(90))
+			blood.Color = Color3.fromRGB(110, 8, 10)
+			blood.Material = Enum.Material.SmoothPlastic
+			blood.Anchored, blood.CanCollide, blood.CanQuery, blood.CanTouch = true, false, false, false
+			blood.Parent = roundFolder or workspace
+			Debris:AddItem(blood, 25)
+			local saved = {}
+			local t0 = os.clock()
+			while os.clock() - t0 < 2 and vh.Parent and victim.Character do
+				local e = os.clock() - t0
+				local cf
+				if kind == "sirenhead" then cf = c0 + Vector3.new(0, math.min(22, e * 12), 0)
+				elseif kind == "cartooncat" then cf = c0 + toM * math.min(0.8, e * 0.6) + Vector3.new(0, math.min(4, e * 3), 0)
+					pcall(function() victim.Character:ScaleTo(1 + e * 0.5) end)
+				elseif kind == "monochrome" then cf = c0
+					for _, d in ipairs(victim.Character:GetDescendants()) do if d:IsA("BasePart") and d ~= vh then if saved[d] == nil then saved[d] = d.Transparency end; d.Transparency = math.max(d.Transparency, e / 1.8) end end
+				elseif kind == "locust" then cf = c0 * CFrame.new((math.random() - 0.5) * 0.6, 0, (math.random() - 0.5) * 0.6) * CFrame.Angles(0, 0, (math.random() - 0.5) * 0.5)
+				else cf = (c0 + toM * math.min(0.7, e * 0.6)) * CFrame.Angles(-math.min(1.3, e * 1.4), 0, 0) end
+				vh.CFrame = cf
+				task.wait()
+			end
+			if vh.Parent then vh.Anchored = false end
+			task.wait(0.4)
+			for d, v in pairs(saved) do if d.Parent then d.Transparency = v end end
+		end)
+	end
 	toast(nil, ("%s was caught by %s!"):format(victim.DisplayName, mname))
-	if monster then monster:SetAttribute("Catches", (monster:GetAttribute("Catches") or 0) + 1) end
+	if monster then monster:SetAttribute("Catches", (monster:GetAttribute("Catches") or 0) + 1); addCoins(monster, Config.EARN.catch, "Caught a survivor") end
 	task.delay(2.2, function()
+		if victim.Parent and victim.Character then pcall(function() victim.Character:ScaleTo(1) end) end
 		if victim.Parent then sendToLobby(victim) end
 	end)
 end
@@ -703,11 +1396,19 @@ local function placeInMap(p)
 	if role == "Monster" then
 		local sp = currentMap.monsterSpawns[math.random(1, #currentMap.monsterSpawns)]
 		c:PivotTo(CFrame.lookAt(sp, Config.MAP_ORIGIN + Vector3.new(0, 4, 0)))
-		Models.morph(c, p:GetAttribute("Monster"))
+		Models.morph(c, p:GetAttribute("Monster"), profiles[p] and profiles[p].skin)
+		p:SetAttribute("Form", 1)
+		F(p).formAt = now() + Config.DN_PERIOD
+		p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
+		p:SetAttribute("MonsterMaxHp", Config.MON_HP)
+		if p:GetAttribute("MonsterHp") == nil then p:SetAttribute("MonsterHp", Config.MON_HP) end
 	else
 		local sp = currentMap.spawns[math.random(1, #currentMap.spawns)]
 		c:PivotTo(CFrame.new(sp))
 		giveFlashlight(p)
+		applyLook(p)
+		local hum = humOf(p)
+		if hum then hum.MaxHealth = 100; hum.Health = 100; hum.BreakJointsOnDeath = false end
 	end
 end
 
@@ -722,6 +1423,16 @@ local function endRound(reason)
 		if s:GetAttribute("Escaped") then table.insert(escaped, s.DisplayName)
 		elseif s:GetAttribute("Alive") then table.insert(survived, s.DisplayName)
 		else table.insert(caught, s.DisplayName) end
+	end
+	for _, s in ipairs(survivors(false)) do
+		wake(s)
+		if s:GetAttribute("Escaped") then addCoins(s, Config.EARN.escape, "Escaped") elseif s:GetAttribute("Alive") then addCoins(s, Config.EARN.survive, "Survived") end
+	end
+	for _, m in ipairs(monsters()) do addCoins(m, Config.EARN.monster, "Hunted") end
+	for _, p in ipairs(Players:GetPlayers()) do
+		local n = p:GetAttribute("RoundCoins") or 0
+		if n > 0 then Notify:FireClient(p, "toast", ("+%d coins this round"):format(n)) end
+		task.spawn(saveProfile, p)
 	end
 	local headline
 	if #escaped + #survived > 0 then headline = "SURVIVORS WIN" else headline = "MONSTERS WIN" end
@@ -740,6 +1451,7 @@ local function endRound(reason)
 		if token ~= roundToken then return end
 		cleanupRound()
 		for _, p in ipairs(Players:GetPlayers()) do
+			clearGear(p)
 			resetPlayer(p)
 			p:SetAttribute("Catches", 0)
 			task.spawn(function() p:LoadCharacter() end)
@@ -762,7 +1474,7 @@ local function startRound(starter)
 	roundToken += 1
 	local token = roundToken
 	cleanupRound()
-	local theme = Config.THEMES[math.random(1, #Config.THEMES)]
+	local theme = math.random() < 0.5 and Config.MAIN_THEME or Config.THEMES[math.random(1, #Config.THEMES)]
 	setState("Theme", theme)
 	setState("State", "Flight")
 	setState("TimeLeft", Config.FLIGHT_TIME)
@@ -771,6 +1483,9 @@ local function startRound(starter)
 	roundFolder.Name = "Round"
 	currentMap = MapGen.generate(theme, math.random(1, 1e9))
 	currentMap.model.Parent = roundFolder
+	spawnLoot(currentMap.loot or {})
+	setupBeds(currentMap.beds or {})
+	sleepers = {}
 	setState("FogEnd", currentMap.fog)
 	setState("FogColor", currentMap.fogColor)
 	roundFolder.Parent = workspace
@@ -778,10 +1493,14 @@ local function startRound(starter)
 	local isMonster = pickRoles(list)
 	local kinds = table.clone(Config.MONSTER_KEYS)
 	for _, p in ipairs(list) do
+		clearGear(p)
 		resetPlayer(p)
 		p:SetAttribute("Catches", 0)
 		if isMonster[p] then
-			local k = table.remove(kinds, math.random(1, #kinds))
+			-- the monster the player picked in the lobby locker, if nobody else already has it
+			local want = profiles[p] and profiles[p].pref or ""
+			local idx = table.find(kinds, want) or math.random(1, #kinds)
+			local k = table.remove(kinds, idx)
 			p:SetAttribute("Role", "Monster")
 			p:SetAttribute("Monster", k)
 			cooldowns[p] = now() + Config.FLIGHT_TIME + 5
@@ -799,7 +1518,7 @@ local function startRound(starter)
 			if p:GetAttribute("Role") ~= "" then placeInMap(p) end
 		end
 		setState("State", "Hunt")
-		setState("TimeLeft", Config.ROUND_TIME)
+		setState("TimeLeft", settings.roundLen)
 		toast(nil, "Survive until the extraction helicopter arrives!")
 		-- countdown
 		task.spawn(function()
@@ -808,7 +1527,7 @@ local function startRound(starter)
 				if token ~= roundToken or State:GetAttribute("State") ~= "Hunt" then break end
 				local t = State:GetAttribute("TimeLeft") - 1
 				setState("TimeLeft", t)
-				if t == Config.EXTRACT_AT then openExtraction() end
+				if t == math.min(Config.EXTRACT_AT, settings.roundLen - 30) then openExtraction() end
 				if t <= 0 then endRound("Dawn breaks - time is up."); break end
 			end
 		end)
@@ -836,12 +1555,25 @@ RunService.Heartbeat:Connect(function(dt)
 			if st == "Hunt" and p:GetAttribute("Role") == "Monster" and isHunting(p) then
 				local def = Config.MONSTERS[p:GetAttribute("Monster")]
 				speed = def and def.speed or 19
-				if f.dashUntil and t < f.dashUntil then speed *= 2.6 end
+				if f.dashUntil and t < f.dashUntil then speed *= (p:GetAttribute("Monster") == "sonicexe") and 1.9 or 2.6 end
 				canSprint = false
+				if p:GetAttribute("Monster") == "drnowhere" and f.formAt and t >= f.formAt then
+					setDnForm(p, (p:GetAttribute("Form") or 1) % #Config.DN_FORMS + 1)
+					p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
+				end
+				if (f.downUntil and t < f.downUntil) or (f.stunUntil and t < f.stunUntil) then frozen = true end
+				local down = f.downUntil ~= nil and t < f.downUntil
+				if p:GetAttribute("Down") ~= down then p:SetAttribute("Down", down) end
 			elseif st == "Hunt" and isHunting(p) then
 				if f.greyUntil and t < f.greyUntil then canSprint = false end
 				if f.slowUntil and t < f.slowUntil then speed *= 0.5 end
 				if (f.stunUntil and t < f.stunUntil) or (f.rootUntil and t < f.rootUntil) then frozen = true end
+				if f.boostUntil and t < f.boostUntil then speed *= 1.15 end
+				if sleepers[p] and hum.MoveDirection.Magnitude > 0.1 and t - sleepers[p].t > 1 then wake(p) end
+				if sleepers[p] then
+					hum.Health = math.min(hum.MaxHealth, hum.Health + 6 * step)
+					f.stamina = math.min(100, f.stamina + 20 * step)
+				end
 			end
 			local moving = hum.MoveDirection.Magnitude > 0.1
 			if f.sprint and canSprint and moving and f.stamina > 0 and not frozen then
@@ -870,15 +1602,21 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 
 	if st ~= "Hunt" then return end
-	-- catches
+	-- monster attacks: hits that deal damage (armor absorbs some); a downed / stunned monster can't attack
 	for _, m in ipairs(monsters()) do
 		local mh = hrpOf(m)
-		if mh and isHunting(m) then
-			local f = F(m)
-			local reach = Config.CATCH_REACH * ((f.reachUntil and t < f.reachUntil) and 3 or 1)
+		local f = F(m)
+		if mh and isHunting(m) and not (f.downUntil and t < f.downUntil) and not (f.stunUntil and t < f.stunUntil) and t >= (f.nextHit or 0) then
+			local reach = Config.CATCH_REACH + ((TALL[m:GetAttribute("Monster")] or 9) > 12 and 2 or 0)
 			for _, s in ipairs(survivors(true)) do
 				local sh = hrpOf(s)
-				if sh and (sh.Position - mh.Position).Magnitude <= reach then catchSurvivor(s, m) end
+				if sh and (Vector3.new(sh.Position.X, 0, sh.Position.Z) - Vector3.new(mh.Position.X, 0, mh.Position.Z)).Magnitude <= reach then
+					if sleepers[s] then wake(s) end
+					hurtSurvivor(s, Config.MON_DMG, m)
+					sfxAll("hit", sh.Position)
+					f.nextHit = t + Config.MON_HIT_RATE
+					break
+				end
 			end
 		end
 	end
@@ -935,6 +1673,7 @@ local function onPlayerAdded(p)
 	resetPlayer(p)
 	p:SetAttribute("Catches", 0)
 	p:SetAttribute("Boarded", false)
+	task.spawn(loadProfile, p)
 
 	if State:GetAttribute("Mode") == "Match" then
 		local jd = p:GetJoinData()
@@ -966,7 +1705,7 @@ local function onPlayerAdded(p)
 		if not hum then return end
 		hum.Died:Connect(function()
 			if State:GetAttribute("State") == "Hunt" and p:GetAttribute("Role") == "Survivor" and isHunting(p) then
-				catchSurvivor(p, nil)
+				catchSurvivor(p, lastHitBy[p])
 			end
 		end)
 		-- a monster that died (e.g. fell) respawns back into the hunt
@@ -980,6 +1719,11 @@ Players.PlayerAdded:Connect(onPlayerAdded)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayerAdded, p) end
 
 Players.PlayerRemoving:Connect(function(p)
+	saveProfile(p)
+	profiles[p] = nil
+	sleepers[p] = nil
+	lastHitBy[p] = nil
+	fireReady[p] = nil
 	fx[p] = nil
 	cooldowns[p] = nil
 	if monsterTraps[p] then for _, tr in ipairs(monsterTraps[p]) do tr:Destroy() end end
@@ -1010,6 +1754,47 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		if not p:GetAttribute("LightsOut") then
 			for _, l in ipairs(fl:GetChildren()) do if l:IsA("SpotLight") then l.Enabled = on end end
 		end
+	elseif kind == "fire" then
+		useHeld(p, data)
+	elseif kind == "wake" then
+		wake(p)
+	elseif kind == "buy" or kind == "equip" then
+		-- lobby shop / locker: in-game coins only (no Robux, no real money)
+		local pr = profiles[p]
+		if not pr or type(data) ~= "table" then return end
+		local cat, id = data.cat, data.id
+		if (cat ~= "hat" and cat ~= "acc" and cat ~= "skin") or type(id) ~= "string" then return end
+		local free = id == "none" or id == "classic"
+		local price = Config.SHOP[cat][id]
+		if not free and not price then return end
+		local key = cat .. ":" .. id
+		if kind == "buy" and not free and not pr.owned[key] then
+			if pr.coins < price then toast(p, "Not enough coins."); return end
+			pr.coins -= price
+			pr.owned[key] = true
+			toast(p, "Bought " .. id .. "!")
+		end
+		if free or pr.owned[key] then
+			if cat == "skin" then pr.skin = id else pr.look[cat] = id end
+		end
+		publishProfile(p)
+		task.spawn(saveProfile, p)
+	elseif kind == "look" then
+		local pr = profiles[p]
+		if not pr or type(data) ~= "table" then return end
+		for _, k in ipairs({ "sk", "hc", "hs", "top", "pants" }) do
+			if data[k] ~= nil then
+				local c = cleanProfile({ look = { [k] = data[k] } }).look[k]
+				pr.look[k] = c
+			end
+		end
+		publishProfile(p)
+	elseif kind == "pref" then
+		local pr = profiles[p]
+		if not pr then return end
+		pr.pref = (type(data) == "string" and Config.MONSTERS[data]) and data or ""
+		publishProfile(p)
+		task.spawn(saveProfile, p)
 	elseif kind == "start" then
 		if State:GetAttribute("Mode") ~= "Match" then return end
 		if p.UserId ~= settings.hostId then toast(p, "Only the host can take off."); return end
@@ -1022,6 +1807,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 			settings.max = m
 		end
 		if data.public ~= nil then settings.public = data.public == true end
+		if data.roundLen ~= nil and table.find(Config.ROUND_LENGTHS, tonumber(data.roundLen)) then settings.roundLen = tonumber(data.roundLen) end
 		publishSettings()
 		updateRegistry()
 	end
@@ -1144,6 +1930,7 @@ task.spawn(function()
 end)
 
 game:BindToClose(function()
+	for _, p in ipairs(Players:GetPlayers()) do saveProfile(p) end
 	if registry and settings.code ~= "" and CAN_TELEPORT then
 		pcall(function() registry:RemoveAsync(settings.code) end)
 	end
@@ -1177,6 +1964,13 @@ local function part(parent, size, cf, color, mat, opts)
 end
 
 local THEME = {
+	["Powerline Forest"] = {
+		ground = Color3.fromRGB(34, 48, 28), groundMat = Enum.Material.Grass, terrain = Enum.Material.LeafyGrass, patch = Enum.Material.Mud,
+		wall = Color3.fromRGB(96, 78, 60), wallMat = Enum.Material.WoodPlanks,
+		floor = Color3.fromRGB(70, 52, 36), floorMat = Enum.Material.Wood,
+		buildings = 6, trees = 170, hides = 30, fog = 70, pines = true, powerlines = true, hills = 22,
+		lamp = Color3.fromRGB(255, 170, 90), fogColor = Color3.fromRGB(24, 30, 30),
+	},
 	["Abandoned Pizzeria Town"] = {
 		ground = Color3.fromRGB(45, 42, 40), groundMat = Enum.Material.Asphalt, terrain = Enum.Material.Asphalt, patch = Enum.Material.Ground,
 		wall = Color3.fromRGB(110, 70, 60), wallMat = Enum.Material.Brick,
@@ -1201,50 +1995,270 @@ local THEME = {
 }
 MapGen.THEME = THEME
 
--- A box building with walls, a roof, and a doorway on one random side.
-local function building(parent, t, center, w, d, rng)
-	local h = 14
+-- Every building is either a HOUSE (enterable rooms with furniture, a bed to sleep in, a TV) or a
+-- FACILITY (warehouse / lab / industrial). Returns the model plus beds, TVs and loot spots inside.
+local function wallSide(b, s, h, wallT, color, mat, doorW)
+	local function seg(len, offset)
+		if len <= 0.1 then return end
+		local size = s.axis == "x" and Vector3.new(len, h, wallT) or Vector3.new(wallT, h, len)
+		local shift = s.axis == "x" and Vector3.new(offset, 0, 0) or Vector3.new(0, 0, offset)
+		part(b, size, s.cf + shift, color, mat, { name = "Wall" })
+	end
+	if doorW then
+		local half = (s.len - doorW) / 2
+		seg(half, -(doorW / 2 + half / 2))
+		seg(half, doorW / 2 + half / 2)
+		local lintel = s.axis == "x" and Vector3.new(doorW, h - 8, wallT) or Vector3.new(wallT, h - 8, doorW)
+		part(b, lintel, s.cf + Vector3.new(0, 4, 0), color, mat, { name = "Wall" })
+	else
+		seg(s.len, 0)
+	end
+end
+
+-- the Locust's "friendly" broadcast: old floral wallpaper, a tall black figure with a pale stretched face
+function MapGen.locustScreen(screenPart, face)
+	local g = Instance.new("SurfaceGui")
+	g.Face = face or Enum.NormalId.Front
+	g.CanvasSize = Vector2.new(320, 200)
+	g.LightInfluence = 0
+	g.Brightness = 1.6
+	g.Name = "LocustScreen"
+	g.Parent = screenPart
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.fromScale(1, 1)
+	bg.BackgroundColor3 = Color3.fromRGB(120, 100, 60)
+	bg.BorderSizePixel = 0
+	bg.Parent = g
+	for i = 0, 9 do -- faded vertical wallpaper stripes with little flowers
+		local st = Instance.new("Frame")
+		st.Size = UDim2.new(0, 14, 1, 0)
+		st.Position = UDim2.fromOffset(i * 34 + 6, 0)
+		st.BackgroundColor3 = Color3.fromRGB(150, 128, 80)
+		st.BorderSizePixel = 0
+		st.Parent = bg
+		for j = 0, 4 do
+			local fl = Instance.new("Frame")
+			fl.Size = UDim2.fromOffset(8, 8)
+			fl.Position = UDim2.fromOffset(i * 34 + 23, j * 44 + (i % 2) * 20)
+			fl.BackgroundColor3 = Color3.fromRGB(150, 70, 60)
+			fl.BorderSizePixel = 0
+			Instance.new("UICorner", fl).CornerRadius = UDim.new(1, 0)
+			fl.Parent = bg
+		end
+	end
+	local function blob(x, y, w, h, c, r)
+		local f = Instance.new("Frame")
+		f.Size = UDim2.fromOffset(w, h)
+		f.Position = UDim2.fromOffset(x - w / 2, y - h / 2)
+		f.BackgroundColor3 = c
+		f.BorderSizePixel = 0
+		Instance.new("UICorner", f).CornerRadius = UDim.new(r or 0.5, 0)
+		f.Parent = bg
+		return f
+	end
+	blob(160, 170, 70, 140, Color3.fromRGB(8, 8, 10), 0.3)   -- body
+	blob(160, 66, 52, 78, Color3.fromRGB(8, 8, 10))          -- head
+	blob(161, 66, 38, 62, Color3.fromRGB(150, 145, 140))     -- pale face
+	blob(152, 58, 9, 15, Color3.new(0, 0, 0))                -- hollow eyes
+	blob(170, 57, 10, 17, Color3.new(0, 0, 0))
+	blob(162, 84, 9, 10, Color3.new(0, 0, 0))                -- open mouth
+	for k = 0, 2 do blob(160, 50 + k * 18, 62, 5, Color3.fromRGB(34, 35, 40), 1) end -- tubes around the head
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.Size = UDim2.new(1, 0, 0, 26)
+	t.Position = UDim2.new(0, 0, 1, -28)
+	t.Font = Enum.Font.Cartoon
+	t.TextScaled = true
+	t.TextColor3 = Color3.fromRGB(255, 240, 220)
+	t.TextStrokeTransparency = 0.4
+	t.Text = "come play with me!"
+	t.Parent = bg
+	for k = 0, 12 do -- scanlines
+		local l = Instance.new("Frame")
+		l.Size = UDim2.new(1, 0, 0, 2)
+		l.Position = UDim2.fromOffset(0, k * 16)
+		l.BackgroundColor3 = Color3.new(0, 0, 0)
+		l.BackgroundTransparency = 0.75
+		l.BorderSizePixel = 0
+		l.Parent = bg
+	end
+	return g
+end
+
+local function building(parent, t, center, w, d, rng, kind)
+	local isHouse = kind == "house"
+	local h = isHouse and 12 or 18
 	local wallT = 1
-	local doorW = 7
+	local doorW = isHouse and 6 or 10
 	local doorSide = rng:NextInteger(1, 4)
+	local wallColor = isHouse and t.wall or Color3.fromRGB(105, 110, 112)
+	local wallMat = isHouse and t.wallMat or (kind == "lab" and Enum.Material.Concrete or Enum.Material.CorrodedMetal)
 	local b = Instance.new("Model")
-	b.Name = "Building"
+	b.Name = isHouse and "House" or ("Facility_" .. kind)
 	b.Parent = parent
-	part(b, Vector3.new(w, 0.4, d), CFrame.new(center + Vector3.new(0, 0.2, 0)), t.floor, t.floorMat)
-	part(b, Vector3.new(w + 2, 1, d + 2), CFrame.new(center + Vector3.new(0, h + 0.5, 0)), t.wall, t.wallMat)
+	local out = { beds = {}, tvs = {}, loot = {} }
+	part(b, Vector3.new(w, 0.4, d), CFrame.new(center + Vector3.new(0, 0.2, 0)), isHouse and t.floor or Color3.fromRGB(70, 72, 74), isHouse and t.floorMat or Enum.Material.Concrete, { name = "Floor" })
+	if isHouse then -- pitched roof from two wedges
+		local rw = Vector3.new(w + 2, 4, d / 2 + 1)
+		local r1 = part(b, rw, CFrame.new(center + Vector3.new(0, h + 2, -d / 4)), Color3.fromRGB(70, 40, 34), Enum.Material.Slate, { name = "Roof" })
+		local r2 = part(b, rw, CFrame.new(center + Vector3.new(0, h + 2, d / 4)) * CFrame.Angles(0, math.pi, 0), Color3.fromRGB(70, 40, 34), Enum.Material.Slate, { name = "Roof" })
+		for _, r in ipairs({ r1, r2 }) do
+			local wedge = Instance.new("WedgePart")
+			wedge.Anchored, wedge.Size, wedge.CFrame, wedge.Color, wedge.Material, wedge.Name = true, r.Size, r.CFrame, r.Color, r.Material, "Roof"
+			wedge.Parent = b
+			r:Destroy()
+		end
+		part(b, Vector3.new(w, 0.4, d), CFrame.new(center + Vector3.new(0, h, 0)), Color3.fromRGB(200, 190, 170), Enum.Material.Plaster, { name = "Ceiling" })
+	else
+		part(b, Vector3.new(w + 2, 1, d + 2), CFrame.new(center + Vector3.new(0, h + 0.5, 0)), Color3.fromRGB(60, 62, 64), Enum.Material.DiamondPlate, { name = "Roof" })
+	end
 	local sides = {
 		{ len = w, cf = CFrame.new(center + Vector3.new(0, h / 2, -d / 2)), axis = "x" },
 		{ len = w, cf = CFrame.new(center + Vector3.new(0, h / 2, d / 2)), axis = "x" },
 		{ len = d, cf = CFrame.new(center + Vector3.new(-w / 2, h / 2, 0)), axis = "z" },
 		{ len = d, cf = CFrame.new(center + Vector3.new(w / 2, h / 2, 0)), axis = "z" },
 	}
-	for i, s in ipairs(sides) do
-		local function seg(len, offset)
-			if len <= 0.1 then return end
-			local size = s.axis == "x" and Vector3.new(len, h, wallT) or Vector3.new(wallT, h, len)
-			local shift = s.axis == "x" and Vector3.new(offset, 0, 0) or Vector3.new(0, 0, offset)
-			part(b, size, s.cf + shift, t.wall, t.wallMat)
+	for i, sd in ipairs(sides) do wallSide(b, sd, h, wallT, wallColor, wallMat, (i == doorSide or (not isHouse and i == (doorSide % 4) + 1)) and doorW or nil) end
+	-- interior divider with a doorway (two rooms)
+	wallSide(b, { len = d, cf = CFrame.new(center + Vector3.new(0, h / 2, 0)), axis = "z" }, h, 0.6, isHouse and Color3.fromRGB(150, 130, 110) or wallColor, isHouse and Enum.Material.Plaster or wallMat, isHouse and 5 or 9)
+	local function F(size, off, color, mat, name) return part(b, size, CFrame.new(center + off), color, mat or Enum.Material.Wood, { name = name or "Furniture" }) end
+	local qx, qz = w / 4, d / 4
+	if isHouse then
+		-- bedroom (left): bed you can sleep in, nightstand, wardrobe
+		local bedPos = Vector3.new(-qx, 0, -qz)
+		F(Vector3.new(5, 1.6, 8), bedPos + Vector3.new(0, 1.2, 0), Color3.fromRGB(90, 60, 40))
+		local mattress = F(Vector3.new(4.6, 0.8, 7.6), bedPos + Vector3.new(0, 2.4, 0), Color3.fromRGB(200, 195, 210), Enum.Material.Fabric, "Bed")
+		F(Vector3.new(4.4, 0.6, 1.6), bedPos + Vector3.new(0, 3.1, -2.8), Color3.fromRGB(240, 240, 240), Enum.Material.Fabric, "Pillow")
+		F(Vector3.new(4.8, 0.3, 4.4), bedPos + Vector3.new(0, 2.95, 1.5), Color3.fromRGB(120, 40, 50), Enum.Material.Fabric, "Blanket")
+		F(Vector3.new(5, 4, 0.6), bedPos + Vector3.new(0, 2.4, -4.2), Color3.fromRGB(80, 52, 34))
+		F(Vector3.new(2, 2.4, 2), bedPos + Vector3.new(3.8, 1.2, -3), Color3.fromRGB(90, 62, 42))
+		F(Vector3.new(5, 8, 2.4), Vector3.new(-qx, 4, qz + d / 8), Color3.fromRGB(75, 50, 32), nil, "Wardrobe")
+		table.insert(out.beds, mattress)
+		-- living room (right): sofa facing a TV that shows the Locust's broadcast, table, fridge
+		local tvBase = Vector3.new(qx, 0, -d / 2 + 2.2)
+		F(Vector3.new(6, 2.4, 2.4), tvBase + Vector3.new(0, 1.2, 0), Color3.fromRGB(60, 42, 30))
+		F(Vector3.new(5, 3.2, 0.6), tvBase + Vector3.new(0, 4.2, 0.2), Color3.fromRGB(20, 20, 22), Enum.Material.SmoothPlastic, "TVBody")
+		local screen = F(Vector3.new(4.5, 2.8, 0.1), tvBase + Vector3.new(0, 4.2, 0.55), Color3.fromRGB(20, 20, 22), Enum.Material.Glass, "TVScreen")
+		MapGen.locustScreen(screen, Enum.NormalId.Back)
+		local tl = Instance.new("SurfaceLight"); tl.Face = Enum.NormalId.Back; tl.Range = 12; tl.Brightness = 1.2; tl.Color = Color3.fromRGB(255, 220, 160); tl.Parent = screen
+		table.insert(out.tvs, screen.Position + Vector3.new(0, -2, 3))
+		F(Vector3.new(8, 2, 3), Vector3.new(qx, 1, qz - 1), Color3.fromRGB(110, 60, 50), Enum.Material.Fabric, "Sofa")
+		F(Vector3.new(8, 2.5, 1), Vector3.new(qx, 2.6, qz + 0.6), Color3.fromRGB(100, 54, 46), Enum.Material.Fabric, "Sofa")
+		F(Vector3.new(4, 1.6, 2.5), Vector3.new(qx, 0.8, -1), Color3.fromRGB(85, 60, 40), nil, "CoffeeTable")
+		F(Vector3.new(3, 7, 3), Vector3.new(w / 2 - 2.2, 3.5, d / 2 - 2.2), Color3.fromRGB(220, 222, 225), Enum.Material.SmoothPlastic, "Fridge")
+		-- a phone on the coffee table also shows the Locust
+		local phone = F(Vector3.new(0.6, 0.08, 1.1), Vector3.new(qx + 1, 1.65, -1), Color3.fromRGB(15, 15, 18), Enum.Material.SmoothPlastic, "Phone")
+		MapGen.locustScreen(phone, Enum.NormalId.Top)
+		table.insert(out.loot, { pos = center + Vector3.new(-qx + 3, 0, qz - 3), kind = "chest" })
+		table.insert(out.loot, { pos = center + Vector3.new(qx - 3, 0, 1.5), kind = "bag" })
+	else
+		local floorLit = kind == "lab" and Color3.fromRGB(190, 230, 255) or Color3.fromRGB(255, 200, 140)
+		if kind == "warehouse" then
+			for i = -1, 1 do -- shelving racks with crates
+				for _, sx in ipairs({ -1, 1 }) do
+					local pos = Vector3.new(sx * qx, 0, i * (d / 3.3))
+					F(Vector3.new(w / 2 - 6, 0.4, 3), pos + Vector3.new(0, 4, 0), Color3.fromRGB(200, 120, 30), Enum.Material.Metal, "Shelf")
+					F(Vector3.new(w / 2 - 6, 0.4, 3), pos + Vector3.new(0, 8, 0), Color3.fromRGB(200, 120, 30), Enum.Material.Metal, "Shelf")
+					F(Vector3.new(0.4, 9, 0.4), pos + Vector3.new(-(w / 4 - 3), 4.5, 0), Color3.fromRGB(40, 60, 120), Enum.Material.Metal)
+					F(Vector3.new(0.4, 9, 0.4), pos + Vector3.new(w / 4 - 3, 4.5, 0), Color3.fromRGB(40, 60, 120), Enum.Material.Metal)
+					F(Vector3.new(3, 3, 2.6), pos + Vector3.new(rng:NextNumber(-3, 3), 5.7, 0), Color3.fromRGB(140, 105, 60), Enum.Material.WoodPlanks, "Crate")
+				end
+			end
+		elseif kind == "lab" then
+			for i = -1, 1 do
+				for _, sx in ipairs({ -1, 1 }) do
+					local pos = Vector3.new(sx * qx, 0, i * (d / 3.3))
+					F(Vector3.new(8, 3, 3), pos + Vector3.new(0, 1.5, 0), Color3.fromRGB(220, 225, 230), Enum.Material.SmoothPlastic, "LabTable")
+					F(Vector3.new(2.2, 1.6, 0.3), pos + Vector3.new(-2, 3.8, 0.6), Color3.fromRGB(25, 25, 28), Enum.Material.SmoothPlastic, "Monitor")
+					local scr = F(Vector3.new(2, 1.4, 0.05), pos + Vector3.new(-2, 3.8, 0.42), Color3.fromRGB(25, 25, 28), Enum.Material.Glass, "MonitorScreen")
+					MapGen.locustScreen(scr, Enum.NormalId.Front)
+					table.insert(out.tvs, scr.Position + Vector3.new(0, -2, -3))
+					local tank = part(b, Vector3.new(2, 4, 2), CFrame.new(center + pos + Vector3.new(2.5, 5, 0)), Color3.fromRGB(80, 255, 140), Enum.Material.Glass, { shape = Enum.PartType.Cylinder, transp = 0.4, name = "Tank" })
+					tank.CFrame = tank.CFrame * CFrame.Angles(0, 0, math.rad(90))
+				end
+			end
+		else -- industrial: machines, pipes and a catwalk
+			for i = -1, 1, 2 do
+				F(Vector3.new(8, 7, 6), Vector3.new(-qx, 3.5, i * qz), Color3.fromRGB(90, 100, 80), Enum.Material.Metal, "Machine")
+				F(Vector3.new(1.4, 1.4, d - 4), Vector3.new(qx + i * 2, h - 3, 0), Color3.fromRGB(150, 70, 40), Enum.Material.CorrodedMetal, "Pipe")
+				F(Vector3.new(2.5, 9, 2.5), Vector3.new(qx, 4.5, i * qz), Color3.fromRGB(120, 120, 110), Enum.Material.Metal, "Boiler")
+			end
+			F(Vector3.new(w / 2 - 4, 0.4, 4), Vector3.new(qx, 8, -d / 2 + 3), Color3.fromRGB(60, 60, 60), Enum.Material.DiamondPlate, "Catwalk")
 		end
-		if i == doorSide then
-			local half = (s.len - doorW) / 2
-			seg(half, -(doorW / 2 + half / 2))
-			seg(half, doorW / 2 + half / 2)
-			local lintel = s.axis == "x" and Vector3.new(doorW, 4, wallT) or Vector3.new(wallT, 4, doorW)
-			part(b, lintel, s.cf + Vector3.new(0, h / 2 - 2, 0), t.wall, t.wallMat)
-		else
-			seg(s.len, 0)
+		for _, z in ipairs({ -qz, qz }) do
+			local bulb = part(b, Vector3.new(2, 0.4, 2), CFrame.new(center + Vector3.new(0, h - 0.5, z)), floorLit, Enum.Material.Neon, { collide = false, name = "FlickerLight" })
+			local l = Instance.new("PointLight"); l.Range = 26; l.Brightness = 1.3; l.Color = floorLit; l.Parent = bulb
+		end
+		table.insert(out.loot, { pos = center + Vector3.new(-qx, 0, -d / 2 + 3), kind = "chest" })
+		table.insert(out.loot, { pos = center + Vector3.new(qx, 0, d / 2 - 3), kind = "chest" })
+		table.insert(out.loot, { pos = center + Vector3.new(3, 0, 0), kind = "bag" })
+	end
+	if isHouse then
+		local bulb = part(b, Vector3.new(1, 0.5, 1), CFrame.new(center + Vector3.new(qx, h - 0.6, 0)), t.lamp, Enum.Material.Neon, { collide = false, name = "FlickerLight" })
+		local l = Instance.new("PointLight"); l.Range = 20; l.Brightness = 1.2; l.Color = t.lamp; l.Parent = bulb
+	end
+	return b, out
+end
+
+-- a lattice power-line tower with cross-arms; returns attachment points for the wires
+local function tower(parent, pos, yaw, rng)
+	local m = Instance.new("Model")
+	m.Name = "PowerTower"
+	m.Parent = parent
+	local H, base, top = 46, 7, 2
+	local cf0 = CFrame.new(pos) * CFrame.Angles(0, yaw, 0)
+	local steel = Color3.fromRGB(70, 74, 78)
+	local function beam(a, b2, th)
+		local mid, len = (a + b2) / 2, (b2 - a).Magnitude
+		part(m, Vector3.new(th or 0.5, th or 0.5, len), CFrame.lookAt(mid, b2), steel, Enum.Material.Metal, { name = "Steel" })
+	end
+	local function corner(sx, sz, y)
+		local k = base + (top - base) * (y / H)
+		return (cf0 * CFrame.new(sx * k, y, sz * k)).Position
+	end
+	for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do beam(corner(c[1], c[2], 0), corner(c[1], c[2], H), 0.7) end
+	for y = 0, H - 6, 6 do -- X-bracing on each face
+		local y2 = y + 6
+		for _, f in ipairs({ { { -1, -1 }, { 1, -1 } }, { { 1, -1 }, { 1, 1 } }, { { 1, 1 }, { -1, 1 } }, { { -1, 1 }, { -1, -1 } } }) do
+			beam(corner(f[1][1], f[1][2], y), corner(f[2][1], f[2][2], y2), 0.3)
+			beam(corner(f[2][1], f[2][2], y), corner(f[1][1], f[1][2], y2), 0.3)
+			beam(corner(f[1][1], f[1][2], y2), corner(f[2][1], f[2][2], y2), 0.3)
 		end
 	end
-	-- a flickering ceiling light
-	local bulb = part(b, Vector3.new(1, 0.5, 1), CFrame.new(center + Vector3.new(0, h - 0.4, 0)), t.lamp, Enum.Material.Neon, { collide = false, name = "FlickerLight" })
-	local l = Instance.new("PointLight")
-	l.Range = 22
-	l.Brightness = 1.4
-	l.Color = t.lamp
-	l.Parent = bulb
-	-- a table inside to break line of sight
-	part(b, Vector3.new(6, 3, 3), CFrame.new(center + Vector3.new(rng:NextNumber(-w / 4, w / 4), 1.5, rng:NextNumber(-d / 4, d / 4))), Color3.fromRGB(60, 45, 35), Enum.Material.Wood)
-	return b
+	local points = {}
+	for i, y in ipairs({ H - 14, H - 6 }) do
+		local span = i == 1 and 13 or 9
+		local a1, a2 = (cf0 * CFrame.new(-span, y, 0)).Position, (cf0 * CFrame.new(span, y, 0)).Position
+		beam(a1, a2, 0.6)
+		beam(a1, corner(-1, 0, y + 4), 0.3)
+		beam(a2, corner(1, 0, y + 4), 0.3)
+		for _, x in ipairs({ -span + 1, span - 1 }) do
+			local ins = part(m, Vector3.new(0.5, 2, 0.5), cf0 * CFrame.new(x, y - 1, 0), Color3.fromRGB(150, 160, 150), Enum.Material.Glass, { name = "Insulator" })
+			local att = Instance.new("Attachment"); att.Position = Vector3.new(0, -1, 0); att.Parent = ins
+			table.insert(points, att)
+		end
+	end
+	local warn = part(m, Vector3.new(0.6, 0.6, 0.6), cf0 * CFrame.new(0, H + 0.5, 0), Color3.fromRGB(255, 40, 30), Enum.Material.Neon, { collide = false, name = "FlickerLight" })
+	local l = Instance.new("PointLight"); l.Range = 18; l.Color = Color3.fromRGB(255, 60, 40); l.Brightness = 1; l.Parent = warn
+	_ = rng
+	return points
+end
+
+local function pine(parent, pos, rng)
+	local tm = Instance.new("Model")
+	tm.Name = "Tree"
+	tm.Parent = parent
+	local h = rng:NextNumber(30, 48)
+	local tr = rng:NextNumber(1.6, 2.4)
+	part(tm, Vector3.new(tr, h, tr), CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), Color3.fromRGB(56, 40, 30), Enum.Material.Wood)
+	local leaf = Color3.fromRGB(24 + rng:NextInteger(0, 10), 44 + rng:NextInteger(0, 12), 26)
+	for k = 0, 4 do -- tapering tiers of crossed boughs
+		local y = h * 0.32 + k * (h * 0.14)
+		local r = (5.6 - k * 1.0) * (tr / 2)
+		for j = 0, 1 do
+			part(tm, Vector3.new(r * 2, 3.2, r * 2), CFrame.new(pos + Vector3.new(0, y, 0)) * CFrame.Angles(0, math.rad(j * 45 + k * 20), 0), leaf, Enum.Material.Grass, { collide = false, name = "Leaves" })
+		end
+	end
 end
 
 local function tree(parent, pos, theme, rng)
@@ -1335,14 +2349,58 @@ function MapGen.generate(themeName, seed)
 	-- central spawn plaza kept clear
 	claim(O, 30)
 
-	for _ = 1, t.buildings do
+	local beds, tvs, loot = {}, {}, {}
+	-- power-line corridor straight across the map (towers + sagging wires); kept clear of trees
+	if t.powerlines then
+		local z0 = rng:NextNumber(-half * 0.4, half * 0.4)
+		local prev
+		for i = 0, 5 do
+			local x = -half + 20 + i * ((S - 40) / 5)
+			local tp = O + Vector3.new(x, 0, z0 + math.sin(i * 1.3) * 6)
+			claim(tp, 12)
+			local pts = tower(map, tp, 0, rng)
+			if prev then
+				for k = 1, math.min(#prev, #pts) do
+					local beam = Instance.new("Beam")
+					beam.Attachment0, beam.Attachment1 = prev[k], pts[k]
+					beam.Width0, beam.Width1 = 0.25, 0.25
+					beam.CurveSize0, beam.CurveSize1 = -9, 9
+					beam.Color = ColorSequence.new(Color3.fromRGB(20, 20, 20))
+					beam.LightInfluence = 1
+					beam.Segments = 16
+					beam.FaceCamera = true
+					beam.Parent = pts[k]
+				end
+			end
+			prev = pts
+		end
+		for x = -half, half, 10 do claim(O + Vector3.new(x, 0, z0), 7) end
+	end
+	local kinds = { "house", "house", "house", "warehouse", "lab", "industrial" }
+	for i = 1, t.buildings do
+		local kind = kinds[(i - 1) % #kinds + 1]
 		for _try = 1, 25 do
-			local w, d = rng:NextInteger(24, 44), rng:NextInteger(22, 40)
+			local w, d
+			if kind == "house" then w, d = rng:NextInteger(30, 38), rng:NextInteger(26, 32) else w, d = rng:NextInteger(40, 52), rng:NextInteger(34, 44) end
 			local pos = randPos(30)
 			local r = math.max(w, d) / 2 + 8
 			if free(pos, r) then
 				claim(pos, r)
-				building(map, t, pos, w, d, rng)
+				local _, info = building(map, t, pos, w, d, rng, kind)
+				for _, x in ipairs(info.beds) do table.insert(beds, x) end
+				for _, x in ipairs(info.tvs) do table.insert(tvs, x) end
+				for _, x in ipairs(info.loot) do table.insert(loot, x) end
+				break
+			end
+		end
+	end
+	-- chests and bags out in the open
+	for i = 1, (t.pines and 16 or 10) do
+		for _try = 1, 12 do
+			local pos = randPos(12)
+			if free(pos, 4) then
+				claim(pos, 3)
+				table.insert(loot, { pos = pos, kind = (i % 3 == 0) and "chest" or "bag" })
 				break
 			end
 		end
@@ -1353,7 +2411,7 @@ function MapGen.generate(themeName, seed)
 			local pos = randPos(6)
 			if free(pos, 5) then
 				claim(pos, 3)
-				tree(map, pos, themeName, rng)
+				if t.pines then pine(map, pos, rng) else tree(map, pos, themeName, rng) end
 				break
 			end
 		end
@@ -1416,7 +2474,20 @@ function MapGen.generate(themeName, seed)
 		table.insert(monsterSpawns, O + Vector3.new(math.cos(a) * (half - 25), 4, math.sin(a) * (half - 25)))
 	end
 
+	-- gentle terrain hills between everything else
+	for _ = 1, (t.hills or 0) do
+		for _try = 1, 8 do
+			local pos = randPos(20)
+			if free(pos, 14) then
+				claim(pos, 10)
+				workspace.Terrain:FillBall(pos + Vector3.new(0, -rng:NextNumber(9, 12), 0), rng:NextNumber(12, 16), t.terrain)
+				break
+			end
+		end
+	end
+
 	return {
+		beds = beds, tvs = tvs, loot = loot,
 		model = map, spawns = spawns, monsterSpawns = monsterSpawns, vents = vents,
 		extract = ex, theme = themeName, half = half, fog = t.fog, fogColor = t.fogColor,
 	}
@@ -1425,7 +2496,7 @@ end
 -- Remove the terrain a map created.
 function MapGen.clearTerrain()
 	local O, S = Config.MAP_ORIGIN, Config.MAP_SIZE
-	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, -1, 0)), Vector3.new(S + 48, 8, S + 48), Enum.Material.Air)
+	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, 3, 0)), Vector3.new(S + 48, 16, S + 48), Enum.Material.Air)
 end
 
 return MapGen
@@ -1435,7 +2506,7 @@ return MapGen
       <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">Models</string>
-          <string name="Source"><![CDATA[-- Part-built models: the 12 monsters (welded onto a player's character) and helicopters.
+          <string name="Source"><![CDATA[-- Part-built models: the 11 monsters (welded onto a player's character) and helicopters.
 local Models = {}
 
 local function rgb(r, g, b) return Color3.fromRGB(r, g, b) end
@@ -1448,7 +2519,7 @@ local FABRIC, RUST, SLATE, PLASTIC = Enum.Material.Fabric, Enum.Material.Corrode
 -- default surface material per monster (fur-like fabric for animatronics, rough skin for creatures)
 local SKIN = {
 	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
-	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, boiledone = Enum.Material.Pebble, drnowhere = FABRIC,
+	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
 	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Pebble,
 }
 local defaultMat = PLASTIC
@@ -1504,6 +2575,7 @@ local function humanoidBody(P, body, opts)
 	P(Vector3.new(0.75, 2.8 * h, 0.75), at(1.7, 0.2, 0, 0, 0, 8), opts.arms or body)
 end
 
+local animatronicDetail -- defined below
 local function animatronic(P, body, belly, eyeColor)
 	humanoidBody(P, body)
 	P(Vector3.new(1.9, 2, 0.3), at(0, -0.1, -0.85), belly)                                      -- belly
@@ -1515,7 +2587,7 @@ local function animatronic(P, body, belly, eyeColor)
 end
 
 -- extra detail shared by the animatronics: rusty endoskeleton joints, hands, feet, cheeks, brows
-local function animatronicDetail(P, body, belly)
+animatronicDetail = function(P, body, belly)
 	for _, x in ipairs({ -0.65, 0.65 }) do
 		P(Vector3.new(0.55, 0.55, 0.55), at(x, -1.1, -0.1), rgb(70, 66, 60), { shape = BALL, mat = RUST })      -- knees
 		P(Vector3.new(1.1, 0.55, 1.6), at(x, -3.05, -0.3), body)                                               -- feet
@@ -1624,15 +2696,6 @@ BUILD.sirenhead = function(P)
 	P(Vector3.new(0.9, 3, 0.9), at(0, 9.6, 0), rgb(122, 92, 69))                                 -- neck flesh
 	for _, x in ipairs({ -0.6, 0.6 }) do P(Vector3.new(1, 0.8, 1.8), at(x, -3.1, -0.4), skin) end  -- feet
 end
-BUILD.boiledone = function(P)
-	local red = rgb(59, 8, 8)
-	humanoidBody(P, red, { arms = rgb(45, 5, 5) })
-	P(Vector3.new(2.5, 2.5, 2.5), at(0, 3.1, 0), rgb(74, 10, 10), { shape = BALL })
-	eyes(P, 3.35, -1.05, 0.4, 0.3, false, 0.3, rgb(255, 255, 255), true)
-	for i = 1, 6 do P(Vector3.new(0.35, 0.35, 0.35), at(math.sin(i * 7) * 1.1, math.cos(i * 3) * 1.4, -0.85), rgb(140, 0, 0), { shape = BALL, mat = NEON }) end
-	for i = 1, 8 do P(Vector3.new(0.18, 0.5 + (i % 3) * 0.3, 0.18), at(math.sin(i * 2.3) * 1.1, -1.5 - (i % 3) * 0.2, math.cos(i * 2.3) * 0.7), rgb(90, 0, 0), { mat = Enum.Material.Glass, transp = 0.2 }) end -- dripping
-	P(Vector3.new(1.4, 0.25, 0.1), at(0, 2.6, -1.22), rgb(20, 0, 0))                             -- gaping mouth
-end
 BUILD.drnowhere = function(P)
 	humanoidBody(P, rgb(232, 232, 232), { legs = rgb(40, 40, 50) })
 	P(Vector3.new(2.8, 1.6, 1.7), at(0, -1.2, 0), rgb(232, 232, 232))                           -- coat tail
@@ -1650,22 +2713,80 @@ BUILD.drnowhere = function(P)
 	P(Vector3.new(0.18, 0.18, 0.18), at(-0.45, 3.1, -1.12), rgb(255, 255, 255), { shape = BALL, mat = NEON, noShadow = true }) -- tiny pupils
 	P(Vector3.new(0.18, 0.18, 0.18), at(0.45, 3.1, -1.12), rgb(255, 255, 255), { shape = BALL, mat = NEON, noShadow = true })
 end
-BUILD.locust = function(P)
-	local black = rgb(21, 21, 21)
-	P(Vector3.new(0.5, 2.4, 0.5), at(-0.5, -1.9, 0), black)
-	P(Vector3.new(0.5, 2.4, 0.5), at(0.5, -1.9, 0), black)
-	P(Vector3.new(1.8, 4, 1.2), at(0, 0.9, 0), black)
-	P(Vector3.new(2.1, 2.1, 2.1), at(0, 3.9, 0), rgb(28, 28, 28), { shape = BALL })
-	eyes(P, 4.1, -0.9, 0.42, 0.45, false, 0.45, rgb(212, 255, 58), true)
-	P(Vector3.new(0.12, 2.6, 0.12), at(-0.6, 5.8, 0, 0, 0, 25), black)                           -- antennae
-	P(Vector3.new(0.12, 2.6, 0.12), at(0.6, 5.8, 0, 0, 0, -25), black)
-	for i, y in ipairs({ 1.8, 0.8, -0.2 }) do                                                    -- insect arms
-		P(Vector3.new(0.25, 2.6, 0.25), at(-1.6, y, 0, 0, 0, -60 + i * 10), black)
-		P(Vector3.new(0.25, 2.6, 0.25), at(1.6, y, 0, 0, 0, 60 - i * 10), black)
+-- Doctor Nowhere's other forms
+BUILD.dn_conezone = function(P)
+	-- very tall, thin white figure whose head is one long pale cone
+	local white = rgb(236, 236, 232)
+	for _, x in ipairs({ -1, 1 }) do
+		P(Vector3.new(0.5, 4.6, 0.5), at(x * 0.5, -0.8, 0), white)
+		P(Vector3.new(0.35, 5, 0.35), at(x * 1.25, 3.2, -0.1, 6, 0, x * 6), white)
+		for f = -1, 1 do P(Vector3.new(0.1, 1.2, 0.1), at(x * 1.5 + f * 0.12, 0.2, -0.4, 10, 0, f * 6), white) end
 	end
-	for i = 1, 5 do P(Vector3.new(1.4, 0.06, 0.05), at(math.sin(i * 5) * 0.6, i * 0.8 - 1.5, -0.62), rgb(220, 220, 220), { mat = NEON, transp = 0.4, noShadow = true }) end -- static lines
-	for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.1, 3.4, 1.6), at(x * 0.7, 1.4, 0.9, 0, x * 25, x * 10), rgb(160, 170, 120), { mat = GLASS, transp = 0.55 }) end -- translucent wings
-	P(Vector3.new(1.3, 0.4, 0.6), at(0, 3.4, -0.85), rgb(10, 10, 10))                            -- mandibles
+	P(Vector3.new(1.6, 4, 1), at(0, 3.5, 0), white)
+	P(Vector3.new(2.2, 0.5, 1.1), at(0, 5.6, 0), white)
+	P(Vector3.new(0.5, 1.2, 0.5), at(0, 6.4, 0), white)
+	for i = 0, 6 do -- stacked shrinking discs = a long cone head leaning forward
+		local r = 1.7 - i * 0.22
+		P(Vector3.new(0.7, r, r), at(0, 7.3 + i * 0.65, -0.12 * i, 0, 0, 90), white, { shape = CYL })
+	end
+	P(Vector3.new(0.3, 0.3, 0.3), at(0, 7.4, -0.85), rgb(0, 0, 0), { shape = BALL })
+end
+BUILD.dn_nightmare = function(P)
+	-- smoky black figure with a pale, too-wide grin
+	local black = rgb(8, 8, 10)
+	humanoidBody(P, black, { height = 1.25 })
+	P(Vector3.new(2.4, 2.6, 2.3), at(0, 3.4, 0), black, { shape = BALL })
+	P(Vector3.new(1.7, 0.3, 0.2), at(0, 3.0, -1.12), rgb(235, 235, 225), { mat = NEON, noShadow = true })
+	P(Vector3.new(0.35, 0.2, 0.2), at(-0.5, 3.8, -1.1), rgb(235, 235, 225), { mat = NEON, noShadow = true })
+	P(Vector3.new(0.35, 0.2, 0.2), at(0.5, 3.8, -1.1), rgb(235, 235, 225), { mat = NEON, noShadow = true })
+	for i = 1, 8 do P(Vector3.new(1, 1, 1), at(math.sin(i * 2.3) * 1.4, -2 + i * 0.7, math.cos(i * 1.9) * 0.8), black, { shape = BALL, transp = 0.4, noShadow = true }) end -- smoke
+end
+BUILD.dn_sixarm = function(P)
+	-- the huge six-armed Doctor in a white coat
+	local coat = rgb(232, 232, 232)
+	P(Vector3.new(3.2, 6, 2), at(0, 2, 0), coat)
+	P(Vector3.new(1, 3, 1), at(-0.8, -2.3, 0), rgb(40, 40, 50))
+	P(Vector3.new(1, 3, 1), at(0.8, -2.3, 0), rgb(40, 40, 50))
+	for i = 0, 2 do
+		for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.6, 4.4, 0.6), at(x * (2 + i * 0.3), 3 - i * 1.3, -0.3, 20, 0, x * (25 + i * 22)), coat) end
+	end
+	P(Vector3.new(2.6, 2.6, 2.6), at(0, 6.3, 0), rgb(240, 230, 210), { shape = BALL })
+	P(Vector3.new(0.7, 0.9, 0.4), at(-0.5, 6.5, -1.05), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(0.7, 0.9, 0.4), at(0.5, 6.5, -1.05), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(1.3, 0.12, 0.1), at(0, 5.8, -1.25), rgb(0, 0, 0))
+end
+BUILD.locust = function(P)
+	-- the Locust's true form: a very tall, thin black figure with a stretched grey human-like face,
+	-- hollow black eyes and mouth, and dark cable-like tubes coiled around its head and neck (no gore)
+	local black, tube, face = rgb(12, 12, 14), rgb(34, 35, 40), rgb(150, 145, 140)
+	for _, x in ipairs({ -1, 1 }) do
+		P(Vector3.new(0.38, 3.4, 0.38), at(x * 0.45, -1.3, 0, 0, 0, x * 3), black)             -- long shins
+		P(Vector3.new(0.45, 3.2, 0.45), at(x * 0.5, 1.9, 0, 0, 0, x * 2), black)               -- thighs
+		P(Vector3.new(0.7, 0.25, 1.1), at(x * 0.45, -2.95, -0.25), black)                      -- narrow feet
+		P(Vector3.new(0.3, 3.6, 0.3), at(x * 1.25, 4.6, -0.15, 8, 0, x * 8), black)           -- upper arms
+		P(Vector3.new(0.26, 3.6, 0.26), at(x * 1.55, 1.2, -0.45, 14, 0, x * 4), black)        -- forearms (hang low)
+		for f = -1, 1 do P(Vector3.new(0.08, 1.2, 0.08), at(x * 1.65 + f * 0.12, -1.0, -0.7, 18, 0, f * 6), black) end -- long fingers
+	end
+	P(Vector3.new(1.5, 1, 0.8), at(0, 3.6, 0), black)                                           -- hips
+	P(Vector3.new(1.4, 3.2, 0.9), at(0, 5.3, 0), black)                                         -- gaunt chest
+	P(Vector3.new(2.3, 0.6, 1), at(0, 6.8, 0), black)                                           -- bony shoulders
+	P(Vector3.new(0.55, 2.4, 0.55), at(0, 8.1, -0.1, 6, 0, 0), black)                           -- long neck
+	for i = 0, 7 do                                                                             -- tubes coiled around the neck
+		P(Vector3.new(1.15, 0.22, 1.15), at(0, 7.2 + i * 0.28, -0.1, 0, i * 40, (i % 2 == 0) and 10 or -10), tube, { shape = CYL, mat = Enum.Material.Rubber })
+	end
+	P(Vector3.new(1.9, 2.9, 1.7), at(0, 10.4, -0.1), black, { shape = BALL })                  -- long black head
+	P(Vector3.new(1.5, 2.4, 0.5), at(0.05, 10.3, -0.85, 0, 0, 4), face, { shape = BALL, mat = Enum.Material.Concrete }) -- stretched pale face
+	P(Vector3.new(0.45, 0.85, 0.3), at(-0.33, 10.8, -1.05, 0, 0, -6), rgb(0, 0, 0), { shape = BALL })  -- hollow eyes (asymmetric)
+	P(Vector3.new(0.52, 0.95, 0.3), at(0.38, 10.75, -1.05, 0, 0, 8), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(0.42, 0.6, 0.3), at(0.06, 9.55, -1.03, 0, 0, 10), rgb(0, 0, 0), { shape = BALL })    -- hollow open mouth
+	P(Vector3.new(0.1, 0.5, 0.1), at(0.02, 10.15, -1.1), rgb(110, 105, 100))                   -- thin nose ridge
+	for i, r in ipairs({ { 11.4, 25 }, { 10.6, -30 }, { 9.8, 15 } }) do                          -- cables wrapped around the head
+		P(Vector3.new(0.22, 2.3, 2.3), at(0, r[1], -0.1, 0, 90, r[2]), tube, { shape = CYL, mat = Enum.Material.Rubber, transp = 0 })
+		_ = i
+	end
+	P(Vector3.new(0.2, 2.2, 0.2), at(0.7, 12.1, 0.2, 0, 0, -30), tube, { mat = Enum.Material.Rubber }) -- loose cable ends
+	P(Vector3.new(0.2, 1.8, 0.2), at(-0.6, 12.0, 0.3, 0, 0, 35), tube, { mat = Enum.Material.Rubber })
+	for i = 1, 4 do P(Vector3.new(1.3, 0.05, 0.05), at(math.sin(i * 5) * 0.3, 3.5 + i * 1.6, -0.5), rgb(220, 220, 220), { mat = NEON, transp = 0.5, noShadow = true }) end -- screen static clinging to it
 end
 BUILD.monochrome = function(P)
 	humanoidBody(P, rgb(154, 154, 154), { legs = rgb(110, 110, 110), arms = rgb(190, 190, 190) })
@@ -1701,8 +2822,56 @@ BUILD.demogorgon = function(P)
 	for i = 0, 3 do P(Vector3.new(2.05, 0.1, 1.35), at(0, 0.2 + i * 0.6, 0), rgb(85, 70, 64)) end       -- sinewy ridges
 end
 
+BUILD.sonicexe = function(P)
+	-- fan-made creepypasta hedgehog: blue quills, black eye sockets with glowing red pupils, a too-wide grin
+	local blue, peach, white = rgb(28, 52, 150), rgb(226, 182, 140), rgb(240, 240, 240)
+	for _, x in ipairs({ -1, 1 }) do
+		P(Vector3.new(0.55, 2.4, 0.55), at(x * 0.5, -1.7, 0), blue)                                -- thin legs
+		P(Vector3.new(1, 0.8, 1.9), at(x * 0.55, -2.9, -0.4), rgb(180, 20, 25))                     -- red shoes
+		P(Vector3.new(1.05, 0.3, 0.5), at(x * 0.55, -2.65, -0.2), white)                            -- shoe strap
+		P(Vector3.new(0.4, 2.6, 0.4), at(x * 1.25, 0.6, 0, 0, 0, x * 12), blue)                      -- arms
+		P(Vector3.new(0.85, 0.85, 0.85), at(x * 1.55, -0.75, -0.1), white, { shape = BALL })        -- white gloves
+	end
+	P(Vector3.new(1.8, 2.4, 1.3), at(0, 0.7, 0), blue, { shape = BALL })                           -- torso
+	P(Vector3.new(1.2, 1.6, 0.4), at(0, 0.6, -0.55), peach, { shape = BALL })                      -- belly
+	P(Vector3.new(3, 2.8, 2.6), at(0, 3.3, 0), blue, { shape = BALL })                             -- big head
+	for i = 0, 2 do                                                                                -- swept-back quills
+		P(Vector3.new(0.9 - i * 0.15, 0.9 - i * 0.15, 2.6), at(0, 4.2 - i * 0.9, 1.6, -25 + i * 18, 0, 0), blue)
+		for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.7, 0.7, 2), at(x * 0.8, 3.9 - i * 0.9, 1.4, -15 + i * 15, x * 20, 0), blue) end
+	end
+	for _, x in ipairs({ -1, 1 }) do P(Vector3.new(0.5, 1.1, 0.5), at(x * 0.95, 4.9, 0.2, 0, 0, x * -20), blue) end -- ears
+	P(Vector3.new(2.1, 1.3, 0.6), at(0, 3.55, -1.05), white, { shape = BALL })                     -- eye patch
+	P(Vector3.new(0.7, 0.9, 0.3), at(-0.45, 3.6, -1.32), rgb(0, 0, 0), { shape = BALL })           -- black sockets
+	P(Vector3.new(0.7, 0.9, 0.3), at(0.45, 3.6, -1.32), rgb(0, 0, 0), { shape = BALL })
+	P(Vector3.new(0.22, 0.22, 0.22), at(-0.45, 3.55, -1.46), rgb(255, 20, 20), { shape = BALL, mat = NEON, noShadow = true }) -- red pupils
+	P(Vector3.new(0.22, 0.22, 0.22), at(0.45, 3.55, -1.46), rgb(255, 20, 20), { shape = BALL, mat = NEON, noShadow = true })
+	P(Vector3.new(1.8, 1, 0.9), at(0, 2.75, -1.05), peach, { shape = BALL })                       -- muzzle
+	P(Vector3.new(0.35, 0.28, 0.3), at(0, 3.05, -1.5), rgb(10, 10, 10), { shape = BALL })          -- nose
+	P(Vector3.new(1.5, 0.22, 0.1), at(0, 2.55, -1.5, 0, 0, 0), rgb(10, 10, 10))                   -- too-wide grin
+	for i = -3, 3 do P(Vector3.new(0.12, 0.16, 0.06), at(i * 0.2, 2.62, -1.55), white) end          -- teeth
+end
+
 -- Weld a monster model onto a character. Returns the model.
-function Models.morph(character, kind)
+-- lobby-shop monster skins (cosmetic colour grades, bought with in-game coins)
+local SKINS = {
+	shadow = { tint = Color3.fromRGB(10, 10, 14), k = 0.65 },
+	toxic = { tint = Color3.fromRGB(90, 220, 60), k = 0.45 },
+	frost = { tint = Color3.fromRGB(150, 210, 255), k = 0.5 },
+	blood = { tint = Color3.fromRGB(150, 10, 10), k = 0.5 },
+	golden = { tint = Color3.fromRGB(255, 200, 60), k = 0.6, mat = Enum.Material.Foil },
+}
+function Models.applySkin(model, skin)
+	local s = SKINS[skin]
+	if not s or not model then return end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") and d.Material ~= NEON and d.Transparency < 1 then
+			d.Color = d.Color:Lerp(s.tint, s.k)
+			if s.mat then d.Material = s.mat end
+		end
+	end
+end
+
+function Models.morph(character, kind, skin)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return nil end
 	local old = character:FindFirstChild("NH_Morph")
@@ -1732,6 +2901,7 @@ function Models.morph(character, kind)
 	(BUILD[kind] or BUILD.freddy)(P)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
+	Models.applySkin(model, skin)
 	-- hide the player's own avatar
 	for _, d in ipairs(character:GetDescendants()) do
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and not d:IsDescendantOf(model) then
@@ -1741,7 +2911,7 @@ function Models.morph(character, kind)
 		end
 	end
 	local glow = Instance.new("PointLight")
-	glow.Color = kind == "locust" and Color3.fromRGB(200, 255, 80) or Color3.fromRGB(255, 40, 40)
+	glow.Color = kind == "locust" and Color3.fromRGB(190, 200, 220) or Color3.fromRGB(255, 40, 40)
 	glow.Range = 14
 	glow.Brightness = 0.7
 	glow.Parent = root
@@ -1813,6 +2983,7 @@ return Models
     <Properties>
       <string name="Name">StarterPlayer</string>
       <float name="CameraMaxZoomDistance">40</float>
+      <float name="CameraMinZoomDistance">0.5</float>
       <token name="DevTouchCameraMovementMode">1</token>
       <token name="DevTouchMovementMode">1</token>
     </Properties>
@@ -1956,7 +3127,7 @@ corner(hub, 12)
 padding(hub, 14)
 list(hub, 8)
 label(hub, "NIGHT HUNT", 38, { Font = Enum.Font.Creepster, TextColor3 = RED, LayoutOrder = 1 })
-label(hub, "Fan-made monster survival - 2 to 15 players", 13, { TextColor3 = MUTED, LayoutOrder = 2 })
+label(hub, "Fan-made monster survival - 2 to 15 players - RATED 13+", 13, { TextColor3 = MUTED, LayoutOrder = 2 })
 local tabs = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 32), LayoutOrder = 3 }, hub)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6) }, tabs)
 local pages = {}
@@ -2089,37 +3260,131 @@ local scareCam = Instance.new("Camera")
 scareCam.FieldOfView = 50
 scareCam.Parent = scare
 scare.CurrentCamera = scareCam
-local scareText = label(scare, "CAUGHT", 70, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.78, 0), Size = UDim2.new(1, 0, 0, 80), ZIndex = 31 })
+-- 2D layer over the 3D jumpscare: static / dissolve / black cut / blood splatter / caption
+local scareFx = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 32, ClipsDescendants = true }, scare)
+local scareBlack = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 33, Visible = false }, scareFx)
+local scareText = label(scareFx, "CAUGHT", 70, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.42, 0), Size = UDim2.new(1, 0, 0, 80), ZIndex = 36, Visible = false })
+local bloodOn = true -- settings toggle (default on). Teen-level only: red splatter / drips, no gore.
+local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, monochrome = 2.0, locust = 1.9 }
+local SCARE_LEN = 2.6
+local scareRun = 0
 
-local function jumpscare(kind)
+local function splat(parent, x, y, r, z)
+	local f = new("Frame", { BackgroundColor3 = Color3.fromRGB(120 + math.random(0, 40), 0, 6), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(x, y), Size = UDim2.fromOffset(r, r), ZIndex = z or 34, BackgroundTransparency = 0.05 }, parent)
+	corner(f, r)
+	for _ = 1, 5 do -- droplets around the splat
+		local d = math.random(6, math.max(8, math.floor(r / 4)))
+		local a = math.random() * math.pi * 2
+		local q = new("Frame", { BackgroundColor3 = f.BackgroundColor3, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(x, math.cos(a) * r * 0.8, y, math.sin(a) * r * 0.8), Size = UDim2.fromOffset(d, d), ZIndex = z or 34 }, parent)
+		corner(q, d)
+	end
+	local drip = new("Frame", { BackgroundColor3 = f.BackgroundColor3, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(x, 0, y, 0), Size = UDim2.fromOffset(math.max(4, r / 7), 0), ZIndex = z or 34 }, parent)
+	TweenService:Create(drip, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = UDim2.fromOffset(math.max(4, r / 7), r * 1.6) }):Play()
+end
+
+local function playSound(id, speed, vol, parent)
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.PlaybackSpeed = speed or 1
+	s.Volume = vol or 1
+	s.Parent = parent or gui
+	s:Play()
+	game:GetService("Debris"):AddItem(s, 6)
+	return s
+end
+
+local function jumpscare(kind, form)
+	scareRun += 1
+	local run = scareRun
 	for _, c in ipairs(scare:GetChildren()) do if c:IsA("Model") then c:Destroy() end end
-	local t = Templates:FindFirstChild(kind) or Templates:FindFirstChild("freddy")
+	for _, c in ipairs(scareFx:GetChildren()) do if c ~= scareBlack and c ~= scareText then c:Destroy() end end
+	local key = kind
+	if kind == "drnowhere" and Config.DN_FORMS[form or 1] then key = Config.DN_FORMS[form or 1].key end
+	local t = Templates:FindFirstChild(key) or Templates:FindFirstChild("freddy")
 	local m = t:Clone()
 	m.Parent = scare
+	local base = m:GetPivot()
 	local cf, size = m:GetBoundingBox()
 	local headY = cf.Position.Y + size.Y / 2 - 2.2
 	local def = Config.MONSTERS[kind]
 	scareText.Text = def and (def.name:upper() .. " GOT YOU") or "CAUGHT"
+	scareText.Visible, scareBlack.Visible = false, false
 	scare.Visible = true
+	local fnaf = table.find({ "freddy", "bonnie", "chica", "foxy", "springtrap" }, kind) ~= nil
+	local impact = IMPACT[kind] or 1.55
 	local start = os.clock()
+	local hit = false
+	local squares = {}
+	playSound("rbxasset://sounds/electronicpingshort.wav", kind == "sonicexe" and 0.6 or 0.35, 2)
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
+		if run ~= scareRun then conn:Disconnect(); return end
 		local e = os.clock() - start
-		local dist = math.max(3.2, 9 - e * 14)
-		local shake = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * 0.35
-		scareCam.CFrame = CFrame.lookAt(Vector3.new(0, headY, -dist) + shake, Vector3.new(0, headY, 0))
-		if e > 1.8 then
+		local function ease(x) x = math.clamp(x, 0, 1); return x * x * (3 - 2 * x) end
+		local shake = 0.08
+		local camPos, look = Vector3.new(0, headY, -9 + e * 3), Vector3.new(0, headY, 0)
+		local fov = 50
+		m:PivotTo(base)
+		if fnaf then -- stands still, then rushes the camera screaming
+			local l = ease((e - 0.35) / 0.5)
+			camPos = Vector3.new(0, headY, -6 + l * 3.4); shake = e > 0.35 and 0.45 or 0.03
+		elseif kind == "sonicexe" then -- grabs, then lunges up into your face
+			local l = ease((e - 0.9) / 0.45)
+			m:PivotTo(base + Vector3.new(0, math.sin(l * math.pi) * 1.5, -l * 3))
+			camPos = Vector3.new(0, headY - 0.5, -6); look = Vector3.new(0, headY + math.sin(l * math.pi) * 1.5, -l * 3); shake = 0.05 + l * 0.4
+		elseif kind == "sirenhead" then -- lifted from the ground up toward its speaker head
+			local u = ease(e / 1.7)
+			camPos = Vector3.new(1, 2 + u * (headY - 2), -5 + u * 1.5); look = Vector3.new(0, headY + 2 * (1 - u), 0); shake = 0.1 + u * 0.3
+		elseif kind == "cartooncat" then -- you get stretched like rubber (the view warps)
+			local u = ease(e / 1.7)
+			camPos = Vector3.new(0, headY, -6 + u * 2.6); fov = 50 + u * 60
+		elseif kind == "demogorgon" then -- petal face lunge
+			local l = ease((e - 0.6) / 0.6)
+			camPos = Vector3.new(0, headY, -7 + l * 4.2); shake = 0.05 + l * 0.4
+		elseif kind == "locust" then -- possession: leans in, the picture tears
+			local l = ease(e / 1.6)
+			camPos = Vector3.new(math.sin(e * 13) * 0.2, headY, -7 + l * 4.5); shake = 0.1 + l * 0.6
+		elseif kind == "monochrome" then -- it stares while you dissolve
+			camPos = Vector3.new(0, headY, -5.5 + e * 0.4); shake = 0.01
+		elseif kind == "drnowhere" then
+			local l = ease((e - 0.5) / 0.7)
+			if form == 2 then camPos = Vector3.new(0, 2 + ease(e / 1.2) * (headY - 2), -6 + l * 3); shake = 0.1 + l * 0.4
+			elseif form == 3 then m:PivotTo(base * CFrame.new(0, 0, -l * 2)); camPos = Vector3.new(0, headY, -7 + l * 3)
+			else camPos = Vector3.new(0, headY, -7.5 + l * 4.4); shake = 0.05 + l * 0.35 end
+		else
+			local l = ease((e - 0.3) / 0.8)
+			camPos = Vector3.new(0, headY, -9 + l * 6); shake = 0.05 + l * 0.35
+		end
+		scareCam.FieldOfView = fov
+		local sv = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * shake
+		scareCam.CFrame = CFrame.lookAt(camPos + sv, look)
+		-- 2D pre-impact effects
+		if not hit then
+			if kind == "locust" and math.random() < 0.6 then
+				for _, c in ipairs(squares) do c:Destroy() end
+				table.clear(squares)
+				for _ = 1, 6 do table.insert(squares, new("Frame", { BackgroundColor3 = ({ Color3.new(1, 0, 0), Color3.new(0, 1, 0), Color3.new(0, 0, 1), Color3.new(1, 1, 1) })[math.random(1, 4)], BackgroundTransparency = 0.5, Position = UDim2.fromScale(0, math.random()), Size = UDim2.new(1, 0, 0, math.random(3, 30)), ZIndex = 33 }, scareFx)) end
+			elseif kind == "monochrome" and math.random() < 0.8 then
+				local g = math.random(0, 255)
+				table.insert(squares, new("Frame", { BackgroundColor3 = Color3.fromRGB(g, g, g), Position = UDim2.fromScale(math.random(), math.random()), Size = UDim2.fromOffset(40, 40), ZIndex = 33 }, scareFx))
+			end
+		end
+		if e >= impact and not hit then -- impact: cut to black (+ optional blood)
+			hit = true
+			for _, c in ipairs(squares) do c:Destroy() end
+			scareBlack.Visible = true
+			scareText.Visible = true
+			playSound("rbxasset://sounds/uuhhh.mp3", 0.6, 2)
+			playSound("rbxasset://sounds/electronicpingshort.wav", 0.2, 3)
+			if bloodOn then
+				for _ = 1, 7 do splat(scareFx, math.random(), math.random() * 0.8, math.random(60, 220), 34) end
+			end
+		end
+		if e > SCARE_LEN then
 			conn:Disconnect()
 			scare.Visible = false
 		end
 	end)
-	local s = Instance.new("Sound")
-	s.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-	s.PlaybackSpeed = 0.35
-	s.Volume = 2
-	s.Parent = gui
-	s:Play()
-	game:GetService("Debris"):AddItem(s, 3)
 end
 
 local grey = Instance.new("ColorCorrectionEffect")
@@ -2127,6 +3392,239 @@ grey.Name = "NH_Grey"
 grey.Enabled = false
 grey.Parent = Lighting
 local greyUntil = 0
+
+---------------------------------------------------------------------------
+-- 13+ warning screen (must press Continue), settings, HUD, effects
+---------------------------------------------------------------------------
+local warn = new("Frame", { BackgroundColor3 = Color3.fromRGB(6, 4, 6), Size = UDim2.fromScale(1, 1), ZIndex = 200, Active = true }, gui)
+local warnBox = new("Frame", { BackgroundColor3 = PANEL, Size = UDim2.new(0, 560, 0, 380), Position = UDim2.new(0.5, -280, 0.5, -190), ZIndex = 201 }, warn)
+corner(warnBox, 12)
+padding(warnBox, 18)
+list(warnBox, 10)
+label(warnBox, "WARNING", 44, { Font = Enum.Font.Creepster, TextColor3 = RED, ZIndex = 202, LayoutOrder = 1 })
+local badge = label(warnBox, "RATED 13+", 18, { Font = Enum.Font.GothamBlack, BackgroundTransparency = 0, BackgroundColor3 = RED, TextColor3 = Color3.new(1, 1, 1), Size = UDim2.new(0, 140, 0, 30), ZIndex = 202, LayoutOrder = 2 })
+corner(badge, 6)
+label(warnBox, "This game contains flashing lights that may trigger seizures for people with photosensitive epilepsy - if you feel dizzy, get a headache or notice anything unusual, stop playing right away. It also contains blood and gore, sudden jumpscares and loud sounds. Night Hunt is rated 13+. If that's too much for you, please leave now.", 16, { ZIndex = 202, LayoutOrder = 3, Size = UDim2.new(1, 0, 0, 190), TextYAlignment = Enum.TextYAlignment.Top })
+button(warnBox, "Continue", { ZIndex = 202, LayoutOrder = 4, Size = UDim2.new(0, 220, 0, 46), TextSize = 20 }, function() warn.Visible = false end)
+
+local bloodBtn
+bloodBtn = button(gui, "Blood effects: ON", { Size = UDim2.new(0, 150, 0, 28), Position = UDim2.new(0, 12, 0, 52), TextSize = 12, BackgroundColor3 = Color3.fromRGB(70, 30, 34) }, function()
+	bloodOn = not bloodOn
+	bloodBtn.Text = bloodOn and "Blood effects: ON" or "Blood effects: OFF"
+	for _, d in ipairs(workspace:GetDescendants()) do if d.Name == "NH_Blood" and d:IsA("BasePart") then d.LocalTransparencyModifier = bloodOn and 0 or 1 end end
+end)
+workspace.DescendantAdded:Connect(function(d)
+	if d.Name == "NH_Blood" and d:IsA("BasePart") then d.LocalTransparencyModifier = bloodOn and 0 or 1 end
+end)
+
+-- survivor HUD: HP, armor, ammo, coins
+local hud = new("Frame", { BackgroundColor3 = DARK, BackgroundTransparency = 0.25, Size = UDim2.new(0, 260, 0, 64), Position = UDim2.new(0.5, -130, 1, -112), Visible = false }, gui)
+corner(hud, 8)
+local hpBg = new("Frame", { BackgroundColor3 = Color3.fromRGB(50, 10, 12), Size = UDim2.new(1, -16, 0, 16), Position = UDim2.new(0, 8, 0, 6) }, hud)
+corner(hpBg, 5)
+local hpFill = new("Frame", { BackgroundColor3 = Color3.fromRGB(200, 40, 40), Size = UDim2.new(1, 0, 1, 0) }, hpBg)
+corner(hpFill, 5)
+local hpLbl = label(hpBg, "100", 12, { Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBold })
+local gearLbl = label(hud, "", 12, { Position = UDim2.new(0, 8, 0, 26), Size = UDim2.new(1, -16, 0, 34), TextColor3 = TEXT, TextYAlignment = Enum.TextYAlignment.Top })
+local coinLbl = label(gui, "", 14, { Size = UDim2.new(0, 150, 0, 22), Position = UDim2.new(0, 12, 0, 86), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 210, 90), Font = Enum.Font.GothamBold })
+
+local darkOver = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 15, Visible = false }, gui)
+local hurtOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(160, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 14 }, gui)
+local locustOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(0, 120, 140), Size = UDim2.fromScale(1, 1), ZIndex = 25, Visible = false }, gui)
+local locustText = label(locustOver, "", 30, { Font = Enum.Font.Arcade, TextColor3 = Color3.new(1, 1, 1), Position = UDim2.new(0, 0, 0.45, 0), Size = UDim2.new(1, 0, 0, 40), ZIndex = 26 })
+local darkUntil, hallucUntil = 0, 0
+local halluc = Instance.new("ColorCorrectionEffect")
+halluc.Name = "NH_Halluc"
+halluc.Enabled = false
+halluc.Parent = Lighting
+local hallucBlur = Instance.new("BlurEffect")
+hallucBlur.Name = "NH_HallucBlur"
+hallucBlur.Enabled = false
+hallucBlur.Parent = Lighting
+
+local SFX = { -- uploads in Config.SOUNDS win; otherwise built-in Roblox sounds, pitched
+	laugh = { "rbxasset://sounds/uuhhh.mp3", 1.6 }, siren = { "rbxasset://sounds/electronicpingshort.wav", 0.25 },
+	portal = { "rbxasset://sounds/swoosh.wav", 0.5 }, buzz = { "rbxasset://sounds/electronicpingshort.wav", 2.2 },
+	dark = { "rbxasset://sounds/swoosh.wav", 0.3 }, inject = { "rbxasset://sounds/swoosh.wav", 2 },
+	stretch = { "rbxasset://sounds/swoosh.wav", 0.7 }, sonic = { "rbxasset://sounds/uuhhh.mp3", 2.2 },
+	quake = { "rbxasset://sounds/action_falling.mp3", 0.4 }, shift = { "rbxasset://sounds/swoosh.wav", 0.35 },
+	paranoia = { "rbxasset://sounds/electronicpingshort.wav", 0.5 }, scream = { "rbxasset://sounds/uuhhh.mp3", 0.8 },
+	swing = { "rbxasset://sounds/swoosh.wav", 1.4 }, hit = { "rbxasset://sounds/collide.wav", 0.8 },
+	pistol = { "rbxasset://sounds/electronicpingshort.wav", 3 }, shotgun = { "rbxasset://sounds/electronicpingshort.wav", 2 }, rifle = { "rbxasset://sounds/electronicpingshort.wav", 3.5 },
+	dry = { "rbxasset://sounds/electronicpingshort.wav", 4 }, drink = { "rbxasset://sounds/impact_water.mp3", 1.4 }, eat = { "rbxasset://sounds/swoosh.wav", 2.5 },
+}
+local function sfx(kind, pos)
+	local up = Config.SOUNDS[kind]
+	local d = SFX[kind]
+	if not d and (not up or up == "") then return end
+	local id = (up and up ~= "") and up or d[1]
+	local parent = gui
+	if typeof(pos) == "Vector3" then
+		local a = Instance.new("Attachment")
+		a.WorldPosition = pos
+		a.Parent = workspace.Terrain
+		game:GetService("Debris"):AddItem(a, 6)
+		parent = a
+	end
+	local s = playSound(id, (up and up ~= "") and 1 or d[2], 1.5, parent)
+	if parent ~= gui then s.RollOffMaxDistance = 260 end
+end
+
+local function sightHighlights(secs, onlyUserId)
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p:GetAttribute("Role") == "Survivor" and p.Character and (not onlyUserId or p.UserId == onlyUserId) then
+			local hl = Instance.new("Highlight")
+			hl.FillColor = Color3.fromRGB(255, 30, 30)
+			hl.OutlineColor = Color3.new(1, 1, 1)
+			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			hl.Parent = p.Character
+			game:GetService("Debris"):AddItem(hl, secs)
+		end
+	end
+end
+
+local function locustSlam()
+	-- an old OS wallpaper fills the screen, a childish voice... then the Locust slams the glass
+	locustOver.Visible = true
+	locustOver.BackgroundColor3 = Color3.fromRGB(0, 120, 140)
+	locustText.Text = "hello? can you see me?"
+	playSound("rbxasset://sounds/electronicpingshort.wav", 1.8, 1)
+	task.delay(1.6, function()
+		locustText.Text = ""
+		locustOver.BackgroundColor3 = Color3.new(0, 0, 0)
+		local tpl = Templates:FindFirstChild("locust")
+		local vp = new("ViewportFrame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 26, Ambient = Color3.fromRGB(200, 200, 200) }, locustOver)
+		local cam = Instance.new("Camera")
+		cam.Parent = vp
+		vp.CurrentCamera = cam
+		if tpl then
+			local mm = tpl:Clone()
+			mm.Parent = vp
+			local cf, sz = mm:GetBoundingBox()
+			local hy = cf.Position.Y + sz.Y / 2 - 1.8
+			cam.CFrame = CFrame.lookAt(Vector3.new(0, hy, -2.6), Vector3.new(0, hy, 0))
+		end
+		playSound("rbxasset://sounds/action_falling.mp3", 0.5, 3)
+		playSound("rbxasset://sounds/uuhhh.mp3", 1.3, 2)
+		for i = 1, 9 do -- glass cracks
+			new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0, math.random(200, 700), 0, 2), Rotation = i * 20 + math.random(0, 10), ZIndex = 27 }, locustOver)
+		end
+		task.delay(1.4, function()
+			locustOver.Visible = false
+			for _, c in ipairs(locustOver:GetChildren()) do if c ~= locustText and not c:IsA("UICorner") then c:Destroy() end end
+		end)
+	end)
+end
+
+-- tools: clicking / tapping fires the held item along the camera look
+local function hookTool(tool)
+	if not tool:IsA("Tool") or tool:GetAttribute("NH_Hooked") then return end
+	tool:SetAttribute("NH_Hooked", true)
+	tool.Activated:Connect(function() Action:FireServer("fire", workspace.CurrentCamera.CFrame.LookVector) end)
+end
+local function hookChar(c)
+	for _, d in ipairs(c:GetChildren()) do hookTool(d) end
+	c.ChildAdded:Connect(hookTool)
+end
+if player.Character then hookChar(player.Character) end
+player.CharacterAdded:Connect(hookChar)
+
+-- monster health billboards over every monster (seen by survivors)
+local function monsterBillboard(p)
+	local c = p.Character
+	local hrp = c and c:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local bb = hrp:FindFirstChild("NH_HpBoard")
+	if not bb then
+		bb = new("BillboardGui", { Name = "NH_HpBoard", Size = UDim2.fromOffset(120, 26), StudsOffset = Vector3.new(0, 9, 0), AlwaysOnTop = false, MaxDistance = 120 }, hrp)
+		local bg = new("Frame", { Name = "Bg", BackgroundColor3 = Color3.fromRGB(40, 0, 0), Size = UDim2.new(1, 0, 0, 10) }, bb)
+		new("Frame", { Name = "Fill", BackgroundColor3 = Color3.fromRGB(220, 40, 40), Size = UDim2.fromScale(1, 1) }, bg)
+		label(bb, "", 12, { Name = "Txt", Position = UDim2.new(0, 0, 0, 10), Size = UDim2.new(1, 0, 0, 16), Font = Enum.Font.GothamBold })
+	end
+	local hp, max = p:GetAttribute("MonsterHp") or 0, p:GetAttribute("MonsterMaxHp") or 1
+	bb.Bg.Fill.Size = UDim2.fromScale(math.clamp(hp / max, 0, 1), 1)
+	bb.Txt.Text = p:GetAttribute("Down") and "KNOCKED DOWN" or ""
+end
+
+---------------------------------------------------------------------------
+-- Lobby locker: customize your survivor, coin shop (in-game coins only), monster preference
+---------------------------------------------------------------------------
+local HttpService = game:GetService("HttpService")
+local function myProfile()
+	local ok, pr = pcall(function() return HttpService:JSONDecode(player:GetAttribute("Profile") or "{}") end)
+	pr = ok and pr or {}
+	pr.look = pr.look or {}
+	local owned = {}
+	for _, k in ipairs(pr.owned or {}) do owned[k] = true end
+	pr.ownedSet = owned
+	return pr
+end
+local locker = new("Frame", { BackgroundColor3 = PANEL, Size = UDim2.new(0, 440, 0, 470), Position = UDim2.new(0.5, -220, 0.5, -235), Visible = false, ZIndex = 50 }, gui)
+corner(locker, 12)
+padding(locker, 12)
+local lockerTitle = label(locker, "LOCKER", 26, { Font = Enum.Font.Creepster, TextColor3 = RED, ZIndex = 51 })
+local lockerScroll = new("ScrollingFrame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 36), Size = UDim2.new(1, 0, 1, -80), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 6, ZIndex = 51 }, locker)
+list(lockerScroll, 6)
+button(locker, "Close", { Position = UDim2.new(0, 0, 1, -38), Size = UDim2.new(1, 0, 0, 36), ZIndex = 52 }, function() locker.Visible = false end)
+local refreshLocker
+local function row(text, order, actions)
+	local r = new("Frame", { BackgroundColor3 = DARK, Size = UDim2.new(1, -8, 0, 34), LayoutOrder = order, ZIndex = 52 }, lockerScroll)
+	corner(r, 6)
+	label(r, text, 13, { Size = UDim2.new(1, -150, 1, 0), Position = UDim2.new(0, 8, 0, 0), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 53 })
+	for i, a in ipairs(actions) do
+		button(r, a[1], { Size = UDim2.new(0, 68, 0, 28), Position = UDim2.new(1, -72 * (#actions - i + 1), 0, 3), TextSize = 12, ZIndex = 53, BackgroundColor3 = a[3] or RED }, function() a[2](); task.delay(0.35, refreshLocker) end)
+	end
+end
+local monsterPrefIdx = 0
+refreshLocker = function()
+	for _, c in ipairs(lockerScroll:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end
+	local pr = myProfile()
+	lockerTitle.Text = ("LOCKER  -  %d coins"):format(pr.coins or 0)
+	local o = 0
+	local function nxt() o += 1; return o end
+	label(lockerScroll, "Your survivor", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+	local cyc = function(k, n) return function() Action:FireServer("look", { [k] = ((pr.look[k] or 1) % n) + 1 }) end end
+	row("Skin tone", nxt(), { { "Next", cyc("sk", #Config.SKIN_TONES) } })
+	row("Hair colour", nxt(), { { "Next", cyc("hc", #Config.HAIR_COLORS) } })
+	row("Hair style", nxt(), { { "Next", cyc("hs", 4) } })
+	row("Shirt", nxt(), { { "Next", cyc("top", #Config.CLOTHES) } })
+	row("Pants", nxt(), { { "Next", cyc("pants", #Config.CLOTHES) } })
+	for _, cat in ipairs({ "hat", "acc", "skin" }) do
+		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins" })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+		local cur = cat == "skin" and (pr.skin or "classic") or (pr.look[cat] or "none")
+		row((cat == "skin" and "classic" or "none") .. ((cur == "none" or cur == "classic") and "  (worn)" or ""), nxt(), { { "Wear", function() Action:FireServer("equip", { cat = cat, id = cat == "skin" and "classic" or "none" }) end, Color3.fromRGB(60, 60, 70) } })
+		local items = {}
+		for id, price in pairs(Config.SHOP[cat]) do table.insert(items, { id, price }) end
+		table.sort(items, function(x, y) return x[2] < y[2] end)
+		for _, it in ipairs(items) do
+			local id, price = it[1], it[2]
+			local have = pr.ownedSet[cat .. ":" .. id]
+			row(("%s%s"):format(id, cur == id and "  (worn)" or (have and "" or ("  -  " .. price .. " coins"))), nxt(), {
+				have and { "Wear", function() Action:FireServer("equip", { cat = cat, id = id }) end, Color3.fromRGB(60, 60, 70) }
+					or { "Buy", function() Action:FireServer("buy", { cat = cat, id = id }) end },
+			})
+		end
+	end
+	label(lockerScroll, "Monster preference (if you become a monster)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+	local prefName = (pr.pref and pr.pref ~= "" and Config.MONSTERS[pr.pref]) and Config.MONSTERS[pr.pref].name or "Random"
+	row(prefName, nxt(), { { "Next", function()
+		monsterPrefIdx = (monsterPrefIdx + 1) % (#Config.MONSTER_KEYS + 1)
+		Action:FireServer("pref", monsterPrefIdx == 0 and "" or Config.MONSTER_KEYS[monsterPrefIdx])
+	end } })
+end
+local lockerBtn = button(lobbyPanel, "Locker & shop", { LayoutOrder = 9, BackgroundColor3 = Color3.fromRGB(90, 70, 30) }, function()
+	locker.Visible = not locker.Visible
+	if locker.Visible then refreshLocker() end
+end)
+_ = lockerBtn
+local roundBtn = button(lobbyPanel, "", { LayoutOrder = 10, TextSize = 13, BackgroundColor3 = Color3.fromRGB(60, 50, 90) }, function()
+	local cur = State:GetAttribute("RoundLen") or 420
+	local i = table.find(Config.ROUND_LENGTHS, cur) or 2
+	Action:FireServer("settings", { roundLen = Config.ROUND_LENGTHS[i % #Config.ROUND_LENGTHS + 1] })
+end)
+lobbyPanel.Size = UDim2.new(0, 290, 0, 480)
+lobbyPanel.Position = UDim2.new(1, -302, 1, -492)
+
 
 ---------------------------------------------------------------------------
 -- Lighting per state / role
@@ -2255,7 +3753,7 @@ local function onSprint(_, inputState, input)
 end
 ContextActionService:BindAction("NH_Sprint", onSprint, true, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonL3)
 placeButton("NH_Sprint", "RUN", UDim2.new(1, -95, 1, -190), UDim2.fromOffset(70, 70))
-local bound = { ability = false, flash = false }
+local bound = { ability = false, flash = false, use = false, wake = false }
 local function onAbility(_, inputState)
 	if inputState == Enum.UserInputState.Begin then Action:FireServer("ability") end
 	return Enum.ContextActionResult.Sink
@@ -2290,12 +3788,37 @@ local function updateBindings()
 			ContextActionService:UnbindAction("NH_Flashlight")
 		end
 	end
+	local c = player.Character
+	local wantUse = st == "Hunt" and role == "Survivor" and alive == true and touch and c ~= nil and c:FindFirstChildOfClass("Tool") ~= nil
+	if wantUse ~= bound.use then
+		bound.use = wantUse
+		if wantUse then
+			ContextActionService:BindAction("NH_Use", function(_, s2) if s2 == Enum.UserInputState.Begin then Action:FireServer("fire", workspace.CurrentCamera.CFrame.LookVector) end; return Enum.ContextActionResult.Sink end, true)
+			placeButton("NH_Use", "ATTACK", UDim2.new(1, -270, 1, -150), UDim2.fromOffset(86, 86))
+		else
+			ContextActionService:UnbindAction("NH_Use")
+		end
+	end
+	local wantWake = player:GetAttribute("Sleeping") == true
+	if wantWake ~= bound.wake then
+		bound.wake = wantWake
+		if wantWake then
+			ContextActionService:BindAction("NH_Wake", function(_, s2) if s2 == Enum.UserInputState.Begin then Action:FireServer("wake") end; return Enum.ContextActionResult.Sink end, true, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
+			placeButton("NH_Wake", "WAKE UP", UDim2.new(0.5, -45, 0.6, 0), UDim2.fromOffset(90, 90))
+		else
+			ContextActionService:UnbindAction("NH_Wake")
+		end
+	end
+	-- monsters can't open loot
+	game:GetService("ProximityPromptService").Enabled = not (st == "Hunt" and role == "Monster")
 	if st ~= "Hunt" and sprintHeld then sprintHeld = false; Action:FireServer("sprint", false) end
 end
 State:GetAttributeChangedSignal("State"):Connect(updateBindings)
 player:GetAttributeChangedSignal("Role"):Connect(updateBindings)
 player:GetAttributeChangedSignal("Alive"):Connect(updateBindings)
 player:GetAttributeChangedSignal("Escaped"):Connect(updateBindings)
+player:GetAttributeChangedSignal("Sleeping"):Connect(updateBindings)
+task.spawn(function() while true do task.wait(0.5); updateBindings() end end) -- tool equip / unequip
 task.defer(updateBindings)
 
 -- scale the UI down on small screens (phones) so panels fit
@@ -2314,25 +3837,81 @@ workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale
 -- Server notifications
 ---------------------------------------------------------------------------
 local resultsUntil = 0
-Notify.OnClientEvent:Connect(function(kind, a, b)
+Notify.OnClientEvent:Connect(function(kind, a, b, c)
 	if kind == "toast" then
 		toast(a)
 	elseif kind == "jumpscare" then
-		jumpscare(a)
+		jumpscare(a, b)
+	elseif kind == "scare" then
+		-- someone else got caught near you: hear the scream from their spot
+		if a ~= player.UserId and typeof(c) == "Vector3" then
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp and (hrp.Position - c).Magnitude < 160 then sfx("scream", c) end
+		end
+	elseif kind == "kill" then
+		-- you (the monster) caught someone: watch the kill from your own eyes
+		local victim = Players:GetPlayerByUserId(b)
+		local cam = workspace.CurrentCamera
+		local myHead = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if victim and victim.Character and myHead then
+			local vh = victim.Character:FindFirstChild("HumanoidRootPart")
+			local prevType = cam.CameraType
+			cam.CameraType = Enum.CameraType.Scriptable
+			local kfx = new("Frame", { BackgroundColor3 = Color3.fromRGB(90, 0, 0), BackgroundTransparency = 0.75, Size = UDim2.fromScale(1, 1), ZIndex = 29 }, gui)
+			local cap = label(kfx, "YOU CAUGHT " .. tostring(c):upper(), 40, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.78, 0), Size = UDim2.new(1, 0, 0, 50), ZIndex = 31, Visible = false })
+			local impact = IMPACT[a] or 1.55
+			local start, hit = os.clock(), false
+			local conn
+			conn = RunService.RenderStepped:Connect(function()
+				local e = os.clock() - start
+				if vh and vh.Parent and myHead.Parent then
+					local eye = myHead.Position + Vector3.new(0, 4, 0)
+					cam.CFrame = CFrame.lookAt(eye, vh.Position + Vector3.new(0, 1.5, 0)) * CFrame.new((math.random() - 0.5) * 0.15, (math.random() - 0.5) * 0.15, 0)
+				end
+				kfx.BackgroundTransparency = 0.75 + math.sin(e * 9) * 0.08
+				if e >= impact and not hit then
+					hit = true
+					cap.Visible = true
+					if bloodOn then for i = 1, 6 do splat(kfx, (i % 2 == 0) and math.random() * 0.15 or 0.85 + math.random() * 0.15, math.random(), math.random(50, 140), 30) end end
+				end
+				if e > 2.4 then
+					conn:Disconnect()
+					kfx:Destroy()
+					cam.CameraType = prevType == Enum.CameraType.Scriptable and Enum.CameraType.Custom or prevType
+				end
+			end)
+		end
 	elseif kind == "effect" then
 		if a == "grey" then greyUntil = os.clock() + b end
+		if a == "dark" then darkUntil = os.clock() + b end
+		if a == "halluc" then hallucUntil = os.clock() + b end
 		if a == "lightsout" then toast("Your flashlight died...") end
+	elseif kind == "sfx" then
+		sfx(a, b)
+	elseif kind == "sight" then
+		sightHighlights(a, b)
+	elseif kind == "locust" then
+		locustSlam()
+	elseif kind == "hurt" then
+		hurtOver.BackgroundTransparency = 0.45
+		TweenService:Create(hurtOver, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+	elseif kind == "coins" then
+		toast(("+%d coins - %s"):format(a, b or ""))
+	elseif kind == "pickup" then
+		local def = Config.ITEMS[a]
+		toast("Picked up " .. (def and def.name or tostring(a)))
 	elseif kind == "escaped" then
 		toast("You escaped! Watch from the lobby.")
 	elseif kind == "flight" then
 		overlay.Visible = true
 		overlayTitle.Text = "TAKING OFF..."
 		local role = player:GetAttribute("Role")
+		local len = State:GetAttribute("RoundLen") or 420
 		if role == "Monster" then
 			local def = Config.MONSTERS[player:GetAttribute("Monster")] or Config.MONSTERS.freddy
-			overlayText.Text = ("Flying to %s\n\nYou are %s!\nCatch every survivor before they escape.\nPower: %s - %s"):format(a, def.name:upper(), def.ability, def.desc)
+			overlayText.Text = ("Flying to %s\n\nYou are %s!\nCatch every survivor in %d minutes.\nPower: %s - %s"):format(a, def.name:upper(), len // 60, def.ability, def.desc)
 		else
-			overlayText.Text = ("Flying to %s\n\nYou are a SURVIVOR.\nStay hidden, use your flashlight, and reach the extraction helicopter when it lands (%ds left)."):format(a, Config.EXTRACT_AT)
+			overlayText.Text = ("Flying to %s\n\nYou are a SURVIVOR.\nSearch chests and bags for food, armor and weapons. Fight back, hide, and survive %d minutes - the extraction helicopter lands with %ds left."):format(a, len // 60, math.min(Config.EXTRACT_AT, len - 30))
 		end
 	elseif kind == "results" then
 		resultsUntil = os.clock() + Config.RESULTS_TIME
@@ -2368,7 +3947,7 @@ RunService.RenderStepped:Connect(function(dt)
 		subLbl.Text = State:GetAttribute("Theme") or ""
 	elseif st == "Hunt" then
 		stateLbl.Text = fmtTime(tl)
-		local extra = State:GetAttribute("ExtractOpen") and "  -  EXTRACTION IS HERE" or ("  -  heli in " .. fmtTime(math.max(0, tl - Config.EXTRACT_AT)))
+		local extra = State:GetAttribute("ExtractOpen") and "  -  EXTRACTION IS HERE" or ("  -  heli in " .. fmtTime(math.max(0, tl - math.min(Config.EXTRACT_AT, (State:GetAttribute("RoundLen") or 420) - 30))))
 		subLbl.Text = (State:GetAttribute("Theme") or "") .. extra
 	elseif st == "Results" then
 		stateLbl.Text = "ROUND OVER"
@@ -2399,6 +3978,8 @@ RunService.RenderStepped:Connect(function(dt)
 		hostPrivacy.Visible = isHost
 		hostPrivacy.Text = public and "Make FRIENDS ONLY" or "Make PUBLIC"
 		takeOff.Visible = isHost
+		roundBtn.Visible = isHost
+		roundBtn.Text = ("Round length: %d min (tap to change)"):format((State:GetAttribute("RoundLen") or 420) // 60)
 		local minN = State:GetAttribute("Studio") and 1 or Config.MIN_PLAYERS
 		local ready = n >= minN and boarded == n
 		takeOff.BackgroundColor3 = ready and RED or Color3.fromRGB(70, 70, 70)
@@ -2429,21 +4010,56 @@ RunService.RenderStepped:Connect(function(dt)
 			local left = (player:GetAttribute("AbilityReadyAt") or 0) - workspace:GetServerTimeNow()
 			local name = def.ability
 			if player:GetAttribute("Monster") == "demogorgon" and player:GetAttribute("PortalSet") then name = "Jump to portal" end
+			local desc = def.desc
+			if player:GetAttribute("Monster") == "drnowhere" then
+				local f = Config.DN_FORMS[player:GetAttribute("Form") or 1]
+				name = f.ability
+				desc = ("Form: %s - %s. Next form in %ds"):format(f.name, f.desc, math.max(0, math.ceil((player:GetAttribute("FormAt") or 0) - workspace:GetServerTimeNow())))
+			end
 			abilityBtn.Visible = true
 			abilityBtn.Text = left > 0 and ("%s (%ds)"):format(name, math.ceil(left)) or ("[E] " .. name)
 			abilityBtn.BackgroundColor3 = left > 0 and Color3.fromRGB(70, 70, 70) or RED
-			abilityDesc.Text = def.desc
+			abilityDesc.Text = desc
 		else
 			roleTitle.Text = player:GetAttribute("Escaped") and "ESCAPED" or (player:GetAttribute("Alive") and "SURVIVOR" or "CAUGHT")
 			roleTitle.TextColor3 = Color3.fromRGB(120, 200, 255)
 			roleDesc.Text = State:GetAttribute("ExtractOpen") and "Get to the helicopter - follow the green beam!" or "Hide, run, and survive until extraction."
 			abilityBtn.Visible = false
-			abilityDesc.Text = touch and "RUN: sprint · LIGHT: flashlight. Hide inside bushes and crates." or "Shift: sprint · F: flashlight. Hide inside bushes and crates."
+			abilityDesc.Text = touch and "RUN: sprint · LIGHT: flashlight · ATTACK: use held item. Open chests and bags." or "Shift: sprint · F: flashlight · click: use held item · hold E: open chests and bags."
 		end
 	end
 	staminaFill.Size = UDim2.new((player:GetAttribute("Stamina") or 100) / 100, 0, 1, 0)
 	staminaFill.BackgroundColor3 = player:GetAttribute("CanSprint") == false and Color3.fromRGB(120, 120, 120) or Color3.fromRGB(230, 200, 80)
 	staminaHint.Text = player:GetAttribute("CanSprint") == false and "can't sprint!" or "Shift = sprint"
+
+	-- survivor HUD
+	local aliveS = st == "Hunt" and role == "Survivor" and player:GetAttribute("Alive") and not player:GetAttribute("Escaped")
+	hud.Visible = aliveS == true
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hud.Visible and hum then
+		local f = math.clamp(hum.Health / math.max(1, hum.MaxHealth), 0, 1)
+		hpFill.Size = UDim2.fromScale(f, 1)
+		hpFill.BackgroundColor3 = f > 0.5 and Color3.fromRGB(60, 190, 80) or (f > 0.25 and Color3.fromRGB(230, 170, 40) or Color3.fromRGB(210, 40, 40))
+		hpLbl.Text = ("HP %d"):format(math.ceil(hum.Health))
+		gearLbl.Text = ("Vest %d  Helmet %d   |   Ammo  light %d  shells %d  heavy %d"):format(player:GetAttribute("Vest") or 0, player:GetAttribute("Helmet") or 0,
+			player:GetAttribute("Ammo_light") or 0, player:GetAttribute("Ammo_shells") or 0, player:GetAttribute("Ammo_heavy") or 0)
+	end
+	coinLbl.Text = ("%d coins"):format(player:GetAttribute("Coins") or 0)
+	if st == "Hunt" then
+		for _, p in ipairs(Players:GetPlayers()) do if p:GetAttribute("Role") == "Monster" and p ~= player then monsterBillboard(p) end end
+	end
+	darkOver.Visible = os.clock() < darkUntil and st == "Hunt"
+	local hl = os.clock() < hallucUntil and st == "Hunt"
+	halluc.Enabled, hallucBlur.Enabled = hl, hl
+	if hl then
+		local w = os.clock()
+		halluc.TintColor = Color3.fromHSV((w * 0.25) % 1, 0.35, 1)
+		halluc.Saturation = 0.4
+		hallucBlur.Size = 4 + math.sin(w * 3) * 3
+		workspace.CurrentCamera.FieldOfView = 70 + math.sin(w * 2.2) * 6
+	elseif workspace.CurrentCamera.FieldOfView ~= 70 then
+		workspace.CurrentCamera.FieldOfView = 70
+	end
 
 	-- effects
 	local g = os.clock() < greyUntil

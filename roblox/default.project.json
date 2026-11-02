@@ -21,7 +21,8 @@
       "$properties": {
         "DevTouchMovementMode": "Thumbstick",
         "DevTouchCameraMovementMode": "Classic",
-        "CameraMaxZoomDistance": 40
+        "CameraMaxZoomDistance": 40,
+        "CameraMinZoomDistance": 0.5
       }
     },
     "Players": {
