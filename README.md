@@ -1,4 +1,4 @@
-# Night Hunt 🚁👹 (v1.4.0, rated 13+)
+# Night Hunt 🚁👹 (v1.4.1, rated 13+)
 
 A fan-made multiplayer monster survival game for playing with friends. Board the helicopter, drop into a dense power-line forest, loot chests and bags, and survive the monsters.
 
@@ -9,10 +9,14 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
    - **max players** (2-15);
    - **privacy**: friends only (code or link) or public (listed in the server browser);
    - **round length**: 5, 7 or 10 minutes (7 by default).
-2. In the lobby, walk into the **Night Hunt Store** next to the helipad (press **E** at a counter). Everything costs in-game coins you earn in rounds; there is no real money. Your choices are saved.
-   - **Item counter:** hats, accessories and **round supplies** (up to 2 snacks, drinks or a medkit, handed to you at the start of your next round).
-   - **Dressing room:** customise your survivor and buy **outfits** (diver, hazmat, ninja, astronaut, knight and more); check the result in the mirror.
-   - **Skins gallery:** monster skins (including Lava, Neon and Abyss) shown on statues, plus your **preferred monster**. If you pick one, the round usually goes to that monster's home map.
+2. In the lobby, walk down the **Shopping Street** next to the helipad. It has **nine walk-in stores**, each with its own sign, themed displays and a counter (walk up and press **E** to open that store). Everything costs in-game coins you earn in rounds; there is no real money. Your choices are saved.
+   - **Skin Shop:** survivor skins, hats and accessories.
+   - **Weapon Shop:** knife, bat, crowbar, axe, pistol, shotgun and ammo. **Armor Shop:** bulletproof vest and helmet. **Food & Drinks:** snacks, drinks and medkits. Up to **3 round supplies** from these shops are handed to you at the start of your next round.
+   - **Monster Skins:** monster skins shown on statues, plus your **preferred monster** (the round usually goes to that monster's home map).
+   - **Emotes & Dances:** a disco dance floor; buy emotes and play them with **B** (Wave is free).
+   - **Pets & Trails:** a pet that follows you (puppy, kitty, bat, owl, slime, pumpkin, ghost, baby dragon) and a trail behind you.
+   - **Dressing Room:** customise your survivor, buy **outfits** and check the mirror.
+   - **Mystery Crates:** 150 coins for a random cosmetic you don't own yet.
 3. Everyone walks onto the helipad, and the host presses **Take off!**. Each player has a random chance to become a **monster**.
 4. **Survivors** search **chests and bags** for gear:
    - food and drinks (heal and restore stamina);
@@ -22,6 +26,11 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
 
    Fight back, sleep in beds to heal, and reach the **extraction helicopter**, which lands for the last 90 seconds.
 5. **Monsters** have health. Survivors can **knock them down and stun them**; they get back up after a few seconds. Monster hits drain survivors' health, and a survivor at 0 is caught.
+
+## End screens (v1.4.1)
+- **YOU DIED:** after a monster's jumpscare animation has fully finished, the caught survivor sees who killed them and their round stats (time survived, damage dealt, monster knockdowns, coins earned), with **Spectate** and **Return to Lobby** buttons.
+- **KILL:** the monster player sees a "KILL / <survivor> eliminated" popup after its kill cam. It fades out on its own so the hunt keeps going.
+- **Round results:** a full results screen (survivors or monster win, victory or defeat for you, every player's role, result, kills/damage, knockdowns and coins) with a countdown back to the lobby. It waits until any jumpscare, death screen or kill popup is done.
 
 ## Monsters
 | Monster | Power (every power has a 20 s cooldown) | Jumpscare |
@@ -92,7 +101,7 @@ Maps are several times bigger than in v1.3, and far-away objects are streamed an
 ## Coming next (phase 3 ideas)
 - Online accounts so coins and skins follow you between devices.
 - Swimming animations and underwater sections for the ocean map.
-- More store sections (emotes, flashlight colours) and monster skin previews in the mirror.
+- More store items (flashlight colours) and monster skin previews in the mirror.
 - Uploaded audio for every new monster on Roblox.
 
 Fan-made for private play. Models and sounds are original procedural look-alikes, apart from the CC0 models listed below; no copyrighted assets are used. The characters belong to their creators:

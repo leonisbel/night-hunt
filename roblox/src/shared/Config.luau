@@ -7,7 +7,7 @@ C.ROUND_LENGTHS = { 300, 420, 600 } -- host picks 5, 7 or 10 minutes in the lobb
 C.ROUND_TIME = 420       -- default round length (7 minutes)
 C.EXTRACT_AT = 90        -- extraction helicopter lands with this many seconds left
 C.FLIGHT_TIME = 4
-C.RESULTS_TIME = 9
+C.RESULTS_TIME = 14      -- v1.4.1: the full results screen stays up longer
 C.MONSTER_CHANCE = 0.2   -- each player's chance to become a monster
 C.SURVIVOR_SPEED = 16
 C.SPRINT_MULT = 1.55
@@ -116,8 +116,45 @@ C.SHOP = {
 	acc = { glasses = 40, scarf = 60, mask = 80, goggles = 120 },
 	skin = { shadow = 250, toxic = 300, frost = 300, blood = 350, golden = 600, lava = 400, neon = 400, abyss = 450 },
 	outfit = { scout = 120, pajamas = 100, ranger = 150, hunter = 180, diver = 220, hazmat = 250, ninja = 300, ghostbuster = 350, astronaut = 450, knight = 500 },
-	supply = { water = 15, soda = 15, chips = 20, choco = 20, energy = 30, beans = 35, medkit = 60 }, -- round supplies (max 2, used up when the round starts)
+	-- round supplies (max C.KIT_MAX, handed out and used up when the next round starts); sold in the Food, Weapon and Armor shops
+	supply = { water = 15, soda = 15, chips = 15, choco = 20, beans = 25, energy = 30, medkit = 60,
+		knife = 40, bat = 60, crowbar = 80, axe = 120, pistol = 150, shotgun = 220, ammo_light = 25, ammo_shells = 30,
+		vest = 120, helmet = 80 },
+	-- v1.4.1 lobby shopping street
+	pet = { puppy = 200, kitty = 200, bat = 250, owl = 250, slime = 300, pumpkin = 300, ghost = 400, dragon = 600 },
+	trail = { fire = 150, ice = 150, toxic = 150, stars = 200, shadow = 200, blood = 250, rainbow = 400 },
+	emote = { wave = 0, point = 60, cheer = 60, laugh = 80, dance = 80, shuffle = 120, groove = 150 },
 }
+C.KIT_MAX = 3
+C.CRATE_PRICE = 150
+C.SUPPLY_SHOP = { -- which store sells which round supply
+	water = "food", soda = "food", chips = "food", choco = "food", beans = "food", energy = "food", medkit = "food",
+	knife = "weapons", bat = "weapons", crowbar = "weapons", axe = "weapons", pistol = "weapons", shotgun = "weapons", ammo_light = "weapons", ammo_shells = "weapons",
+	vest = "armor", helmet = "armor",
+}
+-- the nine walk-in stores on the lobby shopping street (coins only - no Robux, no real money)
+C.STORES = {
+	{ k = "skinshop", name = "SKIN SHOP", sub = "HATS & ACCESSORIES", c = Color3.fromRGB(255, 154, 240) },
+	{ k = "weapons", name = "WEAPON SHOP", sub = "MELEE - GUNS - AMMO", c = Color3.fromRGB(255, 90, 58) },
+	{ k = "armor", name = "ARMOR SHOP", sub = "VESTS - HELMETS", c = Color3.fromRGB(122, 184, 255) },
+	{ k = "food", name = "FOOD & DRINKS", sub = "SNACKS - DRINKS - MEDKITS", c = Color3.fromRGB(138, 255, 106) },
+	{ k = "monskins", name = "MONSTER SKINS", sub = "SKINS - PICK YOUR MONSTER", c = Color3.fromRGB(255, 58, 58) },
+	{ k = "emotes", name = "EMOTES & DANCES", sub = "DANCE FLOOR", c = Color3.fromRGB(255, 210, 58) },
+	{ k = "pets", name = "PETS & TRAILS", sub = "FOLLOWERS - TRAILS", c = Color3.fromRGB(90, 255, 216) },
+	{ k = "clothing", name = "DRESSING ROOM", sub = "OUTFITS - LOOKS - MIRROR", c = Color3.fromRGB(154, 216, 255) },
+	{ k = "crate", name = "MYSTERY CRATES", sub = "WIN A RANDOM ITEM", c = Color3.fromRGB(192, 138, 255) },
+}
+C.PET_COLORS = { puppy = { Color3.fromRGB(176, 122, 72), Color3.fromRGB(240, 224, 200) }, kitty = { Color3.fromRGB(232, 150, 58), Color3.fromRGB(255, 240, 224) },
+	bat = { Color3.fromRGB(42, 34, 48), Color3.fromRGB(90, 58, 74) }, ghost = { Color3.fromRGB(240, 244, 255), Color3.fromRGB(192, 208, 255) },
+	dragon = { Color3.fromRGB(58, 168, 74), Color3.fromRGB(232, 192, 64) }, slime = { Color3.fromRGB(90, 255, 106), Color3.fromRGB(42, 138, 58) },
+	owl = { Color3.fromRGB(138, 106, 72), Color3.fromRGB(240, 216, 160) }, pumpkin = { Color3.fromRGB(255, 138, 26), Color3.fromRGB(58, 106, 26) } }
+C.TRAIL_COLORS = { fire = { Color3.fromRGB(255, 220, 60), Color3.fromRGB(255, 60, 0) }, ice = { Color3.fromRGB(220, 250, 255), Color3.fromRGB(80, 160, 255) },
+	toxic = { Color3.fromRGB(180, 255, 60), Color3.fromRGB(30, 160, 40) }, stars = { Color3.fromRGB(255, 255, 200), Color3.fromRGB(255, 210, 60) },
+	shadow = { Color3.fromRGB(60, 40, 80), Color3.fromRGB(0, 0, 0) }, blood = { Color3.fromRGB(200, 10, 20), Color3.fromRGB(90, 0, 0) },
+	rainbow = { Color3.fromRGB(255, 60, 60), Color3.fromRGB(60, 120, 255) } }
+-- standard Roblox avatar emote animations (the same ones the default Animate script uses)
+C.EMOTE_ANIMS = { wave = "rbxassetid://507770239", point = "rbxassetid://507770453", cheer = "rbxassetid://507770677", laugh = "rbxassetid://507770818",
+	dance = "rbxassetid://507771019", shuffle = "rbxassetid://507771955", groove = "rbxassetid://507772104" }
 C.OUTFITS = {
 	scout = { Color3.fromRGB(150, 130, 70), Color3.fromRGB(90, 80, 50) }, pajamas = { Color3.fromRGB(120, 160, 230), Color3.fromRGB(120, 160, 230) },
 	ranger = { Color3.fromRGB(60, 90, 50), Color3.fromRGB(110, 90, 60) }, hunter = { Color3.fromRGB(200, 80, 20), Color3.fromRGB(40, 40, 40) },

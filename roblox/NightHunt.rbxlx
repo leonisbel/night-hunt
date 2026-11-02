@@ -102,7 +102,7 @@ C.ROUND_LENGTHS = { 300, 420, 600 } -- host picks 5, 7 or 10 minutes in the lobb
 C.ROUND_TIME = 420       -- default round length (7 minutes)
 C.EXTRACT_AT = 90        -- extraction helicopter lands with this many seconds left
 C.FLIGHT_TIME = 4
-C.RESULTS_TIME = 9
+C.RESULTS_TIME = 14      -- v1.4.1: the full results screen stays up longer
 C.MONSTER_CHANCE = 0.2   -- each player's chance to become a monster
 C.SURVIVOR_SPEED = 16
 C.SPRINT_MULT = 1.55
@@ -211,8 +211,45 @@ C.SHOP = {
 	acc = { glasses = 40, scarf = 60, mask = 80, goggles = 120 },
 	skin = { shadow = 250, toxic = 300, frost = 300, blood = 350, golden = 600, lava = 400, neon = 400, abyss = 450 },
 	outfit = { scout = 120, pajamas = 100, ranger = 150, hunter = 180, diver = 220, hazmat = 250, ninja = 300, ghostbuster = 350, astronaut = 450, knight = 500 },
-	supply = { water = 15, soda = 15, chips = 20, choco = 20, energy = 30, beans = 35, medkit = 60 }, -- round supplies (max 2, used up when the round starts)
+	-- round supplies (max C.KIT_MAX, handed out and used up when the next round starts); sold in the Food, Weapon and Armor shops
+	supply = { water = 15, soda = 15, chips = 15, choco = 20, beans = 25, energy = 30, medkit = 60,
+		knife = 40, bat = 60, crowbar = 80, axe = 120, pistol = 150, shotgun = 220, ammo_light = 25, ammo_shells = 30,
+		vest = 120, helmet = 80 },
+	-- v1.4.1 lobby shopping street
+	pet = { puppy = 200, kitty = 200, bat = 250, owl = 250, slime = 300, pumpkin = 300, ghost = 400, dragon = 600 },
+	trail = { fire = 150, ice = 150, toxic = 150, stars = 200, shadow = 200, blood = 250, rainbow = 400 },
+	emote = { wave = 0, point = 60, cheer = 60, laugh = 80, dance = 80, shuffle = 120, groove = 150 },
 }
+C.KIT_MAX = 3
+C.CRATE_PRICE = 150
+C.SUPPLY_SHOP = { -- which store sells which round supply
+	water = "food", soda = "food", chips = "food", choco = "food", beans = "food", energy = "food", medkit = "food",
+	knife = "weapons", bat = "weapons", crowbar = "weapons", axe = "weapons", pistol = "weapons", shotgun = "weapons", ammo_light = "weapons", ammo_shells = "weapons",
+	vest = "armor", helmet = "armor",
+}
+-- the nine walk-in stores on the lobby shopping street (coins only - no Robux, no real money)
+C.STORES = {
+	{ k = "skinshop", name = "SKIN SHOP", sub = "HATS & ACCESSORIES", c = Color3.fromRGB(255, 154, 240) },
+	{ k = "weapons", name = "WEAPON SHOP", sub = "MELEE - GUNS - AMMO", c = Color3.fromRGB(255, 90, 58) },
+	{ k = "armor", name = "ARMOR SHOP", sub = "VESTS - HELMETS", c = Color3.fromRGB(122, 184, 255) },
+	{ k = "food", name = "FOOD & DRINKS", sub = "SNACKS - DRINKS - MEDKITS", c = Color3.fromRGB(138, 255, 106) },
+	{ k = "monskins", name = "MONSTER SKINS", sub = "SKINS - PICK YOUR MONSTER", c = Color3.fromRGB(255, 58, 58) },
+	{ k = "emotes", name = "EMOTES & DANCES", sub = "DANCE FLOOR", c = Color3.fromRGB(255, 210, 58) },
+	{ k = "pets", name = "PETS & TRAILS", sub = "FOLLOWERS - TRAILS", c = Color3.fromRGB(90, 255, 216) },
+	{ k = "clothing", name = "DRESSING ROOM", sub = "OUTFITS - LOOKS - MIRROR", c = Color3.fromRGB(154, 216, 255) },
+	{ k = "crate", name = "MYSTERY CRATES", sub = "WIN A RANDOM ITEM", c = Color3.fromRGB(192, 138, 255) },
+}
+C.PET_COLORS = { puppy = { Color3.fromRGB(176, 122, 72), Color3.fromRGB(240, 224, 200) }, kitty = { Color3.fromRGB(232, 150, 58), Color3.fromRGB(255, 240, 224) },
+	bat = { Color3.fromRGB(42, 34, 48), Color3.fromRGB(90, 58, 74) }, ghost = { Color3.fromRGB(240, 244, 255), Color3.fromRGB(192, 208, 255) },
+	dragon = { Color3.fromRGB(58, 168, 74), Color3.fromRGB(232, 192, 64) }, slime = { Color3.fromRGB(90, 255, 106), Color3.fromRGB(42, 138, 58) },
+	owl = { Color3.fromRGB(138, 106, 72), Color3.fromRGB(240, 216, 160) }, pumpkin = { Color3.fromRGB(255, 138, 26), Color3.fromRGB(58, 106, 26) } }
+C.TRAIL_COLORS = { fire = { Color3.fromRGB(255, 220, 60), Color3.fromRGB(255, 60, 0) }, ice = { Color3.fromRGB(220, 250, 255), Color3.fromRGB(80, 160, 255) },
+	toxic = { Color3.fromRGB(180, 255, 60), Color3.fromRGB(30, 160, 40) }, stars = { Color3.fromRGB(255, 255, 200), Color3.fromRGB(255, 210, 60) },
+	shadow = { Color3.fromRGB(60, 40, 80), Color3.fromRGB(0, 0, 0) }, blood = { Color3.fromRGB(200, 10, 20), Color3.fromRGB(90, 0, 0) },
+	rainbow = { Color3.fromRGB(255, 60, 60), Color3.fromRGB(60, 120, 255) } }
+-- standard Roblox avatar emote animations (the same ones the default Animate script uses)
+C.EMOTE_ANIMS = { wave = "rbxassetid://507770239", point = "rbxassetid://507770453", cheer = "rbxassetid://507770677", laugh = "rbxassetid://507770818",
+	dance = "rbxassetid://507771019", shuffle = "rbxassetid://507771955", groove = "rbxassetid://507772104" }
 C.OUTFITS = {
 	scout = { Color3.fromRGB(150, 130, 70), Color3.fromRGB(90, 80, 50) }, pajamas = { Color3.fromRGB(120, 160, 230), Color3.fromRGB(120, 160, 230) },
 	ranger = { Color3.fromRGB(60, 90, 50), Color3.fromRGB(110, 90, 60) }, hunter = { Color3.fromRGB(200, 80, 20), Color3.fromRGB(40, 40, 40) },
@@ -263,6 +300,7 @@ local Debris = game:GetService("Debris")
 local Shared = ReplicatedStorage:WaitForChild("NightHunt")
 local Config = require(Shared:WaitForChild("Config"))
 local Models = require(script:WaitForChild("Models"))
+local Plaza = require(script:WaitForChild("Plaza"))
 local MapGen = require(script:WaitForChild("MapGen"))
 
 ---------------------------------------------------------------------------
@@ -365,16 +403,16 @@ do
 	t.TextColor3 = Color3.fromRGB(220, 40, 40)
 	t.Text = "NIGHT HUNT\nboard the helicopter"
 	t.Parent = gui
-	-- v1.4: the walk-in store east of the helipad (item counter, dressing room, skins gallery)
+	-- v1.4.1: the shopping street east of the helipad - nine walk-in stores, each counter opens its own shop
 	local _, _, prompts = MapGen.store(lobby, Templates)
 	for _, pp in ipairs(prompts) do
 		pp.Triggered:Connect(function(plr) Notify:FireClient(plr, "store", pp:GetAttribute("Tab")) end)
 	end
-	local arrow = part(Vector3.new(14, 0.4, 3), CFrame.new(62, 0.25, 0), Color3.fromRGB(255, 200, 60), Enum.Material.Neon)
+	local arrow = part(Vector3.new(14, 0.4, 3), CFrame.new(50, 0.25, 0), Color3.fromRGB(255, 200, 60), Enum.Material.Neon)
 	arrow.CanCollide = false
-	local s2 = part(Vector3.new(1, 5, 18), CFrame.new(70, 5, -14), Color3.fromRGB(20, 10, 10), Enum.Material.Slate)
+	local s2 = part(Vector3.new(1, 5, 18), CFrame.new(58, 5, -22), Color3.fromRGB(20, 10, 10), Enum.Material.Slate)
 	local g2 = Instance.new("SurfaceGui"); g2.Face = Enum.NormalId.Left; g2.CanvasSize = Vector2.new(360, 100); g2.Parent = s2
-	local t2 = t:Clone(); t2.Text = "STORE  >>"; t2.TextColor3 = Color3.fromRGB(255, 200, 60); t2.Parent = g2
+	local t2 = t:Clone(); t2.Text = "SHOPS  >>"; t2.TextColor3 = Color3.fromRGB(255, 200, 60); t2.Parent = g2
 end
 lobby.Parent = workspace
 
@@ -1059,6 +1097,7 @@ local function hurtMonster(m, dmg, by, stun)
 	if f.downUntil and now() < f.downUntil then return end
 	if P2.isStone(m) then toast(by, "It's made of stone - your hit bounced off!"); return end
 	local hp = (m:GetAttribute("MonsterHp") or Config.MON_HP) - dmg
+	if by then by:SetAttribute("RoundDmg", (by:GetAttribute("RoundDmg") or 0) + math.min(dmg, math.max(0, m:GetAttribute("MonsterHp") or Config.MON_HP))) end
 	if stun then f.stunUntil = math.max(f.stunUntil or 0, now() + stun) end
 	if hp <= 0 then
 		hp = 0
@@ -1066,6 +1105,7 @@ local function hurtMonster(m, dmg, by, stun)
 		local def = Config.MONSTERS[m:GetAttribute("Monster")]
 		toast(nil, ("%s knocked down %s! It gets back up in %ds - run!"):format(by.DisplayName, def and def.name or "the monster", Config.DOWN_TIME))
 		addCoins(by, Config.EARN.knockdown, "Knocked down a monster")
+		by:SetAttribute("RoundDowns", (by:GetAttribute("RoundDowns") or 0) + 1)
 		sfxAll("down", hrpOf(m) and hrpOf(m).Position)
 		task.delay(Config.DOWN_TIME, function()
 			if m.Parent then m:SetAttribute("MonsterHp", m:GetAttribute("MonsterMaxHp") or Config.MON_HP) end
@@ -1224,13 +1264,15 @@ local function cleanProfile(d)
 			top = n(look.top, #Config.CLOTHES), pants = n(look.pants or 8, #Config.CLOTHES),
 			hat = (type(look.hat) == "string" and Config.SHOP.hat[look.hat] and have("hat", look.hat)) and look.hat or "none",
 			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none",
-			outfit = (type(look.outfit) == "string" and Config.SHOP.outfit[look.outfit] and have("outfit", look.outfit)) and look.outfit or "none" },
+			outfit = (type(look.outfit) == "string" and Config.SHOP.outfit[look.outfit] and have("outfit", look.outfit)) and look.outfit or "none",
+			pet = (type(look.pet) == "string" and Config.SHOP.pet[look.pet] and have("pet", look.pet)) and look.pet or "none",
+			trail = (type(look.trail) == "string" and Config.SHOP.trail[look.trail] and have("trail", look.trail)) and look.trail or "none" },
 		kit = {},
 		pref = (type(d.pref) == "string" and Config.MONSTERS[d.pref]) and d.pref or "",
 		skin = (type(d.skin) == "string" and Config.SHOP.skin[d.skin] and have("skin", d.skin)) and d.skin or "classic",
 	}
 	if type(d.kit) == "table" then
-		for _, k in ipairs(d.kit) do if type(k) == "string" and Config.SHOP.supply[k] and #out.kit < 2 then table.insert(out.kit, k) end end
+		for _, k in ipairs(d.kit) do if type(k) == "string" and Config.SHOP.supply[k] and #out.kit < Config.KIT_MAX then table.insert(out.kit, k) end end
 	end
 	return out
 end
@@ -1321,12 +1363,44 @@ local function applyLook(p)
 	end
 	local ab = ACC_BUILD[L.acc]
 	if ab then stick("NH_Acc", ab[1], ab[2], ab[3], false, L.acc == "goggles" and Enum.Material.Glass or nil) end
+	-- v1.4.1: pet that follows you (AlignPosition to a spot behind your shoulder) and a trail behind you
+	local hrp = c:FindFirstChild("HumanoidRootPart")
+	for _, n in ipairs({ "NH_Pet", "NH_TrailA", "NH_TrailB", "NH_Trail", "NH_PetSpot" }) do
+		local old = c:FindFirstChild(n, true)
+		while old do old:Destroy(); old = c:FindFirstChild(n, true) end
+	end
+	if not hrp then return end
+	if L.pet and L.pet ~= "none" then
+		local pet = Plaza.buildPet(L.pet, 0.8)
+		pet.Name = "NH_Pet"
+		local body = pet.PrimaryPart
+		local spot = Instance.new("Attachment"); spot.Name = "NH_PetSpot"; spot.Position = Vector3.new(2.6, (L.pet == "bat" or L.pet == "owl" or L.pet == "dragon" or L.pet == "ghost") and 2.2 or -1.6, 2); spot.Parent = hrp
+		local a0 = Instance.new("Attachment"); a0.Parent = body
+		local ap = Instance.new("AlignPosition"); ap.Attachment0 = a0; ap.Attachment1 = spot; ap.Responsiveness = 18; ap.MaxForce = 1e5; ap.Parent = body
+		local ao = Instance.new("AlignOrientation"); ao.Attachment0 = a0; ao.Attachment1 = spot; ao.Responsiveness = 18; ao.Parent = body
+		pet:PivotTo(hrp.CFrame * CFrame.new(spot.Position))
+		pet.Parent = c
+		pcall(function() body:SetNetworkOwner(p) end)
+	end
+	local tc = Config.TRAIL_COLORS[L.trail or "none"]
+	if tc then
+		local a = Instance.new("Attachment"); a.Name = "NH_TrailA"; a.Position = Vector3.new(0, 0.8, 0.4); a.Parent = hrp
+		local b = Instance.new("Attachment"); b.Name = "NH_TrailB"; b.Position = Vector3.new(0, -1.8, 0.4); b.Parent = hrp
+		local tr = Instance.new("Trail"); tr.Name = "NH_Trail"; tr.Attachment0 = a; tr.Attachment1 = b
+		tr.Lifetime = 0.7; tr.LightEmission = (L.trail == "shadow" or L.trail == "blood") and 0 or 0.8; tr.FaceCamera = true
+		if L.trail == "rainbow" then
+			tr.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)), ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 220, 60)), ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 220, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 255)) })
+		else tr.Color = ColorSequence.new(tc[1], tc[2]) end
+		tr.Transparency = NumberSequence.new(0.1, 1)
+		tr.Parent = hrp
+	end
 end
 
 ---------------------------------------------------------------------------
 -- Round flow
 ---------------------------------------------------------------------------
 local roundToken = 0
+local huntStart = os.clock() -- v1.4.1: for 'time survived' on the death screen
 
 local function cleanupRound()
 	if roundFolder then roundFolder:Destroy() end
@@ -1350,7 +1424,15 @@ local function catchSurvivor(victim, monster)
 	victim:SetAttribute("Alive", false)
 	local kind = monster and monster:GetAttribute("Monster") or ""
 	local mname = Config.MONSTERS[kind] and Config.MONSTERS[kind].name or "the dark"
-	Notify:FireClient(victim, "jumpscare", kind, monster and monster:GetAttribute("Form") or 1)
+	victim:SetAttribute("Result", "Caught")
+	victim:SetAttribute("KilledBy", mname)
+	-- v1.4.1: round stats for the YOU DIED screen (shown by the client after the jumpscare animation ends)
+	local left = 0
+	for _, s in ipairs(survivors(true)) do if s ~= victim then left += 1 end end
+	local stats = { killer = mname, by = monster and monster.DisplayName or "", time = math.floor(os.clock() - huntStart),
+		dmg = math.floor(victim:GetAttribute("RoundDmg") or 0), downs = victim:GetAttribute("RoundDowns") or 0,
+		earn = victim:GetAttribute("RoundCoins") or 0, left = left }
+	Notify:FireClient(victim, "jumpscare", kind, monster and monster:GetAttribute("Form") or 1, stats)
 	-- everyone nearby sees the catch: the victim is animated in the world per monster, then vanishes
 	local vh, mh = hrpOf(victim), monster and hrpOf(monster)
 	if vh then
@@ -1520,7 +1602,23 @@ local function endRound(reason)
 		local def = Config.MONSTERS[m:GetAttribute("Monster")]
 		table.insert(lines, ("%s was %s (%d catches)"):format(m.DisplayName, def and def.name or "?", m:GetAttribute("Catches") or 0))
 	end
-	Notify:FireAllClients("results", headline, lines)
+	-- v1.4.1: full results table (role, result, kills / damage, knockdowns, coins) for every player
+	local rows = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		local role = p:GetAttribute("Role") or ""
+		if role ~= "" then
+			local res
+			if role == "Monster" then res = ("%d kills"):format(p:GetAttribute("Catches") or 0)
+			elseif p:GetAttribute("Escaped") then res = "Escaped"
+			elseif p:GetAttribute("Alive") then res = "Survived"
+			else res = "Caught" end
+			local def = Config.MONSTERS[p:GetAttribute("Monster") or ""]
+			table.insert(rows, { id = p.UserId, name = p.DisplayName, role = role == "Monster" and (def and def.name or "Monster") or "Survivor", monster = role == "Monster",
+				res = res, kills = p:GetAttribute("Catches") or 0, dmg = math.floor(p:GetAttribute("RoundDmg") or 0), downs = p:GetAttribute("RoundDowns") or 0, coins = p:GetAttribute("RoundCoins") or 0 })
+		end
+	end
+	table.sort(rows, function(a, b) if a.monster ~= b.monster then return a.monster end; return a.coins > b.coins end)
+	Notify:FireAllClients("results", headline, lines, rows)
 	setState("TimeLeft", Config.RESULTS_TIME)
 	task.delay(Config.RESULTS_TIME, function()
 		if token ~= roundToken then return end
@@ -1577,6 +1675,7 @@ local function startRound(starter)
 		clearGear(p)
 		resetPlayer(p)
 		p:SetAttribute("Catches", 0)
+		p:SetAttribute("RoundDmg", 0); p:SetAttribute("RoundDowns", 0); p:SetAttribute("RoundCoins", 0); p:SetAttribute("Result", "")
 		if isMonster[p] then
 			-- the monster the player picked in the lobby locker, if nobody else already has it
 			local want = profiles[p] and profiles[p].pref or ""
@@ -1604,6 +1703,7 @@ local function startRound(starter)
 			if p:GetAttribute("Role") ~= "" then placeInMap(p) end
 		end
 		setState("State", "Hunt")
+		huntStart = os.clock()
 		setState("TimeLeft", settings.roundLen)
 		toast(nil, "Survive until the extraction helicopter arrives!")
 		-- countdown
@@ -1797,6 +1897,10 @@ local function onPlayerAdded(p)
 				catchSurvivor(p, lastHitBy[p])
 			end
 		end)
+		-- v1.4.1: wear your look, pet and trail in the lobby too
+		if State:GetAttribute("State") ~= "Hunt" or p:GetAttribute("Role") ~= "Monster" then
+			task.delay(0.6, function() if p.Character == char and p:GetAttribute("Role") ~= "Monster" then applyLook(p) end end)
+		end
 		-- a monster that died (e.g. fell) respawns back into the hunt
 		if State:GetAttribute("State") == "Hunt" and p:GetAttribute("Role") == "Monster" then
 			task.wait(0.3)
@@ -1856,7 +1960,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		if cat == "supply" then -- round supplies: bought for the next round (max 2), not kept
 			local price = Config.SHOP.supply[id]
 			if not price or kind ~= "buy" then return end
-			if #pr.kit >= 2 then toast(p, "Your kit is full (2 supplies max)."); return end
+			if #pr.kit >= Config.KIT_MAX then toast(p, ("Your kit is full (%d supplies max)."):format(Config.KIT_MAX)); return end
 			if pr.coins < price then toast(p, "Not enough coins."); return end
 			pr.coins -= price
 			table.insert(pr.kit, id)
@@ -1875,12 +1979,50 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 			pr.owned[key] = true
 			toast(p, "Bought " .. id .. "!")
 		end
+		if cat == "emote" then -- emotes are owned, not worn (wave is free); play them with the Emote button / B
+			publishProfile(p)
+			task.spawn(saveProfile, p)
+			return
+		end
 		if free or pr.owned[key] then
 			if cat == "skin" then pr.skin = id else pr.look[cat] = id end
 			if cat ~= "skin" and p:GetAttribute("Role") ~= "Monster" then applyLook(p) end
 		end
 		publishProfile(p)
 		task.spawn(saveProfile, p)
+	elseif kind == "crate" then
+		-- Mystery Crates: a random cosmetic you don't own yet (coins only). Everything owned -> coins back.
+		local pr = profiles[p]
+		if not pr then return end
+		if pr.coins < Config.CRATE_PRICE then toast(p, "Not enough coins."); return end
+		local pool = {}
+		for _, cat in ipairs({ "hat", "acc", "outfit", "skin", "pet", "trail", "emote" }) do
+			for id, price in pairs(Config.SHOP[cat]) do
+				if price > 0 and not pr.owned[cat .. ":" .. id] then table.insert(pool, { cat, id, price }) end
+			end
+		end
+		pr.coins -= Config.CRATE_PRICE
+		local won
+		if #pool == 0 then
+			pr.coins += 100
+			Notify:FireClient(p, "crate", "coins", "100 coins (you own everything!)")
+		else
+			won = pool[math.random(1, #pool)]
+			pr.owned[won[1] .. ":" .. won[2]] = true
+			Notify:FireClient(p, "crate", won[1], won[2])
+		end
+		publishProfile(p)
+		task.spawn(saveProfile, p)
+	elseif kind == "emote" then
+		local pr = profiles[p]
+		if not pr or type(data) ~= "string" or not Config.SHOP.emote[data] then return end
+		if data ~= "wave" and not pr.owned["emote:" .. data] then toast(p, "Buy that emote in the Emotes & Dances store first."); return end
+		p:SetAttribute("Emote", data .. ":" .. tostring(os.clock())) -- the client plays the animation on its own character (replicates)
+	elseif kind == "spectate" then
+		-- v1.4.1: a caught survivor spectates a living player; stream the map around them
+		local target = type(data) == "number" and Players:GetPlayerByUserId(data)
+		local th = target and hrpOf(target)
+		pcall(function() p.ReplicationFocus = th or nil end)
 	elseif kind == "look" then
 		local pr = profiles[p]
 		if not pr or type(data) ~= "table" then return end
@@ -2603,7 +2745,9 @@ end
 
 -- the walk-in store building in the lobby
 function MapGen.store(parent, templates)
-	return MapGen2.store(parent, { part = part, building = building, pine = pine, tree = tree, wallSide = wallSide }, templates)
+	-- v1.4.1: the single store became a shopping street of nine walk-in stores (Plaza.luau)
+	local Plaza = require(script.Parent:WaitForChild("Plaza"))
+	return Plaza.build(parent, { part = part, wallSide = wallSide }, templates)
 end
 
 return MapGen
@@ -4773,9 +4917,284 @@ end
 ]]></string>
         </Properties>
       </Item>
+      <Item class="ModuleScript" referent="17">
+        <Properties>
+          <string name="Name">Plaza</string>
+          <string name="Source"><![CDATA[-- v1.4.1: the lobby shopping street. Nine walk-in stores (two rows facing a street east of the helipad),
+-- each with its own sign, themed displays and a counter you walk up to (ProximityPrompt with a Tab attribute
+-- that opens that store's section of the shop UI). Coins only - no Robux, no real money.
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("NightHunt"):WaitForChild("Config"))
+local Plaza = {}
+local rgb = Color3.fromRGB
+
+local W, D, H, T, DOOR = 36, 40, 16, 1, 12
+Plaza.STREET = { x0 = 66, x1 = 330, z = 0, w = 30 }
+
+local function light(p, range, color, bright)
+	local l = Instance.new("PointLight")
+	l.Range, l.Color, l.Brightness = range, color, bright or 1.2
+	l.Parent = p
+	return l
+end
+local function textOn(p, face, text, color, font, canvas)
+	local g = Instance.new("SurfaceGui")
+	g.Face = face
+	g.CanvasSize = canvas or Vector2.new(800, 160)
+	g.LightInfluence = 0
+	g.Brightness = 1.5
+	g.Parent = p
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Font = font or Enum.Font.GothamBlack
+	t.TextScaled = true
+	t.TextColor3 = color
+	t.Text = text
+	t.Parent = g
+	return t
+end
+local function billboard(p, text, color, y)
+	local g = Instance.new("BillboardGui")
+	g.Size = UDim2.fromOffset(240, 46)
+	g.StudsOffset = Vector3.new(0, y or 3, 0)
+	g.MaxDistance = 60
+	g.LightInfluence = 0
+	g.Parent = p
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Font = Enum.Font.GothamBlack
+	t.TextScaled = true
+	t.TextStrokeTransparency = 0.3
+	t.TextColor3 = color
+	t.Text = text
+	t.Parent = g
+end
+
+-- a small pet model (also used by the server for the pet that follows you)
+function Plaza.buildPet(kind, scale)
+	scale = scale or 1
+	local col = Config.PET_COLORS[kind] or Config.PET_COLORS.puppy
+	local m = Instance.new("Model")
+	m.Name = "Pet_" .. kind
+	local function p(size, off, color, shape, transp, mat)
+		local x = Instance.new("Part")
+		x.Size = size * scale
+		x.Color = color
+		x.Material = mat or Enum.Material.SmoothPlastic
+		if shape then x.Shape = shape end
+		x.Transparency = transp or 0
+		x.CanCollide, x.CanQuery, x.CanTouch, x.Massless = false, false, false, true
+		x.CFrame = CFrame.new(off * scale)
+		x.Parent = m
+		return x
+	end
+	local ball = Enum.PartType.Ball
+	local body
+	if kind == "ghost" then
+		body = p(Vector3.new(1.6, 1.8, 1.6), Vector3.new(0, 0, 0), col[1], ball, 0.25, Enum.Material.Neon)
+	elseif kind == "slime" then
+		body = p(Vector3.new(1.8, 1.2, 1.8), Vector3.new(0, 0, 0), col[1], ball, 0.2, Enum.Material.Glass)
+	elseif kind == "pumpkin" then
+		body = p(Vector3.new(1.8, 1.5, 1.8), Vector3.new(0, 0, 0), col[1], ball)
+		p(Vector3.new(0.25, 0.5, 0.25), Vector3.new(0, 0.95, 0), col[2])
+		p(Vector3.new(0.3, 0.25, 0.1), Vector3.new(-0.35, 0.15, -0.85), rgb(255, 210, 58), nil, 0, Enum.Material.Neon)
+		p(Vector3.new(0.3, 0.25, 0.1), Vector3.new(0.35, 0.15, -0.85), rgb(255, 210, 58), nil, 0, Enum.Material.Neon)
+	else
+		body = p(Vector3.new(1.3, 1.1, 1.7), Vector3.new(0, 0, 0), col[1], ball)
+		p(Vector3.new(1, 1, 1), Vector3.new(0, 0.8, -0.8), col[1], ball)
+		p(Vector3.new(0.5, 0.4, 0.4), Vector3.new(0, 0.6, -1.25), col[2], ball)
+		if kind == "puppy" then
+			p(Vector3.new(0.25, 0.6, 0.4), Vector3.new(-0.55, 0.8, -0.7), col[2]); p(Vector3.new(0.25, 0.6, 0.4), Vector3.new(0.55, 0.8, -0.7), col[2])
+		elseif kind == "kitty" or kind == "owl" or kind == "bat" or kind == "dragon" then
+			p(Vector3.new(0.25, 0.45, 0.25), Vector3.new(-0.3, 1.4, -0.75), kind == "dragon" and col[2] or col[1]); p(Vector3.new(0.25, 0.45, 0.25), Vector3.new(0.3, 1.4, -0.75), kind == "dragon" and col[2] or col[1])
+		end
+		if kind == "bat" or kind == "owl" or kind == "dragon" then -- wings
+			p(Vector3.new(1.4, 0.1, 0.9), Vector3.new(-1.2, 0.3, 0), kind == "dragon" and col[2] or col[1]).Name = "Wing"
+			p(Vector3.new(1.4, 0.1, 0.9), Vector3.new(1.2, 0.3, 0), kind == "dragon" and col[2] or col[1]).Name = "Wing"
+		else
+			for _, o in ipairs({ { -0.4, -0.5 }, { 0.4, -0.5 }, { -0.4, 0.5 }, { 0.4, 0.5 } }) do p(Vector3.new(0.25, 0.5, 0.25), Vector3.new(o[1], -0.6, o[2]), col[1]) end
+		end
+	end
+	for _, e in ipairs({ -0.22, 0.22 }) do p(Vector3.new(0.18, 0.18, 0.18), Vector3.new(e, (kind == "ghost" or kind == "slime" or kind == "pumpkin") and 0.35 or 0.95, (kind == "ghost" or kind == "slime" or kind == "pumpkin") and -0.75 or -1.25), rgb(15, 15, 15), ball) end
+	body.Name = "Body"
+	m.PrimaryPart = body
+	for _, x in ipairs(m:GetChildren()) do
+		if x:IsA("BasePart") and x ~= body then
+			local w = Instance.new("WeldConstraint"); w.Part0 = body; w.Part1 = x; w.Parent = x
+		end
+	end
+	return m
+end
+
+function Plaza.build(parent, H2, templates)
+	local part, wallSide = H2.part, H2.wallSide
+	local m = Instance.new("Model"); m.Name = "ShoppingStreet"; m.Parent = parent
+	local S = Plaza.STREET
+	-- ground, sidewalks and the street with yellow dashes
+	part(m, Vector3.new(S.x1 - S.x0 + 30, 2, 150), CFrame.new((S.x0 + S.x1) / 2, -1, 0), rgb(70, 72, 78), Enum.Material.Concrete, { name = "PlazaLot" })
+	part(m, Vector3.new(S.x1 - S.x0, 0.2, S.w), CFrame.new((S.x0 + S.x1) / 2, 0.1, 0), rgb(36, 38, 42), Enum.Material.Asphalt, { name = "Street" })
+	part(m, Vector3.new(80 - 16, 0.2, 14), CFrame.new(16 + (80 - 16) / 2 - 8, 0.1, 0), rgb(36, 38, 42), Enum.Material.Asphalt, { name = "StreetLink" })
+	for x = S.x0 + 6, S.x1 - 6, 14 do part(m, Vector3.new(6, 0.25, 0.8), CFrame.new(x, 0.12, 0), rgb(240, 200, 40), Enum.Material.Neon, { collide = false, name = "Dash" }) end
+	local arch = part(m, Vector3.new(1, 6, 28), CFrame.new(S.x0 - 2, 14, 0), rgb(20, 14, 30), Enum.Material.Slate, { name = "StreetSign" })
+	textOn(arch, Enum.NormalId.Left, "SHOPPING STREET", rgb(255, 210, 60), Enum.Font.Creepster)
+	for _, z in ipairs({ -14, 14 }) do part(m, Vector3.new(1.2, 17, 1.2), CFrame.new(S.x0 - 2, 8.5, z), rgb(30, 30, 34), Enum.Material.Metal, { name = "ArchPost" }) end
+	for x = S.x0 + 14, S.x1, 40 do -- streetlights both sides
+		for _, z in ipairs({ -15.5, 15.5 }) do
+			part(m, Vector3.new(0.6, 12, 0.6), CFrame.new(x, 6, z), rgb(30, 30, 34), Enum.Material.Metal, { name = "LampPost" })
+			light(part(m, Vector3.new(1.6, 0.8, 1.6), CFrame.new(x, 12.4, z), rgb(255, 230, 170), Enum.Material.Neon, { collide = false, name = "LampHead" }), 34, rgb(255, 220, 160), 1.4)
+		end
+	end
+	local prompts, zones = {}, {}
+	for i, st in ipairs(Config.STORES) do
+		local north = i <= 5
+		local cx = north and (100 + (i - 1) * 48) or (124 + (i - 6) * 48)
+		local cz = north and -(S.w / 2 + 2 + D / 2) or (S.w / 2 + 2 + D / 2)
+		local O = Vector3.new(cx, 0, cz)
+		local dir = north and 1 or -1 -- +z faces the street for the north row
+		local b = Instance.new("Model"); b.Name = "Store_" .. st.k; b.Parent = m
+		b:SetAttribute("Store", st.k)
+		local wallC = st.c:Lerp(rgb(40, 36, 44), 0.55)
+		part(b, Vector3.new(W, 0.3, D), CFrame.new(O + Vector3.new(0, 0.15, 0)), st.c:Lerp(rgb(30, 30, 30), 0.78), Enum.Material.Marble, { name = "Floor" })
+		part(b, Vector3.new(W + 1, 1, D + 1), CFrame.new(O + Vector3.new(0, H + 0.5, 0)), rgb(36, 32, 40), Enum.Material.Slate, { name = "Roof" })
+		wallSide(b, { len = W, cf = CFrame.new(O + Vector3.new(0, H / 2, dir * D / 2)), axis = "x" }, H, T, wallC, Enum.Material.Brick, DOOR) -- street wall with the door
+		wallSide(b, { len = W, cf = CFrame.new(O + Vector3.new(0, H / 2, -dir * D / 2)), axis = "x" }, H, T, wallC, Enum.Material.Brick, nil)
+		wallSide(b, { len = D, cf = CFrame.new(O + Vector3.new(-W / 2, H / 2, 0)), axis = "z" }, H, T, wallC, Enum.Material.Brick, nil)
+		wallSide(b, { len = D, cf = CFrame.new(O + Vector3.new(W / 2, H / 2, 0)), axis = "z" }, H, T, wallC, Enum.Material.Brick, nil)
+		-- sign over the door + a glowing strip in the store colour
+		local sign = part(b, Vector3.new(W - 4, 4.5, 0.6), CFrame.new(O + Vector3.new(0, H - 3, dir * (D / 2 + 0.8))), rgb(16, 12, 20), Enum.Material.Slate, { name = "StoreSign" })
+		textOn(sign, north and Enum.NormalId.Back or Enum.NormalId.Front, st.name, st.c, Enum.Font.GothamBlack, Vector2.new(800, 110))
+		local sub = part(b, Vector3.new(W - 10, 1.4, 0.4), CFrame.new(O + Vector3.new(0, H - 6.2, dir * (D / 2 + 0.7))), rgb(16, 12, 20), Enum.Material.Slate, { name = "StoreSub" })
+		textOn(sub, north and Enum.NormalId.Back or Enum.NormalId.Front, st.sub, rgb(240, 240, 240), Enum.Font.GothamBold, Vector2.new(800, 60))
+		part(b, Vector3.new(W, 0.5, 0.4), CFrame.new(O + Vector3.new(0, H - 0.6, dir * (D / 2 + 0.7))), st.c, Enum.Material.Neon, { collide = false, name = "Strip" })
+		-- awning
+		part(b, Vector3.new(DOOR + 6, 0.4, 4), CFrame.new(O + Vector3.new(0, 9, dir * (D / 2 + 2))) * CFrame.Angles(math.rad(-dir * 12), 0, 0), st.c:Lerp(rgb(255, 255, 255), 0.2), Enum.Material.Fabric, { collide = false, name = "Awning" })
+		-- lights inside in the store colour
+		for _, zz in ipairs({ -D / 4, D / 4 }) do
+			light(part(b, Vector3.new(3, 0.3, 3), CFrame.new(O + Vector3.new(0, H - 0.3, zz)), rgb(255, 245, 230), Enum.Material.Neon, { collide = false, name = "StoreLight" }), 30, st.c:Lerp(rgb(255, 255, 255), 0.5), 1.5)
+		end
+		-- counter at the back + register + prompt
+		local back = O + Vector3.new(0, 0, -dir * (D / 2 - 7))
+		part(b, Vector3.new(18, 4, 3), CFrame.new(back + Vector3.new(0, 2, 0)), rgb(110, 70, 40), Enum.Material.Wood, { name = "Counter" })
+		part(b, Vector3.new(18.2, 0.3, 3.2), CFrame.new(back + Vector3.new(0, 4.1, 0)), st.c:Lerp(rgb(20, 20, 20), 0.6), Enum.Material.Granite, { name = "CounterTop" })
+		part(b, Vector3.new(1.4, 1.2, 1.2), CFrame.new(back + Vector3.new(5, 4.9, 0)), rgb(40, 40, 44), Enum.Material.Metal, { name = "Register" })
+		local anchor = part(b, Vector3.new(4, 4, 3), CFrame.new(back + Vector3.new(0, 2, dir * 3.5)), rgb(255, 255, 255), Enum.Material.SmoothPlastic, { transp = 1, collide = false, name = "PromptAnchor" })
+		billboard(anchor, st.name, st.c, 5)
+		local pp = Instance.new("ProximityPrompt")
+		pp.ActionText = "Shop"
+		pp.ObjectText = st.name
+		pp.KeyboardKeyCode = Enum.KeyCode.E
+		pp.MaxActivationDistance = 12
+		pp.RequiresLineOfSight = false
+		pp:SetAttribute("Tab", st.k)
+		pp.Parent = anchor
+		table.insert(prompts, pp)
+		local zp = part(b, Vector3.new(W - 2, H, D - 2), CFrame.new(O + Vector3.new(0, H / 2, 0)), rgb(255, 255, 255), Enum.Material.SmoothPlastic, { collide = false, transp = 1, name = "StoreZone" })
+		zp.CanQuery, zp.CanTouch = false, false
+		zp:SetAttribute("Tab", st.k)
+		table.insert(zones, zp)
+		-- themed displays along the side walls (the middle aisle stays clear)
+		local function side(fn) for _, sx in ipairs({ -W / 2 + 3, W / 2 - 3 }) do for k = 0, 2 do fn(O + Vector3.new(sx, 0, dir * (D / 2 - 9 - k * 8)), sx < 0 and -1 or 1, k) end end end
+		local k = st.k
+		if k == "weapons" or k == "food" or k == "skinshop" or k == "armor" then
+			side(function(p, sgn, j)
+				part(b, Vector3.new(3, 9, 6), CFrame.new(p + Vector3.new(0, 4.5, 0)), rgb(80, 56, 40), Enum.Material.Wood, { name = "Shelf" })
+				for y = 1, 3 do
+					local c = k == "weapons" and rgb(60 + y * 30, 60 + y * 30, 66 + y * 30) or k == "food" and Color3.fromHSV((j * 0.2 + y * 0.13) % 1, 0.75, 0.95) or k == "armor" and rgb(70, 80, 60) or Color3.fromHSV((j * 0.3 + y * 0.17) % 1, 0.5, 1)
+					local sz = k == "weapons" and Vector3.new(0.4, 0.4, 3.6) or k == "armor" and Vector3.new(1.4, 1.6, 1.6) or Vector3.new(1, 1.2, 1)
+					part(b, sz, CFrame.new(p + Vector3.new(-sgn * 1.7, y * 2.6, 0)), c, k == "weapons" and Enum.Material.Metal or Enum.Material.SmoothPlastic, { name = "Goods" })
+				end
+			end)
+			if k == "armor" or k == "skinshop" then -- mannequins
+				for _, sx in ipairs({ -6, 6 }) do
+					local mp = O + Vector3.new(sx, 0, dir * 4)
+					part(b, Vector3.new(2, 0.4, 2), CFrame.new(mp + Vector3.new(0, 0.2, 0)), rgb(30, 30, 30), Enum.Material.Metal, { name = "MannequinBase" })
+					part(b, Vector3.new(2, 2, 1), CFrame.new(mp + Vector3.new(0, 4, 0)), k == "armor" and rgb(60, 70, 50) or st.c, Enum.Material.Fabric, { name = "Mannequin" })
+					part(b, Vector3.new(1.9, 2, 1), CFrame.new(mp + Vector3.new(0, 2, 0)), rgb(220, 210, 200), Enum.Material.SmoothPlastic, { name = "Mannequin" })
+					part(b, Vector3.new(1.1, 1.1, 1.1), CFrame.new(mp + Vector3.new(0, 5.6, 0)), rgb(220, 210, 200), Enum.Material.SmoothPlastic, { name = "Mannequin", shape = Enum.PartType.Ball })
+					if k == "armor" then part(b, Vector3.new(1.4, 0.6, 1.4), CFrame.new(mp + Vector3.new(0, 6.1, 0)), rgb(70, 80, 60), Enum.Material.Metal, { name = "Helmet" }) end
+				end
+			end
+			if k == "food" then -- glowing drink fridges on the back wall
+				for _, sx in ipairs({ -13, 13 }) do
+					local f = part(b, Vector3.new(5, 9, 2.5), CFrame.new(back + Vector3.new(sx, 4.5, -dir * 3.5)), rgb(200, 230, 255), Enum.Material.Glass, { name = "Fridge" })
+					f.Transparency = 0.3
+					light(f, 10, rgb(180, 220, 255), 1)
+				end
+			end
+		elseif k == "monskins" then
+			local shown = { "dragon", "trex", "kraken", "vampire", "yeti", "freddy" }
+			local n = 0
+			side(function(p, sgn)
+				n += 1
+				part(b, Vector3.new(5, 2, 5), CFrame.new(p + Vector3.new(-sgn * 0.5, 1, 0)), rgb(30, 30, 34), Enum.Material.Marble, { name = "Pedestal" })
+				local tpl = templates and templates:FindFirstChild(shown[n] or "freddy")
+				if tpl then
+					local s = tpl:Clone()
+					for _, d in ipairs(s:GetDescendants()) do
+						if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false end
+						if d:IsA("Script") or d:IsA("LocalScript") then d:Destroy() end
+					end
+					pcall(function() s:ScaleTo(0.22) end)
+					local _, size = s:GetBoundingBox()
+					s:PivotTo(CFrame.new(p + Vector3.new(-sgn * 0.5, 2 + size.Y / 2 + 0.1, 0)) * CFrame.Angles(0, math.rad(sgn * 90), 0))
+					s.Name = "Statue"
+					s.Parent = b
+				end
+			end)
+		elseif k == "emotes" then -- disco dance floor in front of the counter
+			for gx = -2, 2 do
+				for gz = -2, 2 do
+					local t = part(b, Vector3.new(3.8, 0.2, 3.8), CFrame.new(O + Vector3.new(gx * 4, 0.35, dir * 4 + gz * 4)), Color3.fromHSV(((gx + gz) % 5) / 5, 0.8, 1), Enum.Material.Neon, { collide = false, name = "DanceTile" })
+					t:SetAttribute("Disco", true)
+				end
+			end
+			local ball = part(b, Vector3.new(2.4, 2.4, 2.4), CFrame.new(O + Vector3.new(0, H - 3, dir * 4)), rgb(220, 220, 230), Enum.Material.Foil, { collide = false, shape = Enum.PartType.Ball, name = "DiscoBall" })
+			ball.Reflectance = 0.6
+			ball:SetAttribute("Spin", true)
+			for _, sx in ipairs({ -W / 2 + 2.5, W / 2 - 2.5 }) do part(b, Vector3.new(3, 7, 3), CFrame.new(O + Vector3.new(sx, 3.5, dir * 2)), rgb(20, 20, 24), Enum.Material.Metal, { name = "Speaker" }) end
+		elseif k == "pets" then
+			local kinds = { "puppy", "kitty", "bat", "owl", "slime", "dragon" }
+			local n = 0
+			side(function(p, sgn)
+				n += 1
+				part(b, Vector3.new(4, 1, 4), CFrame.new(p + Vector3.new(-sgn * 0.5, 0.5, 0)), st.c:Lerp(rgb(60, 40, 30), 0.5), Enum.Material.Fabric, { name = "PetBed" })
+				local pet = Plaza.buildPet(kinds[n] or "puppy", 1.2)
+				for _, d in ipairs(pet:GetDescendants()) do if d:IsA("BasePart") then d.Anchored = true end end
+				pet:PivotTo(CFrame.new(p + Vector3.new(-sgn * 0.5, 2.2, 0)) * CFrame.Angles(0, math.rad(sgn * 90), 0))
+				pet.Parent = b
+				pet:SetAttribute("Bob", true)
+			end)
+		elseif k == "clothing" then
+			local mirror = part(b, Vector3.new(0.4, 11, 14), CFrame.new(O + Vector3.new(W / 2 - 1.2, 6, 0)), rgb(200, 220, 230), Enum.Material.Glass, { name = "Mirror" })
+			mirror.Reflectance = 0.9
+			part(b, Vector3.new(0.6, 12, 15), CFrame.new(O + Vector3.new(W / 2 - 0.9, 6, 0)), rgb(200, 160, 60), Enum.Material.Metal, { name = "MirrorFrame" })
+			for j = 0, 1 do -- curtained booths and clothes racks
+				part(b, Vector3.new(6, 9, 0.3), CFrame.new(O + Vector3.new(-W / 2 + 4, 4.5, dir * (6 - j * 12))), rgb(140, 30, 60), Enum.Material.Fabric, { name = "Curtain", collide = false })
+				part(b, Vector3.new(0.3, 0.3, 7), CFrame.new(O + Vector3.new(-W / 2 + 9, 6, dir * (8 - j * 12))), rgb(160, 160, 170), Enum.Material.Metal, { name = "Rack" })
+				for c = 0, 4 do part(b, Vector3.new(1.4, 3, 0.4), CFrame.new(O + Vector3.new(-W / 2 + 9, 4.4, dir * (5.5 - j * 12 + c * 1.3))), Color3.fromHSV((c * 0.19 + j * 0.4) % 1, 0.7, 0.85), Enum.Material.Fabric, { name = "Clothes", collide = false }) end
+			end
+		elseif k == "crate" then
+			side(function(p, sgn, j)
+				local c = part(b, Vector3.new(3.4, 3.4, 3.4), CFrame.new(p + Vector3.new(-sgn * 0.5, 2.2, 0)), rgb(110, 50, 180), Enum.Material.SmoothPlastic, { name = "Crate" })
+				part(b, Vector3.new(3.6, 0.5, 3.6), CFrame.new(p + Vector3.new(-sgn * 0.5, 2.2, 0)), rgb(240, 190, 40), Enum.Material.Metal, { name = "CrateBand", collide = false })
+				textOn(c, north and Enum.NormalId.Back or Enum.NormalId.Front, "?", rgb(255, 220, 60), Enum.Font.GothamBlack, Vector2.new(100, 100))
+				c:SetAttribute("Spin", j == 1)
+			end)
+			local big = part(b, Vector3.new(5, 5, 5), CFrame.new(back + Vector3.new(0, 7.5, 0)), rgb(140, 70, 220), Enum.Material.Neon, { name = "BigCrate", collide = false })
+			big:SetAttribute("Spin", true)
+		end
+	end
+	return m, zones, prompts
+end
+
+return Plaza
+]]></string>
+        </Properties>
+      </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="17">
+  <Item class="StarterPlayer" referent="18">
     <Properties>
       <string name="Name">StarterPlayer</string>
       <float name="CameraMaxZoomDistance">40</float>
@@ -4783,11 +5202,11 @@ end
       <token name="DevTouchCameraMovementMode">1</token>
       <token name="DevTouchMovementMode">1</token>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="18">
+    <Item class="StarterPlayerScripts" referent="19">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="19">
+      <Item class="LocalScript" referent="20">
         <Properties>
           <string name="Name">NightHuntClient</string>
           <string name="Source"><![CDATA[--[[ Night Hunt (fan-made) - client: UI, lighting, input, effects ]]
@@ -5092,7 +5511,9 @@ local function playSound(id, speed, vol, parent)
 	return s
 end
 
-local function jumpscare(kind, form)
+local showDeath -- v1.4.1 (defined below)
+local resultsUntil = 0
+local function jumpscare(kind, form, stats)
 	scareRun += 1
 	local run = scareRun
 	for _, c in ipairs(scare:GetChildren()) do if c:IsA("Model") then c:Destroy() end end
@@ -5319,7 +5740,196 @@ local function jumpscare(kind, form)
 		if e > SCARE_LEN then
 			conn:Disconnect()
 			scare.Visible = false
+			if stats and showDeath then showDeath(stats) end -- the end screen only pops up once the animation has fully finished
 		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- v1.4.1 end screens: YOU DIED (after the jumpscare animation fully ends), the monster's KILL popup
+-- (after its kill cam, fades out so it keeps playing), spectating, and the full round results screen.
+---------------------------------------------------------------------------
+local deathAt, killPopAt, killcamOn = 0, 0, false
+local function fmtSecs(t) t = math.max(0, math.floor(t or 0)); return ("%d:%02d"):format(t // 60, t % 60) end
+local death = new("Frame", { BackgroundColor3 = Color3.fromRGB(20, 0, 0), BackgroundTransparency = 0.25, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 40 }, gui)
+local deathTitle = label(death, "YOU DIED", 92, { Font = Enum.Font.Creepster, TextColor3 = Color3.fromRGB(235, 20, 20), Position = UDim2.new(0, 0, 0.2, 0), Size = UDim2.new(1, 0, 0, 100), ZIndex = 41, TextStrokeTransparency = 0.4 })
+local deathBy = label(death, "", 24, { Font = Enum.Font.GothamBold, RichText = true, Position = UDim2.new(0, 0, 0.2, 108), Size = UDim2.new(1, 0, 0, 30), ZIndex = 41 })
+local deathStats = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.5, -330, 0.2, 152), Size = UDim2.new(0, 660, 0, 78), ZIndex = 41 }, death)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, deathStats)
+local statBoxes = {}
+for i, cap in ipairs({ "Time survived", "Damage dealt", "Monster knockdowns", "Coins earned" }) do
+	local b = new("Frame", { BackgroundColor3 = Color3.fromRGB(30, 6, 8), BackgroundTransparency = 0.1, Size = UDim2.new(0, 155, 1, 0), LayoutOrder = i, ZIndex = 41 }, deathStats)
+	corner(b, 8)
+	new("UIStroke", { Color = Color3.fromRGB(150, 20, 24), Thickness = 1.5 }, b)
+	statBoxes[i] = label(b, "0", 28, { Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 215, 107), Position = UDim2.new(0, 0, 0, 8), Size = UDim2.new(1, 0, 0, 34), ZIndex = 42 })
+	label(b, cap, 13, { TextColor3 = Color3.fromRGB(220, 200, 200), Position = UDim2.new(0, 0, 0, 46), Size = UDim2.new(1, 0, 0, 20), ZIndex = 42 })
+end
+local deathLeft = label(death, "", 15, { TextColor3 = Color3.fromRGB(120, 180, 255), Position = UDim2.new(0, 0, 0.2, 242), Size = UDim2.new(1, 0, 0, 20), ZIndex = 41 })
+local deathBtns = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.5, -200, 0.2, 272), Size = UDim2.new(0, 400, 0, 46), ZIndex = 41 }, death)
+label(death, "Round results will appear when the round ends.", 12, { TextColor3 = MUTED, Position = UDim2.new(0, 0, 0.2, 326), Size = UDim2.new(1, 0, 0, 18), ZIndex = 41 })
+
+-- spectating: follow living players (camera subject), the server streams the map around them
+local spec = { on = false, i = 1, list = {} }
+local specBar = new("Frame", { BackgroundColor3 = DARK, BackgroundTransparency = 0.15, Size = UDim2.new(0, 470, 0, 46), Position = UDim2.new(0.5, -235, 1, -64), Visible = false, ZIndex = 39 }, gui)
+corner(specBar, 10)
+new("UIStroke", { Color = Color3.fromRGB(70, 110, 200), Thickness = 1.5 }, specBar)
+local specName = label(specBar, "", 15, { Font = Enum.Font.GothamBold, RichText = true, Position = UDim2.new(0, 50, 0, 0), Size = UDim2.new(1, -210, 1, 0), ZIndex = 40 })
+local function specTargets()
+	local out = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p:GetAttribute("Role") == "Survivor" and p:GetAttribute("Alive") and not p:GetAttribute("Escaped") then table.insert(out, p) end
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p:GetAttribute("Role") == "Monster" then table.insert(out, p) end
+	end
+	return out
+end
+local function specShow()
+	spec.list = specTargets()
+	local cam = workspace.CurrentCamera
+	if #spec.list == 0 then specName.Text = "Nobody left to watch"; return end
+	spec.i = ((spec.i - 1) % #spec.list) + 1
+	local t = spec.list[spec.i]
+	local hum = t.Character and t.Character:FindFirstChildOfClass("Humanoid")
+	if hum then cam.CameraType = Enum.CameraType.Custom; cam.CameraSubject = hum end
+	Action:FireServer("spectate", t.UserId)
+	local mon = t:GetAttribute("Role") == "Monster"
+	local def = mon and Config.MONSTERS[t:GetAttribute("Monster") or ""]
+	specName.Text = ("Spectating <font color=\"#%s\">%s</font>  -  %s"):format(mon and "ff5050" or "5aff8a", t.DisplayName, mon and (def and def.name or "Monster") or "Survivor")
+end
+local function stopSpec()
+	if not spec.on then return end
+	spec.on = false
+	specBar.Visible = false
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then workspace.CurrentCamera.CameraSubject = hum end
+	Action:FireServer("spectate", nil)
+end
+local function startSpec()
+	death.Visible = false
+	spec.on, spec.i = true, 1
+	specBar.Visible = true
+	specShow()
+end
+button(specBar, "<", { Size = UDim2.new(0, 38, 0, 34), Position = UDim2.new(0, 6, 0, 6), ZIndex = 40, BackgroundColor3 = Color3.fromRGB(40, 60, 110) }, function() spec.i -= 1; specShow() end)
+button(specBar, ">", { Size = UDim2.new(0, 38, 0, 34), Position = UDim2.new(1, -156, 0, 6), ZIndex = 40, BackgroundColor3 = Color3.fromRGB(40, 60, 110) }, function() spec.i += 1; specShow() end)
+button(specBar, "Lobby", { Size = UDim2.new(0, 106, 0, 34), Position = UDim2.new(1, -112, 0, 6), TextSize = 14, ZIndex = 40, BackgroundColor3 = Color3.fromRGB(120, 30, 30) }, function() stopSpec() end)
+UserInputService.InputBegan:Connect(function(inp, gp)
+	if gp or not spec.on then return end
+	if inp.KeyCode == Enum.KeyCode.Right or inp.KeyCode == Enum.KeyCode.N then spec.i += 1; specShow()
+	elseif inp.KeyCode == Enum.KeyCode.Left then spec.i -= 1; specShow() end
+end)
+
+button(deathBtns, "Spectate", { Size = UDim2.new(0, 190, 1, 0), Position = UDim2.new(0, 0, 0, 0), ZIndex = 42, BackgroundColor3 = Color3.fromRGB(40, 80, 150) }, function() startSpec() end)
+-- you are already back in the lobby (the server moved you there when you were caught): this just closes the screen
+button(deathBtns, "Return to Lobby", { Size = UDim2.new(0, 190, 1, 0), Position = UDim2.new(1, -190, 0, 0), ZIndex = 42, BackgroundColor3 = Color3.fromRGB(140, 30, 30) }, function() death.Visible = false; stopSpec() end)
+
+showDeath = function(s)
+	if type(s) ~= "table" then return end
+	deathAt = os.clock()
+	deathBy.Text = ("Killed by <font color=\"#ff5050\">%s</font>%s"):format(tostring(s.killer or "the dark"), (s.by and s.by ~= "") and (" <font size=\"18\" color=\"#cccccc\">(" .. tostring(s.by) .. ")</font>") or "")
+	statBoxes[1].Text = fmtSecs(s.time)
+	statBoxes[2].Text = tostring(s.dmg or 0)
+	statBoxes[3].Text = tostring(s.downs or 0)
+	statBoxes[4].Text = tostring(s.earn or 0)
+	local left = tonumber(s.left) or 0
+	deathLeft.Text = left > 0 and (("%d survivor%s still alive"):format(left, left == 1 and "" or "s")) or "Nobody is left alive"
+	death.Visible = true
+	deathTitle.TextTransparency = 1
+	TweenService:Create(deathTitle, TweenInfo.new(0.6), { TextTransparency = 0 }):Play()
+	playSound("rbxasset://sounds/uuhhh.mp3", 0.45, 1.5)
+end
+
+-- the monster's KILL popup after its kill cam: fades out so the hunt keeps going
+local killPop = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 150), Position = UDim2.new(0, 0, 0.18, 0), Visible = false, ZIndex = 38 }, gui)
+local kpTitle = label(killPop, "KILL", 84, { Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 32, 32), Size = UDim2.new(1, 0, 0, 86), ZIndex = 39, TextStrokeTransparency = 0.5 })
+local kpName = label(killPop, "", 26, { Font = Enum.Font.GothamBlack, Position = UDim2.new(0, 0, 0, 88), Size = UDim2.new(1, 0, 0, 30), ZIndex = 39, TextStrokeTransparency = 0.5 })
+local kpSub = label(killPop, "", 15, { TextColor3 = Color3.fromRGB(255, 215, 107), Position = UDim2.new(0, 0, 0, 120), Size = UDim2.new(1, 0, 0, 20), ZIndex = 39 })
+local function showKillPop(name, kind)
+	local def = Config.MONSTERS[kind or ""]
+	kpName.Text = tostring(name) .. " eliminated"
+	kpSub.Text = (def and def.name or "") .. "  -  +" .. Config.EARN.catch .. " coins"
+	killPopAt = os.clock()
+	killPop.Visible = true
+	for _, l in ipairs({ kpTitle, kpName, kpSub }) do
+		l.TextTransparency = 0; l.TextStrokeTransparency = 0.5
+		TweenService:Create(l, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 1.1), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	end
+	kpTitle.Size = UDim2.new(1, 0, 0, 120)
+	TweenService:Create(kpTitle, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Size = UDim2.new(1, 0, 0, 86) }):Play()
+	playSound("rbxasset://sounds/electronicpingshort.wav", 0.5, 1.5)
+	task.delay(2.8, function() if os.clock() - killPopAt >= 2.7 then killPop.Visible = false end end)
+end
+
+-- full round results
+local res = new("Frame", { BackgroundColor3 = Color3.fromRGB(8, 8, 14), BackgroundTransparency = 0.08, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 45 }, gui)
+local resTitle = label(res, "", 64, { Font = Enum.Font.GothamBlack, Position = UDim2.new(0, 0, 0, 30), Size = UDim2.new(1, 0, 0, 70), ZIndex = 46, TextStrokeTransparency = 0.5 })
+local resBadge = label(res, "", 18, { Font = Enum.Font.GothamBlack, BackgroundTransparency = 0, Position = UDim2.new(0.5, -70, 0, 106), Size = UDim2.new(0, 140, 0, 28), ZIndex = 46 })
+corner(resBadge, 14)
+local resReason = label(res, "", 16, { TextColor3 = Color3.fromRGB(220, 220, 230), Position = UDim2.new(0, 0, 0, 140), Size = UDim2.new(1, 0, 0, 22), ZIndex = 46 })
+local resTable = new("Frame", { BackgroundColor3 = Color3.fromRGB(20, 20, 30), Position = UDim2.new(0.5, -360, 0, 176), Size = UDim2.new(0, 720, 0, 30), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 46 }, res)
+corner(resTable, 8)
+new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, resTable)
+local resCoins = label(res, "", 20, { Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 215, 107), Position = UDim2.new(0, 0, 1, -110), Size = UDim2.new(1, 0, 0, 26), ZIndex = 46 })
+local resCount = label(res, "", 14, { Position = UDim2.new(0, 0, 1, -76), Size = UDim2.new(1, 0, 0, 20), ZIndex = 46 })
+local COLS = { { "PLAYER", 0.22 }, { "ROLE", 0.18 }, { "RESULT", 0.16 }, { "KILLS / DMG", 0.13 }, { "KNOCKDOWNS", 0.13 }, { "COINS", 0.18 } }
+local function resRow(vals, order, head, mine, colors)
+	local r = new("Frame", { BackgroundColor3 = mine and Color3.fromRGB(60, 50, 20) or Color3.fromRGB(14, 14, 20), BackgroundTransparency = head and 1 or 0.2, Size = UDim2.new(1, 0, 0, head and 26 or 28), LayoutOrder = order, ZIndex = 47 }, resTable)
+	local x = 0
+	for i, c in ipairs(COLS) do
+		label(r, tostring(vals[i]), head and 12 or 14, { Font = head and Enum.Font.GothamBlack or Enum.Font.GothamMedium, TextColor3 = head and Color3.fromRGB(255, 210, 120) or (colors and colors[i]) or TEXT, Position = UDim2.new(x, 0, 0, 0), Size = UDim2.new(c[2], 0, 1, 0), ZIndex = 48 })
+		x += c[2]
+	end
+end
+local pendingResults
+local function showResults(headline, lines, rows)
+	pendingResults = nil
+	death.Visible = false
+	stopSpec()
+	killPop.Visible = false
+	for _, c in ipairs(resTable:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
+	local survWin = headline == "SURVIVORS WIN"
+	resTitle.Text = headline
+	resTitle.TextColor3 = survWin and Color3.fromRGB(90, 255, 140) or Color3.fromRGB(255, 50, 50)
+	local myRole = player:GetAttribute("Role")
+	local won = (myRole == "Monster") ~= survWin
+	resBadge.Text = won and "VICTORY" or "DEFEAT"
+	resBadge.BackgroundColor3 = won and Color3.fromRGB(30, 120, 50) or Color3.fromRGB(130, 30, 30)
+	resReason.Text = (type(lines) == "table" and lines[1]) or ""
+	resRow({ "PLAYER", "ROLE", "RESULT", "KILLS / DMG", "KNOCKDOWNS", "COINS" }, 0, true)
+	local mine = 0
+	if type(rows) == "table" then
+		for i, r in ipairs(rows) do
+			local resCol = r.res == "Escaped" and Color3.fromRGB(90, 255, 120) or r.res == "Survived" and Color3.fromRGB(120, 200, 255) or Color3.fromRGB(255, 80, 80)
+			resRow({ r.name, r.role, r.res, r.monster and tostring(r.kills) or tostring(r.dmg), r.downs, r.coins .. " coins" }, i, false, r.id == player.UserId,
+				{ r.monster and Color3.fromRGB(255, 90, 90) or Color3.fromRGB(120, 200, 255), TEXT, resCol, TEXT, TEXT, Color3.fromRGB(255, 215, 107) })
+			if r.id == player.UserId then mine = r.coins end
+		end
+	elseif type(lines) == "table" then
+		for i = 2, #lines do resRow({ lines[i], "", "", "", "", "" }, i, false, false) end
+	end
+	resCoins.Text = ("+%d coins earned  (total %d)"):format(mine, player:GetAttribute("Coins") or 0)
+	res.Visible = true
+	resultsUntil = os.clock() + Config.RESULTS_TIME
+	task.spawn(function()
+		while res.Visible do
+			local left = math.max(0, math.ceil(resultsUntil - os.clock()))
+			resCount.Text = ("Back to the lobby in %ds..."):format(left)
+			if State:GetAttribute("State") == "Lobby" or State:GetAttribute("State") == "Flight" then res.Visible = false end
+			task.wait(0.25)
+		end
+	end)
+end
+-- results wait until the jumpscare / kill cam is over and the death screen / kill popup have been seen
+local function endBusy()
+	return scare.Visible or killcamOn or (death.Visible and os.clock() - deathAt < 3.5) or (killPop.Visible and os.clock() - killPopAt < 1.6)
+end
+local function queueResults(headline, lines, rows)
+	pendingResults = { headline, lines, rows }
+	task.spawn(function()
+		local t0 = os.clock()
+		while pendingResults and endBusy() and os.clock() - t0 < 8 do task.wait(0.1) end
+		if pendingResults then showResults(table.unpack(pendingResults, 1, 3)) end
 	end)
 end
 
@@ -5528,6 +6138,26 @@ local function myProfile()
 	pr.ownedSet = owned
 	return pr
 end
+-- v1.4.1 emotes: standard avatar emote animations played on your own character (they replicate to everyone)
+local myEmote = "wave"
+local emoteTrack
+local function playEmote(id)
+	id = id or myEmote
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local animator = hum and (hum:FindFirstChildOfClass("Animator") or hum:WaitForChild("Animator", 1))
+	if not animator or not Config.EMOTE_ANIMS[id] then return end
+	Action:FireServer("emote", id)
+	if emoteTrack then emoteTrack:Stop() end
+	local a = Instance.new("Animation")
+	a.AnimationId = Config.EMOTE_ANIMS[id]
+	local ok, tr = pcall(function() return animator:LoadAnimation(a) end)
+	if ok and tr then
+		emoteTrack = tr
+		tr.Priority = Enum.AnimationPriority.Action
+		tr:Play()
+		task.delay(4, function() if emoteTrack == tr then tr:Stop() end end)
+	end
+end
 local locker = new("Frame", { BackgroundColor3 = PANEL, Size = UDim2.new(0, 440, 0, 470), Position = UDim2.new(0.5, -220, 0.5, -235), Visible = false, ZIndex = 50 }, gui)
 corner(locker, 12)
 padding(locker, 12)
@@ -5536,15 +6166,23 @@ local lockerScroll = new("ScrollingFrame", { BackgroundTransparency = 1, Positio
 list(lockerScroll, 6)
 button(locker, "Close", { Position = UDim2.new(0, 0, 1, -38), Size = UDim2.new(1, 0, 0, 36), ZIndex = 52 }, function() locker.Visible = false end)
 local refreshLocker
-local lockerTab = "shop" -- shop (item counter) / look (dressing room) / skins (gallery)
-local tabBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 34), Size = UDim2.new(1, 0, 0, 30), ZIndex = 52 }, locker)
-for i, tb in ipairs({ { "shop", "Item counter" }, { "look", "Dressing room" }, { "skins", "Skins" } }) do
-	button(tabBar, tb[2], { Size = UDim2.new(1 / 3, -4, 1, 0), Position = UDim2.new((i - 1) / 3, 2, 0, 0), TextSize = 12, ZIndex = 53, BackgroundColor3 = Color3.fromRGB(70, 50, 40) }, function() lockerTab = tb[1]; refreshLocker() end)
+-- v1.4.1: one section per store on the shopping street (walking up to a store's counter opens its section)
+local lockerTab = "food"
+local STORE_ALIAS = { shop = "food", look = "clothing", skins = "monskins" }
+local STORE_SHORT = { skinshop = "Skins", weapons = "Weapons", armor = "Armor", food = "Food", monskins = "Monsters", emotes = "Emotes", pets = "Pets", clothing = "Clothes", crate = "Crates" }
+local STORE_BY = {}
+for _, st in ipairs(Config.STORES) do STORE_BY[st.k] = st end
+local tabBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 34), Size = UDim2.new(1, 0, 0, 56), ZIndex = 52 }, locker)
+for i, st in ipairs(Config.STORES) do
+	local row_, col = (i <= 5) and 0 or 1, (i <= 5) and (i - 1) or (i - 6)
+	local per = row_ == 0 and 5 or 4
+	button(tabBar, STORE_SHORT[st.k], { Size = UDim2.new(1 / per, -4, 0, 25), Position = UDim2.new(col / per, 2, 0, row_ * 28), TextSize = 12, ZIndex = 53, BackgroundColor3 = st.c:Lerp(Color3.new(0, 0, 0), 0.55) }, function() lockerTab = st.k; refreshLocker() end)
 end
-lockerScroll.Position = UDim2.new(0, 0, 0, 70)
-lockerScroll.Size = UDim2.new(1, 0, 1, -114)
-locker.Size = UDim2.new(0, 460, 0, 540)
-locker.Position = UDim2.new(0.5, -230, 0.5, -270)
+local crateMsg = ""
+lockerScroll.Position = UDim2.new(0, 0, 0, 96)
+lockerScroll.Size = UDim2.new(1, 0, 1, -140)
+locker.Size = UDim2.new(0, 480, 0, 560)
+locker.Position = UDim2.new(0.5, -240, 0.5, -280)
 local function row(text, order, actions)
 	local r = new("Frame", { BackgroundColor3 = DARK, Size = UDim2.new(1, -8, 0, 34), LayoutOrder = order, ZIndex = 52 }, lockerScroll)
 	corner(r, 6)
@@ -5557,11 +6195,34 @@ local monsterPrefIdx = 0
 refreshLocker = function()
 	for _, c in ipairs(lockerScroll:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end
 	local pr = myProfile()
-	lockerTitle.Text = ("%s  -  %d coins"):format(({ shop = "ITEM COUNTER", look = "DRESSING ROOM", skins = "SKINS GALLERY" })[lockerTab], pr.coins or 0)
+	lockerTab = STORE_ALIAS[lockerTab] or lockerTab
+	if not STORE_BY[lockerTab] then lockerTab = "food" end
+	lockerTitle.Text = ("%s  -  %d coins"):format(STORE_BY[lockerTab].name, pr.coins or 0)
+	lockerTitle.TextColor3 = STORE_BY[lockerTab].c
 	local o = 0
 	local function nxt() o += 1; return o end
-	local cats = ({ shop = { "hat", "acc", "supply" }, look = { "outfit" }, skins = { "skin" } })[lockerTab]
-	if lockerTab == "look" then
+	local cats = ({ skinshop = { "hat", "acc" }, weapons = { "supply" }, armor = { "supply" }, food = { "supply" }, monskins = { "skin" },
+		emotes = { "emote" }, pets = { "pet", "trail" }, clothing = { "outfit" }, crate = {} })[lockerTab]
+	if lockerTab == "crate" then
+		label(lockerScroll, "Mystery Crate - a random hat, accessory, outfit, monster skin, pet, trail or emote you don't own yet", 14, { LayoutOrder = nxt(), ZIndex = 52, Size = UDim2.new(1, -8, 0, 40) })
+		row(("Open a crate  -  %d coins"):format(Config.CRATE_PRICE), nxt(), { { "Open", function() Action:FireServer("crate") end, Color3.fromRGB(130, 70, 200) } })
+		if crateMsg ~= "" then label(lockerScroll, crateMsg, 18, { LayoutOrder = nxt(), Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 215, 107), ZIndex = 52, Size = UDim2.new(1, -8, 0, 50) }) end
+	end
+	if lockerTab == "emotes" then
+		label(lockerScroll, "Buy an emote, then press B (or the Emote button) to play it. Wave is free.", 13, { LayoutOrder = nxt(), ZIndex = 52, TextColor3 = MUTED, Size = UDim2.new(1, -8, 0, 34) })
+		local items = {}
+		for id, price in pairs(Config.SHOP.emote) do table.insert(items, { id, price }) end
+		table.sort(items, function(x, y) return x[2] < y[2] end)
+		for _, it in ipairs(items) do
+			local id, price = it[1], it[2]
+			local have = price == 0 or pr.ownedSet["emote:" .. id]
+			row(("%s%s%s"):format(id:sub(1, 1):upper() .. id:sub(2), have and "" or ("  -  " .. price .. " coins"), (myEmote == id) and "  (on B)" or ""), nxt(), {
+				have and { "Play", function() myEmote = id; playEmote(id) end, Color3.fromRGB(60, 60, 70) } or { "Buy", function() Action:FireServer("buy", { cat = "emote", id = id }) end },
+			})
+		end
+		cats = {}
+	end
+	if lockerTab == "clothing" then
 	label(lockerScroll, "Your survivor (check the mirror!)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local cyc = function(k, n) return function() Action:FireServer("look", { [k] = ((pr.look[k] or 1) % n) + 1 }) end end
 	row("Skin tone", nxt(), { { "Next", cyc("sk", #Config.SKIN_TONES) } })
@@ -5571,13 +6232,13 @@ refreshLocker = function()
 	row("Pants", nxt(), { { "Next", cyc("pants", #Config.CLOTHES) } })
 	end
 	for _, cat in ipairs(cats) do
-		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins", outfit = "Outfits", supply = "Round supplies (max 2, handed out next round)" })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins", outfit = "Outfits", pet = "Pets (follow you around)", trail = "Trails", supply = ("Round supplies (max %d, handed out next round)"):format(Config.KIT_MAX) })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 		if cat == "supply" then
 			local kit = {}
 			for _, k in ipairs(pr.kit or {}) do table.insert(kit, Config.ITEMS[k] and Config.ITEMS[k].name or k) end
 			label(lockerScroll, "Packed: " .. (#kit > 0 and table.concat(kit, ", ") or "nothing"), 13, { LayoutOrder = nxt(), ZIndex = 52, TextColor3 = MUTED })
 			local items = {}
-			for id, price in pairs(Config.SHOP.supply) do table.insert(items, { id, price }) end
+			for id, price in pairs(Config.SHOP.supply) do if Config.SUPPLY_SHOP[id] == lockerTab then table.insert(items, { id, price }) end end
 			table.sort(items, function(x, y) return x[2] < y[2] end)
 			for _, it in ipairs(items) do
 				row(("%s  -  %d coins"):format(Config.ITEMS[it[1]] and Config.ITEMS[it[1]].name or it[1], it[2]), nxt(), { { "Buy", function() Action:FireServer("buy", { cat = "supply", id = it[1] }) end } })
@@ -5598,7 +6259,7 @@ refreshLocker = function()
 			})
 		end
 	end
-	if lockerTab ~= "skins" then return end
+	if lockerTab ~= "monskins" then return end
 	label(lockerScroll, "Monster preference (if you become a monster)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local prefName = (pr.pref and pr.pref ~= "" and Config.MONSTERS[pr.pref]) and Config.MONSTERS[pr.pref].name or "Random"
 	row(prefName, nxt(), { { "Next", function()
@@ -5611,6 +6272,32 @@ local lockerBtn = button(lobbyPanel, "Locker & shop", { LayoutOrder = 9, Backgro
 	if locker.Visible then refreshLocker() end
 end)
 _ = lockerBtn
+local emoteBtn = button(lobbyPanel, "Emote (B)", { LayoutOrder = 9, TextSize = 13, BackgroundColor3 = Color3.fromRGB(110, 90, 20) }, function() playEmote(myEmote) end)
+_ = emoteBtn
+UserInputService.InputBegan:Connect(function(inp, gp)
+	if gp then return end
+	if inp.KeyCode == Enum.KeyCode.B and State:GetAttribute("State") ~= "Hunt" then playEmote(myEmote) end
+end)
+-- shopping street props: disco tiles flash, crates and the disco ball spin, pets on their beds bob
+task.spawn(function()
+	local lobbyModel = workspace:WaitForChild("Lobby", 30)
+	local street = lobbyModel and lobbyModel:WaitForChild("ShoppingStreet", 30)
+	if not street then return end
+	local disco, spin, bob = {}, {}, {}
+	for _, d in ipairs(street:GetDescendants()) do
+		if d:IsA("BasePart") and d:GetAttribute("Disco") then table.insert(disco, d) end
+		if d:IsA("BasePart") and d:GetAttribute("Spin") then table.insert(spin, { d, d.CFrame }) end
+		if d:IsA("Model") and d:GetAttribute("Bob") then table.insert(bob, { d, d:GetPivot() }) end
+	end
+	local t = 0
+	RunService.Heartbeat:Connect(function(dt)
+		t += dt
+		if State:GetAttribute("State") == "Hunt" then return end
+		for i, d in ipairs(disco) do d.Color = Color3.fromHSV((t * 0.6 + i * 0.137) % 1, 0.8, 1) end
+		for _, sp in ipairs(spin) do sp[1].CFrame = sp[2] * CFrame.new(0, math.sin(t * 2) * 0.3, 0) * CFrame.Angles(0, t * 1.2, 0) end
+		for i, b in ipairs(bob) do b[1]:PivotTo(b[2] * CFrame.new(0, math.abs(math.sin(t * 3 + i)) * 0.5, 0)) end
+	end)
+end)
 local roundBtn = button(lobbyPanel, "", { LayoutOrder = 10, TextSize = 13, BackgroundColor3 = Color3.fromRGB(60, 50, 90) }, function()
 	local cur = State:GetAttribute("RoundLen") or 420
 	local i = table.find(Config.ROUND_LENGTHS, cur) or 2
@@ -5830,12 +6517,12 @@ workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale
 ---------------------------------------------------------------------------
 -- Server notifications
 ---------------------------------------------------------------------------
-local resultsUntil = 0
 Notify.OnClientEvent:Connect(function(kind, a, b, c)
 	if kind == "toast" then
 		toast(a)
 	elseif kind == "jumpscare" then
-		jumpscare(a, b)
+		stopSpec()
+		jumpscare(a, b, c)
 	elseif kind == "scare" then
 		-- someone else got caught near you: hear the scream from their spot
 		if a ~= player.UserId and typeof(c) == "Vector3" then
@@ -5855,6 +6542,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 			local cap = label(kfx, "YOU CAUGHT " .. tostring(c):upper(), 40, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.78, 0), Size = UDim2.new(1, 0, 0, 50), ZIndex = 31, Visible = false })
 			local impact = IMPACT[a] or 1.55
 			local start, hit = os.clock(), false
+			killcamOn = true
 			local conn
 			conn = RunService.RenderStepped:Connect(function()
 				local e = os.clock() - start
@@ -5872,8 +6560,12 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 					conn:Disconnect()
 					kfx:Destroy()
 					cam.CameraType = prevType == Enum.CameraType.Scriptable and Enum.CameraType.Custom or prevType
+					killcamOn = false
+					showKillPop(c, a) -- KILL popup only after the kill animation has fully finished
 				end
 			end)
+		else
+			task.delay(2.4, showKillPop, c, a) -- wait the same length as the kill animation
 		end
 	elseif kind == "effect" then
 		if a == "grey" then greyUntil = os.clock() + b end
@@ -5896,10 +6588,16 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 		if a == "cthulhu" then lightning(2) end
 		sfx(a == "cthulhu" and "thunder" or "splash")
 	elseif kind == "store" then
-		-- walked up to a counter in the lobby store: open the locker on that section
-		lockerTab = (a == "look" or a == "skins") and a or "shop"
+		-- walked up to a store counter on the shopping street: open that store's section
+		lockerTab = type(a) == "string" and a or "food"
 		locker.Visible = true
 		refreshLocker()
+	elseif kind == "crate" then
+		local nice = ({ hat = "Hat", acc = "Accessory", outfit = "Outfit", skin = "Monster skin", pet = "Pet", trail = "Trail", emote = "Emote" })[a]
+		crateMsg = nice and ("You won: %s - %s!"):format(nice, tostring(b)) or ("You got " .. tostring(b))
+		toast("Mystery Crate: " .. crateMsg)
+		playSound("rbxasset://sounds/electronicpingshort.wav", 1.2, 1.5)
+		if locker.Visible then task.delay(0.3, refreshLocker) end
 	elseif kind == "sfx" then
 		sfx(a, b)
 	elseif kind == "sight" then
@@ -5917,6 +6615,8 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 	elseif kind == "escaped" then
 		toast("You escaped! Watch from the lobby.")
 	elseif kind == "flight" then
+		death.Visible = false; res.Visible = false; killPop.Visible = false; pendingResults = nil
+		stopSpec()
 		overlay.Visible = true
 		overlayTitle.Text = "TAKING OFF..."
 		local role = player:GetAttribute("Role")
@@ -5928,10 +6628,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 			overlayText.Text = ("Flying to %s\n\nYou are a SURVIVOR.\nSearch chests and bags for food, armor and weapons. Fight back, hide, and survive %d minutes - the extraction helicopter lands with %ds left."):format(a, len // 60, math.min(Config.EXTRACT_AT, len - 30))
 		end
 	elseif kind == "results" then
-		resultsUntil = os.clock() + Config.RESULTS_TIME
-		overlay.Visible = true
-		overlayTitle.Text = a
-		overlayText.Text = table.concat(b, "\n")
+		queueResults(a, b, c)
 	end
 end)
 
@@ -6006,7 +6703,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if st == "Flight" then
 		overlay.Visible = true
 	elseif st == "Results" then
-		overlay.Visible = os.clock() < resultsUntil
+		overlay.Visible = false -- v1.4.1: the full results screen replaces the old text overlay
 	else
 		overlay.Visible = false
 	end
@@ -6139,7 +6836,7 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="20">
+  <Item class="Workspace" referent="21">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
@@ -6147,7 +6844,7 @@ end)
       <int name="StreamingMinRadius">160</int>
       <int name="StreamingTargetRadius">640</int>
     </Properties>
-    <Item class="SpawnLocation" referent="21">
+    <Item class="SpawnLocation" referent="22">
       <Properties>
         <string name="Name">LobbySpawn</string>
         <bool name="Anchored">true</bool>

@@ -18,6 +18,7 @@ local Debris = game:GetService("Debris")
 local Shared = ReplicatedStorage:WaitForChild("NightHunt")
 local Config = require(Shared:WaitForChild("Config"))
 local Models = require(script:WaitForChild("Models"))
+local Plaza = require(script:WaitForChild("Plaza"))
 local MapGen = require(script:WaitForChild("MapGen"))
 
 ---------------------------------------------------------------------------
@@ -120,16 +121,16 @@ do
 	t.TextColor3 = Color3.fromRGB(220, 40, 40)
 	t.Text = "NIGHT HUNT\nboard the helicopter"
 	t.Parent = gui
-	-- v1.4: the walk-in store east of the helipad (item counter, dressing room, skins gallery)
+	-- v1.4.1: the shopping street east of the helipad - nine walk-in stores, each counter opens its own shop
 	local _, _, prompts = MapGen.store(lobby, Templates)
 	for _, pp in ipairs(prompts) do
 		pp.Triggered:Connect(function(plr) Notify:FireClient(plr, "store", pp:GetAttribute("Tab")) end)
 	end
-	local arrow = part(Vector3.new(14, 0.4, 3), CFrame.new(62, 0.25, 0), Color3.fromRGB(255, 200, 60), Enum.Material.Neon)
+	local arrow = part(Vector3.new(14, 0.4, 3), CFrame.new(50, 0.25, 0), Color3.fromRGB(255, 200, 60), Enum.Material.Neon)
 	arrow.CanCollide = false
-	local s2 = part(Vector3.new(1, 5, 18), CFrame.new(70, 5, -14), Color3.fromRGB(20, 10, 10), Enum.Material.Slate)
+	local s2 = part(Vector3.new(1, 5, 18), CFrame.new(58, 5, -22), Color3.fromRGB(20, 10, 10), Enum.Material.Slate)
 	local g2 = Instance.new("SurfaceGui"); g2.Face = Enum.NormalId.Left; g2.CanvasSize = Vector2.new(360, 100); g2.Parent = s2
-	local t2 = t:Clone(); t2.Text = "STORE  >>"; t2.TextColor3 = Color3.fromRGB(255, 200, 60); t2.Parent = g2
+	local t2 = t:Clone(); t2.Text = "SHOPS  >>"; t2.TextColor3 = Color3.fromRGB(255, 200, 60); t2.Parent = g2
 end
 lobby.Parent = workspace
 
@@ -814,6 +815,7 @@ local function hurtMonster(m, dmg, by, stun)
 	if f.downUntil and now() < f.downUntil then return end
 	if P2.isStone(m) then toast(by, "It's made of stone - your hit bounced off!"); return end
 	local hp = (m:GetAttribute("MonsterHp") or Config.MON_HP) - dmg
+	if by then by:SetAttribute("RoundDmg", (by:GetAttribute("RoundDmg") or 0) + math.min(dmg, math.max(0, m:GetAttribute("MonsterHp") or Config.MON_HP))) end
 	if stun then f.stunUntil = math.max(f.stunUntil or 0, now() + stun) end
 	if hp <= 0 then
 		hp = 0
@@ -821,6 +823,7 @@ local function hurtMonster(m, dmg, by, stun)
 		local def = Config.MONSTERS[m:GetAttribute("Monster")]
 		toast(nil, ("%s knocked down %s! It gets back up in %ds - run!"):format(by.DisplayName, def and def.name or "the monster", Config.DOWN_TIME))
 		addCoins(by, Config.EARN.knockdown, "Knocked down a monster")
+		by:SetAttribute("RoundDowns", (by:GetAttribute("RoundDowns") or 0) + 1)
 		sfxAll("down", hrpOf(m) and hrpOf(m).Position)
 		task.delay(Config.DOWN_TIME, function()
 			if m.Parent then m:SetAttribute("MonsterHp", m:GetAttribute("MonsterMaxHp") or Config.MON_HP) end
@@ -979,13 +982,15 @@ local function cleanProfile(d)
 			top = n(look.top, #Config.CLOTHES), pants = n(look.pants or 8, #Config.CLOTHES),
 			hat = (type(look.hat) == "string" and Config.SHOP.hat[look.hat] and have("hat", look.hat)) and look.hat or "none",
 			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none",
-			outfit = (type(look.outfit) == "string" and Config.SHOP.outfit[look.outfit] and have("outfit", look.outfit)) and look.outfit or "none" },
+			outfit = (type(look.outfit) == "string" and Config.SHOP.outfit[look.outfit] and have("outfit", look.outfit)) and look.outfit or "none",
+			pet = (type(look.pet) == "string" and Config.SHOP.pet[look.pet] and have("pet", look.pet)) and look.pet or "none",
+			trail = (type(look.trail) == "string" and Config.SHOP.trail[look.trail] and have("trail", look.trail)) and look.trail or "none" },
 		kit = {},
 		pref = (type(d.pref) == "string" and Config.MONSTERS[d.pref]) and d.pref or "",
 		skin = (type(d.skin) == "string" and Config.SHOP.skin[d.skin] and have("skin", d.skin)) and d.skin or "classic",
 	}
 	if type(d.kit) == "table" then
-		for _, k in ipairs(d.kit) do if type(k) == "string" and Config.SHOP.supply[k] and #out.kit < 2 then table.insert(out.kit, k) end end
+		for _, k in ipairs(d.kit) do if type(k) == "string" and Config.SHOP.supply[k] and #out.kit < Config.KIT_MAX then table.insert(out.kit, k) end end
 	end
 	return out
 end
@@ -1076,12 +1081,44 @@ local function applyLook(p)
 	end
 	local ab = ACC_BUILD[L.acc]
 	if ab then stick("NH_Acc", ab[1], ab[2], ab[3], false, L.acc == "goggles" and Enum.Material.Glass or nil) end
+	-- v1.4.1: pet that follows you (AlignPosition to a spot behind your shoulder) and a trail behind you
+	local hrp = c:FindFirstChild("HumanoidRootPart")
+	for _, n in ipairs({ "NH_Pet", "NH_TrailA", "NH_TrailB", "NH_Trail", "NH_PetSpot" }) do
+		local old = c:FindFirstChild(n, true)
+		while old do old:Destroy(); old = c:FindFirstChild(n, true) end
+	end
+	if not hrp then return end
+	if L.pet and L.pet ~= "none" then
+		local pet = Plaza.buildPet(L.pet, 0.8)
+		pet.Name = "NH_Pet"
+		local body = pet.PrimaryPart
+		local spot = Instance.new("Attachment"); spot.Name = "NH_PetSpot"; spot.Position = Vector3.new(2.6, (L.pet == "bat" or L.pet == "owl" or L.pet == "dragon" or L.pet == "ghost") and 2.2 or -1.6, 2); spot.Parent = hrp
+		local a0 = Instance.new("Attachment"); a0.Parent = body
+		local ap = Instance.new("AlignPosition"); ap.Attachment0 = a0; ap.Attachment1 = spot; ap.Responsiveness = 18; ap.MaxForce = 1e5; ap.Parent = body
+		local ao = Instance.new("AlignOrientation"); ao.Attachment0 = a0; ao.Attachment1 = spot; ao.Responsiveness = 18; ao.Parent = body
+		pet:PivotTo(hrp.CFrame * CFrame.new(spot.Position))
+		pet.Parent = c
+		pcall(function() body:SetNetworkOwner(p) end)
+	end
+	local tc = Config.TRAIL_COLORS[L.trail or "none"]
+	if tc then
+		local a = Instance.new("Attachment"); a.Name = "NH_TrailA"; a.Position = Vector3.new(0, 0.8, 0.4); a.Parent = hrp
+		local b = Instance.new("Attachment"); b.Name = "NH_TrailB"; b.Position = Vector3.new(0, -1.8, 0.4); b.Parent = hrp
+		local tr = Instance.new("Trail"); tr.Name = "NH_Trail"; tr.Attachment0 = a; tr.Attachment1 = b
+		tr.Lifetime = 0.7; tr.LightEmission = (L.trail == "shadow" or L.trail == "blood") and 0 or 0.8; tr.FaceCamera = true
+		if L.trail == "rainbow" then
+			tr.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)), ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 220, 60)), ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 220, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 255)) })
+		else tr.Color = ColorSequence.new(tc[1], tc[2]) end
+		tr.Transparency = NumberSequence.new(0.1, 1)
+		tr.Parent = hrp
+	end
 end
 
 ---------------------------------------------------------------------------
 -- Round flow
 ---------------------------------------------------------------------------
 local roundToken = 0
+local huntStart = os.clock() -- v1.4.1: for 'time survived' on the death screen
 
 local function cleanupRound()
 	if roundFolder then roundFolder:Destroy() end
@@ -1105,7 +1142,15 @@ local function catchSurvivor(victim, monster)
 	victim:SetAttribute("Alive", false)
 	local kind = monster and monster:GetAttribute("Monster") or ""
 	local mname = Config.MONSTERS[kind] and Config.MONSTERS[kind].name or "the dark"
-	Notify:FireClient(victim, "jumpscare", kind, monster and monster:GetAttribute("Form") or 1)
+	victim:SetAttribute("Result", "Caught")
+	victim:SetAttribute("KilledBy", mname)
+	-- v1.4.1: round stats for the YOU DIED screen (shown by the client after the jumpscare animation ends)
+	local left = 0
+	for _, s in ipairs(survivors(true)) do if s ~= victim then left += 1 end end
+	local stats = { killer = mname, by = monster and monster.DisplayName or "", time = math.floor(os.clock() - huntStart),
+		dmg = math.floor(victim:GetAttribute("RoundDmg") or 0), downs = victim:GetAttribute("RoundDowns") or 0,
+		earn = victim:GetAttribute("RoundCoins") or 0, left = left }
+	Notify:FireClient(victim, "jumpscare", kind, monster and monster:GetAttribute("Form") or 1, stats)
 	-- everyone nearby sees the catch: the victim is animated in the world per monster, then vanishes
 	local vh, mh = hrpOf(victim), monster and hrpOf(monster)
 	if vh then
@@ -1275,7 +1320,23 @@ local function endRound(reason)
 		local def = Config.MONSTERS[m:GetAttribute("Monster")]
 		table.insert(lines, ("%s was %s (%d catches)"):format(m.DisplayName, def and def.name or "?", m:GetAttribute("Catches") or 0))
 	end
-	Notify:FireAllClients("results", headline, lines)
+	-- v1.4.1: full results table (role, result, kills / damage, knockdowns, coins) for every player
+	local rows = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		local role = p:GetAttribute("Role") or ""
+		if role ~= "" then
+			local res
+			if role == "Monster" then res = ("%d kills"):format(p:GetAttribute("Catches") or 0)
+			elseif p:GetAttribute("Escaped") then res = "Escaped"
+			elseif p:GetAttribute("Alive") then res = "Survived"
+			else res = "Caught" end
+			local def = Config.MONSTERS[p:GetAttribute("Monster") or ""]
+			table.insert(rows, { id = p.UserId, name = p.DisplayName, role = role == "Monster" and (def and def.name or "Monster") or "Survivor", monster = role == "Monster",
+				res = res, kills = p:GetAttribute("Catches") or 0, dmg = math.floor(p:GetAttribute("RoundDmg") or 0), downs = p:GetAttribute("RoundDowns") or 0, coins = p:GetAttribute("RoundCoins") or 0 })
+		end
+	end
+	table.sort(rows, function(a, b) if a.monster ~= b.monster then return a.monster end; return a.coins > b.coins end)
+	Notify:FireAllClients("results", headline, lines, rows)
 	setState("TimeLeft", Config.RESULTS_TIME)
 	task.delay(Config.RESULTS_TIME, function()
 		if token ~= roundToken then return end
@@ -1332,6 +1393,7 @@ local function startRound(starter)
 		clearGear(p)
 		resetPlayer(p)
 		p:SetAttribute("Catches", 0)
+		p:SetAttribute("RoundDmg", 0); p:SetAttribute("RoundDowns", 0); p:SetAttribute("RoundCoins", 0); p:SetAttribute("Result", "")
 		if isMonster[p] then
 			-- the monster the player picked in the lobby locker, if nobody else already has it
 			local want = profiles[p] and profiles[p].pref or ""
@@ -1359,6 +1421,7 @@ local function startRound(starter)
 			if p:GetAttribute("Role") ~= "" then placeInMap(p) end
 		end
 		setState("State", "Hunt")
+		huntStart = os.clock()
 		setState("TimeLeft", settings.roundLen)
 		toast(nil, "Survive until the extraction helicopter arrives!")
 		-- countdown
@@ -1552,6 +1615,10 @@ local function onPlayerAdded(p)
 				catchSurvivor(p, lastHitBy[p])
 			end
 		end)
+		-- v1.4.1: wear your look, pet and trail in the lobby too
+		if State:GetAttribute("State") ~= "Hunt" or p:GetAttribute("Role") ~= "Monster" then
+			task.delay(0.6, function() if p.Character == char and p:GetAttribute("Role") ~= "Monster" then applyLook(p) end end)
+		end
 		-- a monster that died (e.g. fell) respawns back into the hunt
 		if State:GetAttribute("State") == "Hunt" and p:GetAttribute("Role") == "Monster" then
 			task.wait(0.3)
@@ -1611,7 +1678,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		if cat == "supply" then -- round supplies: bought for the next round (max 2), not kept
 			local price = Config.SHOP.supply[id]
 			if not price or kind ~= "buy" then return end
-			if #pr.kit >= 2 then toast(p, "Your kit is full (2 supplies max)."); return end
+			if #pr.kit >= Config.KIT_MAX then toast(p, ("Your kit is full (%d supplies max)."):format(Config.KIT_MAX)); return end
 			if pr.coins < price then toast(p, "Not enough coins."); return end
 			pr.coins -= price
 			table.insert(pr.kit, id)
@@ -1630,12 +1697,50 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 			pr.owned[key] = true
 			toast(p, "Bought " .. id .. "!")
 		end
+		if cat == "emote" then -- emotes are owned, not worn (wave is free); play them with the Emote button / B
+			publishProfile(p)
+			task.spawn(saveProfile, p)
+			return
+		end
 		if free or pr.owned[key] then
 			if cat == "skin" then pr.skin = id else pr.look[cat] = id end
 			if cat ~= "skin" and p:GetAttribute("Role") ~= "Monster" then applyLook(p) end
 		end
 		publishProfile(p)
 		task.spawn(saveProfile, p)
+	elseif kind == "crate" then
+		-- Mystery Crates: a random cosmetic you don't own yet (coins only). Everything owned -> coins back.
+		local pr = profiles[p]
+		if not pr then return end
+		if pr.coins < Config.CRATE_PRICE then toast(p, "Not enough coins."); return end
+		local pool = {}
+		for _, cat in ipairs({ "hat", "acc", "outfit", "skin", "pet", "trail", "emote" }) do
+			for id, price in pairs(Config.SHOP[cat]) do
+				if price > 0 and not pr.owned[cat .. ":" .. id] then table.insert(pool, { cat, id, price }) end
+			end
+		end
+		pr.coins -= Config.CRATE_PRICE
+		local won
+		if #pool == 0 then
+			pr.coins += 100
+			Notify:FireClient(p, "crate", "coins", "100 coins (you own everything!)")
+		else
+			won = pool[math.random(1, #pool)]
+			pr.owned[won[1] .. ":" .. won[2]] = true
+			Notify:FireClient(p, "crate", won[1], won[2])
+		end
+		publishProfile(p)
+		task.spawn(saveProfile, p)
+	elseif kind == "emote" then
+		local pr = profiles[p]
+		if not pr or type(data) ~= "string" or not Config.SHOP.emote[data] then return end
+		if data ~= "wave" and not pr.owned["emote:" .. data] then toast(p, "Buy that emote in the Emotes & Dances store first."); return end
+		p:SetAttribute("Emote", data .. ":" .. tostring(os.clock())) -- the client plays the animation on its own character (replicates)
+	elseif kind == "spectate" then
+		-- v1.4.1: a caught survivor spectates a living player; stream the map around them
+		local target = type(data) == "number" and Players:GetPlayerByUserId(data)
+		local th = target and hrpOf(target)
+		pcall(function() p.ReplicationFocus = th or nil end)
 	elseif kind == "look" then
 		local pr = profiles[p]
 		if not pr or type(data) ~= "table" then return end

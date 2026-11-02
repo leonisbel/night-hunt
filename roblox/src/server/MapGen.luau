@@ -558,7 +558,9 @@ end
 
 -- the walk-in store building in the lobby
 function MapGen.store(parent, templates)
-	return MapGen2.store(parent, { part = part, building = building, pine = pine, tree = tree, wallSide = wallSide }, templates)
+	-- v1.4.1: the single store became a shopping street of nine walk-in stores (Plaza.luau)
+	local Plaza = require(script.Parent:WaitForChild("Plaza"))
+	return Plaza.build(parent, { part = part, wallSide = wallSide }, templates)
 end
 
 return MapGen

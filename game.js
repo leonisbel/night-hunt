@@ -14,7 +14,7 @@ let world;
 try { world = new World($('c'), { mobile: mobileUA }); } catch (e) { $('merr').textContent = 'Your browser could not start 3D graphics (WebGL). Try another browser.'; console.error(e); }
 addEventListener('resize', () => world && world.resize());
 // expose state for tests/automation
-window.NH = { cam, get map() { return map; }, get killing() { return !!killcam; }, locust: () => locustSlam(), scare: (type, fm, hold) => { scareShown = false; splats = null; jumpscare = { type, fm: fm || 0, start: performance.now() - (hold || 0) * 1000, until: performance.now() + 60000, freeze: hold }; }, unscare: () => { jumpscare = null; }, kill: (type, x, y, name, hold) => { killcam = { start: performance.now() - (hold || 0) * 1000, type, x, y, name, zoom: cam.zoom, pitch: cam.pitch }; killSplats = null; },  get locker() { return locker; }, fire(on) { fireHeld = !!on; if (on) fireLatch = true; }, open: () => send({ t: 'open' }), sel: i => send({ t: 'sel', i }), get snap() { return snap; }, get me() { return me; }, keys, get world() { return world; }, get touch() { return touch; }, get disp() { return disp; } };
+window.NH = { cam, get map() { return map; }, get killing() { return !!killcam; }, locust: () => locustSlam(), scare: (type, fm, hold) => { scareShown = false; splats = null; jumpscare = { type, fm: fm || 0, start: performance.now() - (hold || 0) * 1000, until: performance.now() + 60000, freeze: hold }; }, unscare: () => { jumpscare = null; }, die: (type, fm, stats, killer) => { scareShown = false; splats = null; const n = performance.now(); jumpscare = { type, fm: fm || 0, start: n, until: n + scareLen(type, fm || 0) * 1000, death: { by: type, fm: fm || 0, killer, stats: stats || {} } }; sfx(scareSound(type)); }, results: m => { if (endBusy()) pendingResults = m; else showResults(m); }, get spec() { return spec; }, kill: (type, x, y, name, hold) => { killcam = { start: performance.now() - (hold || 0) * 1000, type, x, y, name, zoom: cam.zoom, pitch: cam.pitch }; killSplats = null; },  get locker() { return locker; }, fire(on) { fireHeld = !!on; if (on) fireLatch = true; }, open: () => send({ t: 'open' }), sel: i => send({ t: 'sel', i }), get snap() { return snap; }, get me() { return me; }, keys, get world() { return world; }, get touch() { return touch; }, get disp() { return disp; } };
 Object.defineProperty(window, 'snap', { get: () => snap }); Object.defineProperty(window, 'me', { get: () => me }); window.keys = keys;
 
 // ---------- menu ----------
@@ -56,7 +56,7 @@ NET.detect().then(info => {
   if (info && params.has('desktop')) { const d = document.createElement('div'); d.className = 'help';
     d.innerHTML = `<b>Desktop app:</b> "Online" lets friends anywhere join with your code. "Wi-Fi" mode uses this computer as the server: friends on the same Wi-Fi open <b>${info.lan.map(a => `http://${a}:${info.port}`).join(' or ') || `http://localhost:${info.port}`}</b>.`; $('menu').appendChild(d); }
 });
-function showMenu(err) { ['darkover', 'hallucover', 'sleepover', 'locustover', 'scareover'].forEach(i => $(i).classList.add('hide')); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); room = null; snap = null; map = null; $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('overlay').classList.add('hide'); document.body.classList.remove('ingame'); $('merr').textContent = err || ''; setAmbience(null); setRotor(0); }
+function showMenu(err) { ['darkover', 'hallucover', 'sleepover', 'locustover', 'scareover'].forEach(i => $(i).classList.add('hide')); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); room = null; snap = null; map = null; $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('overlay').classList.add('hide'); document.body.classList.remove('ingame'); $('merr').textContent = err || ''; setAmbience(null); setRotor(0); clearEnd(); }
 $('bleave').onclick = () => { NET.leave(); showMenu(); };
 $('binvite').onclick = () => { const u = location.origin + location.pathname + '?room=' + room; navigator.clipboard && navigator.clipboard.writeText(u).catch(() => { }); addEvent('Invite link copied: ' + u, 'good'); };
 $('bstart').onclick = () => send({ t: 'start' });
@@ -73,14 +73,14 @@ function onMsg(m) {
       $('hcode').textContent = `${m.name} · Code ${m.code} · ${m.isPublic ? '🌍 Public' : '🔒 Friends only'}`; $('hmax').value = m.max; $('hpub').checked = m.isPublic; history.replaceState(null, '', '?room=' + m.code); ITEMS = m.items || {}; if (m.roundLen) $('hround').value = m.roundLen; sendProfile(); break;
     case 'host': isHost = true; addEvent('You are now the host', 'good'); break;
     case 'settings': if (m.roundLen) $('hround').value = m.roundLen; $('hmax').value = m.max; $('hpub').checked = m.isPublic; $('hcode').textContent = $('hcode').textContent.replace(/🌍 Public|🔒 Friends only/, m.isPublic ? '🌍 Public' : '🔒 Friends only'); break;
-    case 'map': map = m.map; disp = {}; cam.yaw = -Math.PI / 2; cam.pitch = .55; if (world) world.camInit = false; results = null; $('overlay').classList.add('hide'); if (world) world.setMap(map); setAmbience(map.heli ? 'lobby' : map.theme); break;
+    case 'map': map = m.map; disp = {}; clearEnd(); cam.yaw = -Math.PI / 2; cam.pitch = .55; if (world) world.camInit = false; results = null; $('overlay').classList.add('hide'); if (world) world.setMap(map); setAmbience(map.heli ? 'lobby' : map.theme); break;
     case 's': snap = m; break;
     case 'event': addEvent(m.msg, m.kind); break;
     case 'flight': { const mine = m.roles.find(r => r.id === me); flight = { start: performance.now(), until: performance.now() + m.secs * 1000, theme: m.theme, mine }; showFlightCard(); sfx('heli'); break; }
-    case 'caught': jumpscare = { type: m.by, fm: m.fm || 0, start: performance.now(), until: performance.now() + scareLen(m.by, m.fm || 0) * 1000 }; sfx(scareSound(m.by)); if (navigator.vibrate) navigator.vibrate([80, 40, 200]); break;
+    case 'caught': jumpscare = { type: m.by, fm: m.fm || 0, start: performance.now(), until: performance.now() + scareLen(m.by, m.fm || 0) * 1000, death: { by: m.by, fm: m.fm || 0, killer: m.killer, stats: m.stats || {} } }; sfx(scareSound(m.by)); if (navigator.vibrate) navigator.vibrate([80, 40, 200]); break;
     case 'scare': if (m.mid === me && world) { // the monster who made the catch sees the kill from its own view
         const v = snap && snap.ps.find(p => p.id === m.id); world.addWitness(m, disp);
-        killcam = { start: performance.now(), type: m.by, x: m.x, y: m.y, name: v ? v.n : 'a survivor', zoom: cam.zoom, pitch: cam.pitch }; killSplats = null; sfx('scare');
+        killcam = { start: performance.now(), type: m.by, x: m.x, y: m.y, name: m.vn || (v ? v.n : 'a survivor'), zoom: cam.zoom, pitch: cam.pitch }; killSplats = null; sfx('scare');
         break; }
       if (m.id !== me && world) { const md = disp[me]; const d = md ? Math.hypot(md.dx - m.x, md.dy - m.y) : 1e9; if (d < 900) { world.addWitness(m, disp); sfx('scream', { vol: Math.max(.25, 1 - d / 900), pan: md ? (m.x - md.dx) / 900 : 0 }); } } break;
     case 'fx': if (world) world.addFx(m); if (m.kind === 'siren') world.shake = .6; fxSound(m); break;
@@ -91,18 +91,48 @@ function onMsg(m) {
     case 'used': { const I = ITEMS[m.k]; if (I) sfx(I.drink ? 'drink' : I.type === 'armor' ? 'pickup' : 'eat'); break; }
     case 'hurt': sfx('hurt'); $('hpbar').classList.remove('hurt'); void $('hpbar').offsetWidth; $('hpbar').classList.add('hurt'); if (world) world.shake = Math.max(world.shake || 0, .35); if (navigator.vibrate) navigator.vibrate(60); break;
     case 'coins': if (locker) locker.addCoins(m.n); sfx('coin'); addEvent(`🪙 +${m.n} coins earned this round (total ${locker ? locker.profile.coins : m.n})`, 'good'); earnedLast = m.n; const ce = $('rcoins'); if (ce) ce.textContent = `🪙 +${m.n} coins`; break;
-    case 'results': results = m; showResults(m); break;
+    case 'results': results = m; if (endBusy()) pendingResults = m; else showResults(m); break;
   }
 }
 function addEvent(msg, kind) { const d = document.createElement('div'); d.className = kind || ''; d.textContent = msg; $('events').appendChild(d); setTimeout(() => d.remove(), 7000); while ($('events').children.length > (touch.active ? 3 : 6)) $('events').firstChild.remove(); if (kind === 'good' && /escaped/i.test(msg)) sfx('escape'); }
 function showResults(m) {
-  const o = $('overlay'); o.classList.remove('hide');
-  const title = m.winner === 'survivors' ? '<h2 style="color:#6f6">SURVIVORS WIN</h2>' : m.winner === 'monsters' ? '<h2 style="color:#f44">MONSTERS WIN</h2>' : '<h2>TIE</h2>';
-  o.innerHTML = title + `<p>${m.why}</p><p>Escaped: ${m.saved} · Caught: ${m.caught}</p><p id="rcoins" style="color:#ffd76b;font-weight:bold"></p><div id="rtab"></div><p><small>Back to the helipad soon…</small></p>`;
-  const tb = document.createElement('table'); tb.style.margin = 'auto';
-  for (const p of m.players.sort((a, b) => b.score - a.score)) { const tr = tb.insertRow(); tr.insertCell().textContent = p.name; tr.insertCell().textContent = p.role === 'monster' ? '👹 ' + MON[p.mt].name : p.escaped ? '🚁 escaped' : p.alive ? 'alive' : '💀 caught'; tr.insertCell().textContent = p.score + ' pts'; tr.cells[0].style.color = p.color; }
-  o.querySelector('#rtab').appendChild(tb);
+  pendingResults = null; $('deathscreen').classList.add('hide'); spec = null; $('specbar').classList.add('hide');
+  const o = $('overlay'); o.classList.remove('hide'); o.classList.add('results');
+  const win = m.winner === 'survivors' ? ['SURVIVORS WIN', '#6f6', '🚁'] : m.winner === 'monsters' ? ['MONSTER WINS', '#f44', '👹'] : ['TIE', '#ddd', '⚖️'];
+  const mine = m.players.find(p => p.id === me), myWin = mine && ((m.winner === 'survivors' && mine.role !== 'monster') || (m.winner === 'monsters' && mine.role === 'monster'));
+  const rows = m.players.slice().sort((a, b) => (b.role === 'monster') - (a.role === 'monster') || b.score - a.score).map(p => {
+    const role = p.role === 'monster' ? `👹 ${esc(MON[p.mt] ? MON[p.mt].name : 'Monster')}` : '🔦 Survivor';
+    const stat = p.role === 'monster' ? `<b style="color:#f66">${p.kills} kill${p.kills === 1 ? '' : 's'}</b>` : p.escaped ? '<b style="color:#6f6">🚁 Escaped</b>' : p.alive ? '<b style="color:#9cf">❤ Survived</b>' : '<b style="color:#f66">💀 Caught</b>';
+    return `<tr class="${p.id === me ? 'me' : ''}"><td style="color:${p.color}">${esc(p.name)}${p.bot ? ' <small>🤖</small>' : ''}</td><td>${role}</td><td>${stat}</td><td>${p.role === 'monster' ? p.kills : p.dmg}</td><td>${p.downs}</td><td>🪙 ${p.earn}</td><td>${p.score}</td></tr>`; }).join('');
+  o.innerHTML = `<div class="rbox"><div class="rbanner" style="color:${win[1]};border-color:${win[1]}">${win[2]} ${win[0]}</div>${mine ? `<div class="rme ${myWin ? 'w' : 'l'}">${myWin ? 'VICTORY' : 'DEFEAT'}</div>` : ''}
+    <p class="rwhy">${esc(m.why || '')}</p><div class="rsum"><span>🚁 Escaped <b>${m.saved}</b></span><span>💀 Caught <b>${m.caught}</b></span><span>👥 Players <b>${m.players.length}</b></span></div>
+    <table class="rtable"><tr><th>Player</th><th>Role</th><th>Result</th><th>Kills / Dmg</th><th>Knockdowns</th><th>Coins</th><th>Score</th></tr>${rows}</table>
+    <p id="rcoins" class="rcoins">${earnedLast ? `🪙 +${earnedLast} coins earned (total ${locker.profile.coins})` : ''}</p><p><small id="rback">Back to the lobby soon…</small></p></div>`;
+  resultsEnd = performance.now() + (m.secs || 14) * 1000;
 }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+// ---------- v1.4.1 end screens: death screen after the jumpscare, the monster's KILL popup, spectate, results queue ----------
+let pendingResults = null, deathAt = 0, spec = null, killPopAt = 0, resultsEnd = 0;
+const fmtT = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function endBusy() { const n = performance.now(); return !!(jumpscare || killcam || (deathAt && n - deathAt < 3500 && !$('deathscreen').classList.contains('hide')) || (killPopAt && n - killPopAt < 1600)); }
+function clearEnd() { pendingResults = null; deathAt = 0; spec = null; ['deathscreen', 'specbar', 'killpop'].forEach(i => $(i) && $(i).classList.add('hide')); const o = $('overlay'); if (o) o.classList.remove('results'); }
+function showDeath(d) {
+  const M = MON[d.by] || {}, F = M.forms ? M.forms[d.fm || 0] : null, st = d.stats || {}, el = $('deathscreen');
+  el.innerHTML = `<div class="dsbox"><h1>YOU DIED</h1><h3>Killed by <b>${esc(F ? F.name : M.name || 'the monster')}</b>${d.killer ? ` <small>(${esc(d.killer)})</small>` : ''}</h3>
+    <div class="dstats"><div><b>${fmtT(st.time || 0)}</b><small>Time survived</small></div><div><b>${st.dmg || 0}</b><small>Damage dealt</small></div><div><b>${st.downs || 0}</b><small>Monster knockdowns</small></div><div><b>🪙 ${st.earn || 0}</b><small>Coins earned</small></div></div>
+    <p class="dsleft">${st.left != null ? `${st.left} survivor${st.left === 1 ? '' : 's'} still alive` : ''}</p>
+    <div class="dsbtn"><button id="dsspec">👁 Spectate</button><button id="dslobby">🏠 Return to Lobby</button></div><p class="dshint">Round results will appear when the round ends.</p></div>`;
+  el.classList.remove('hide'); el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); deathAt = performance.now(); sfx('dead');
+  if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock();
+  $('dsspec').onclick = () => startSpec(); $('dslobby').onclick = () => toLobby();
+}
+function specList() { return snap ? snap.ps.filter(p => p.id !== me && (p.role === 'monster' || (p.role === 'survivor' && p.al && !p.es))).sort((a, b) => (a.role === 'monster') - (b.role === 'monster')) : []; }
+function startSpec(dir = 0) { const L = specList(); $('deathscreen').classList.add('hide'); if (!L.length) { spec = null; addEvent('Nobody left to spectate. Results are coming…'); return; }
+  let i = spec ? L.findIndex(p => p.id === spec.id) : -1; i = ((i < 0 ? 0 : i + dir) % L.length + L.length) % L.length; spec = { id: L[i].id }; if (!dir) { cam.zoom = Math.max(cam.zoom, .75); cam.pitch = Math.max(cam.pitch, .45); } $('specbar').classList.remove('hide'); sfx('click'); }
+function toLobby() { if (!isHost) { NET.leave(); showMenu(); return; } addEvent('🏠 You host this room, so you return to the helipad lobby with everyone when the round ends. Spectating until then…', 'good'); startSpec(); }
+function showKillPop(name, type) { const el = $('killpop'), M = MON[type] || {}; el.innerHTML = `<b>KILL</b><span>${esc(name)} eliminated</span><small>${esc(M.name || '')} · +40 🪙</small>`; el.classList.remove('hide', 'go'); void el.offsetWidth; el.classList.add('go'); killPopAt = performance.now(); sfx('kill'); clearTimeout(showKillPop.t); showKillPop.t = setTimeout(() => el.classList.add('hide'), 2800); }
+if ($('bemote')) $('bemote').onclick = () => playEmote();
+$('specprev').onclick = () => startSpec(-1); $('specnext').onclick = () => startSpec(1); $('speclobby').onclick = () => toLobby(); $('specstats').onclick = () => { if (deathAt) { $('specbar').classList.add('hide'); spec = null; $('deathscreen').classList.remove('hide'); } };
 function posPan(m) { const md = disp[me]; if (!md || m.x == null) return {}; const d = Math.hypot(m.x - md.dx, m.y - md.dy); return { pan: Math.max(-1, Math.min(1, (m.x - md.dx) / 600)), vol: Math.max(.15, 1 - d / 1400) }; }
 function fxSound(m) {
   const o = posPan(m);
@@ -112,7 +142,8 @@ function fxSound(m) {
 }
 let earnedLast = 0;
 function sendProfile() { if (room && locker) { const P = locker.profile; send({ t: 'profile', look: P.look, pref: P.pref, skin: P.owned.includes('skin:' + P.skin) ? P.skin : 'classic', kit: P.kit }); } }
-const locker = initLocker({ onChange: () => sendProfile(), monsters: () => MON, sfx });
+const locker = initLocker({ onChange: () => sendProfile(), monsters: () => MON, sfx, onEmote: e => playEmote(e) });
+function playEmote(e) { e = e || locker.emote(); if (!room) return; send({ t: 'emote', e }); }
 function showFlightCard() {
   const f = flight, M = f.mine && f.mine.role === 'monster' ? MON[f.mine.mt] : null, c = $('flightcard');
   c.classList.remove('hide'); c.classList.toggle('mon', !!M);
@@ -127,12 +158,14 @@ addEventListener('keydown', e => {
   audio.unlock();
   if (KM[e.code]) { keys[KM[e.code]] = 1; e.preventDefault(); }
   if (e.code === 'Space') { if (!e.repeat) { primary(true); } e.preventDefault(); }
-  if (e.code === 'KeyE') { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k]); else if (amSurvivor()) send({ t: 'open' }); else send({ t: 'ability' }); e.preventDefault(); }
+  if (e.code === 'KeyE') { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k] || z.k); else if (amSurvivor()) send({ t: 'open' }); else send({ t: 'ability' }); e.preventDefault(); }
   if (e.code === 'KeyQ' && !amSurvivor()) send({ t: 'ability' });
   if (/^Digit[1-6]$/.test(e.code)) send({ t: 'sel', i: +e.code[5] - 1 });
   if (e.code === 'KeyG') send({ t: 'drop' });
   if (e.code === 'Tab') { e.preventDefault(); showBoard(true); }
   if (e.code === 'KeyM') muted = audio.toggleMute();
+  if (e.code === 'KeyB' && !e.repeat && snap) playEmote();
+  if (spec && (e.code === 'ArrowRight' || e.code === 'KeyN')) startSpec(1); if (spec && e.code === 'ArrowLeft') startSpec(-1);
 });
 addEventListener('keyup', e => { if (KM[e.code]) keys[KM[e.code]] = 0; if (e.code === 'Space') primary(false); if (e.code === 'Tab') showBoard(false); });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
@@ -153,7 +186,7 @@ $('c').addEventListener('mousedown', e => { if (touch.active && e.sourceCapabili
 addEventListener('mouseup', e => { if (e.button === 0) primary(false); });
 
 let boardOn = false;
-const touch = initTouch({ onAttack: on => primary(on), onOpen: () => { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k]); else send({ t: 'open' }); }, onAbility: () => send({ t: 'ability' }), onBoard: () => { boardOn = !boardOn; showBoard(boardOn); }, onMute: () => (muted = audio.toggleMute()), unlock: () => audio.unlock() });
+const touch = initTouch({ onAttack: on => primary(on), onOpen: () => { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k] || z.k); else send({ t: 'open' }); }, onAbility: () => send({ t: 'ability' }), onBoard: () => { boardOn = !boardOn; showBoard(boardOn); }, onMute: () => (muted = audio.toggleMute()), unlock: () => audio.unlock() });
 setInterval(() => {
   if (!room) return;
   // movement is relative to the camera: forward = where the camera looks
@@ -182,7 +215,9 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now; const t = now / 1000;
   if (!world) return;
-  if (jumpscare && now > jumpscare.until) jumpscare = null;
+  if (jumpscare && now > jumpscare.until) { const d = jumpscare.death; jumpscare = null; if (d) showDeath(d); }
+  if (pendingResults && !endBusy()) showResults(pendingResults);
+  if (resultsEnd && !$('overlay').classList.contains('hide')) { const rb = $('rback'); if (rb) rb.textContent = `Back to the lobby in ${Math.max(0, Math.ceil((resultsEnd - now) / 1000))}s…`; }
   if (flight && now > flight.until) { flight = null; $('flightcard').classList.add('hide'); }
   if (flight) { const s = $('flsecs'); if (s) s.textContent = '· landing in ' + Math.ceil((flight.until - now) / 1000) + 's'; }
   setRotor(flight ? .9 : snap && map && map.heli && disp[me] ? Math.max(0, .5 - Math.hypot(disp[me].dx - map.heli.x, disp[me].dy - map.heli.y) / 1400) : snap && snap.ex && disp[me] ? Math.max(0, .5 - Math.hypot(disp[me].dx - snap.ex.x, disp[me].dy - snap.ex.y) / 1600) : 0);
@@ -190,7 +225,7 @@ function frame(now) {
   document.body.classList.toggle('killcam', !!killcam);
   if (killcam) {
     const e = window.NH.killHold != null ? window.NH.killHold : (now - killcam.start) / 1000, md = disp[me];
-    if (e > KILL_LEN || !md) { cam.zoom = killcam.zoom; cam.pitch = killcam.pitch; cam.target = null; killcam = null; $('scareover').classList.add('hide'); }
+    if (e > KILL_LEN || !md) { cam.zoom = killcam.zoom; cam.pitch = killcam.pitch; cam.target = null; const kn = killcam.name, kt = killcam.type; killcam = null; $('scareover').classList.add('hide'); showKillPop(kn, kt); }
     else { cam.yaw = Math.atan2(killcam.y - md.dy, killcam.x - md.dx); cam.zoom = 0; cam.target = { x: killcam.x, y: killcam.y }; drawKill(e); }
   }
   if (jumpscare) { const e = jumpscare.freeze != null ? jumpscare.freeze : (now - jumpscare.start) / 1000; world.frame(dt, t, { scare: { type: jumpscare.type, fm: jumpscare.fm, elapsed: e } }); drawScare(jumpscare.type, e); arrows([]); return; }
@@ -202,7 +237,10 @@ function frame(now) {
   const ghost = snap.state === 'playing' && (!mp.al || mp.es || mp.role === 'ghost');
   updateAim(mp, md, dt);
   const prev = md.px != null ? Math.hypot(md.dx - md.px, md.dy - md.py) : 0; md.px = md.dx; md.py = md.dy;
-  const r = world.frame(dt, t, { snap, disp, me, mp, ghost, aim: aimA, cam });
+  if (spec && (snap.state !== 'playing' || !ghost)) { spec = null; $('specbar').classList.add('hide'); }
+  let sp = spec && snap.ps.find(p => p.id === spec.id); if (spec && (!sp || !disp[sp.id] || (sp.role === 'survivor' && (!sp.al || sp.es)))) { startSpec(1); sp = spec && snap.ps.find(p => p.id === spec.id); }
+  if (sp) { const M = sp.role === 'monster' ? MON[sp.mt] : null; $('specname').innerHTML = `👁 Spectating <b style="color:${sp.c}">${esc(sp.n)}</b> ${M ? '· 👹 ' + esc(M.name) : '· 🔦 Survivor'}`; }
+  const r = sp ? world.frame(dt, t, { snap, disp, me: sp.id, mp: sp, ghost: false, aim: sp.a, cam }) : world.frame(dt, t, { snap, disp, me, mp, ghost, aim: aimA, cam });
   overlays(mp, ghost, now);
   // footsteps + heartbeat
   const speed = prev / Math.max(dt, .001);
@@ -252,13 +290,13 @@ function hud(mp, ghost) {
   if (st === 'lobby') $('lobbyhint').innerHTML = `🚁 Walk onto the helicopter pad to board — ${boarded}/${snap.ps.length} boarded<br><small>${snap.ps.length < 2 ? 'Need at least 2 players. Invite friends with the code' + (isHost ? ' or add a bot' : '') : hb < humans.length ? 'Waiting for everyone to board…' : isHost ? 'Everyone is aboard — press Take off!' : 'Waiting for the host to take off…'}</small>`;
 }
 // ---------- v1.4: the walk-in lobby store, boats, storm / weather overlays, Father Fester stage ----------
-const ZONE_TAB = { shop: 'shop', mirror: 'look', skins: 'skins' };
+const ZONE_TAB = { shop: 'food', mirror: 'clothing', skins: 'skinshop' };
 let lastZone = null;
 function storeZone() { if (!snap || snap.state !== 'lobby' || !map || !map.zones) return null; const md = disp[me]; if (!md) return null; return map.zones.find(z => md.dx > z.x && md.dx < z.x + z.w && md.dy > z.y && md.dy < z.y + z.h) || null; }
 function p2Hud(mp, ghost) {
   const z = storeZone(), zp = $('zoneprompt');
-  if (z !== lastZone) { lastZone = z; if (z) { sfx('click'); locker.open(ZONE_TAB[z.k]); } }
-  zp.classList.toggle('hide', !z); if (z) { zp.innerHTML = `${{ shop: '🛒', mirror: '🪞', skins: '✨' }[z.k]} ${z.name}<small>${touch.active ? 'Tap here' : 'Press E'} to browse · walk out to leave</small>`; zp.onclick = () => locker.open(ZONE_TAB[z.k]); }
+  if (z !== lastZone) { lastZone = z; if (z) { sfx('click'); locker.open(ZONE_TAB[z.k] || z.k); } }
+  zp.classList.toggle('hide', !z); if (z) { zp.innerHTML = `${z.ic || { shop: '🛒', mirror: '🪞', skins: '✨' }[z.k] || '🛒'} ${z.name}<small>${touch.active ? 'Tap here' : 'Press E'} to browse · walk out to leave</small>`; zp.onclick = () => locker.open(ZONE_TAB[z.k] || z.k); }
   const live = snap.state === 'playing' && !ghost, S2 = mp.st || {}, ov = $('p2over');
   const cls = live ? (S2.burn ? 'burn' : S2.fog ? 'fog' : S2.snow ? 'snow' : S2.storm ? 'storm' : S2.soak ? 'soak' : '') : '';
   if (ov.className !== cls) ov.className = cls;

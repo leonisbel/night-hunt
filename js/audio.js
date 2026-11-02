@@ -115,6 +115,8 @@ export function sfx(k, o = {}) {
     case 'heli': for (let i = 0; i < 16; i++) burst(.07, .2, 220, 1, 'lowpass', .3, 0, i * .09); break;
     case 'ability': tone(180, .5, 'sawtooth', .12, 60, .6); burst(.4, .12, 700, 3, 'bandpass', .6); break;
     case 'catch': tone(120, .6, 'square', .15, 40, .7, pan); burst(.5, .2, 400, 1, 'lowpass', .7, pan); break;
+    case 'dead': [196, 165, 131, 98].forEach((f, i) => tone(f, .7, 'sawtooth', .07, f * .8, .7, 0, i * .22)); break;
+    case 'kill': [880, 660].forEach((f, i) => tone(f, .25, 'square', .06, f, .25, 0, i * .1)); break;
     case 'escape': [523, 659, 784, 1046].forEach((f, i) => tone(f, .5, 'triangle', .1, 0, .5, 0, i * .12)); break;
     case 'click': tone(900, .04, 'square', .05, 0, 0); break;
     case 'whisper': burst(1.4, .05 * v, 2200, 6, 'bandpass', .9, pan); break;

@@ -300,7 +300,9 @@ local function playSound(id, speed, vol, parent)
 	return s
 end
 
-local function jumpscare(kind, form)
+local showDeath -- v1.4.1 (defined below)
+local resultsUntil = 0
+local function jumpscare(kind, form, stats)
 	scareRun += 1
 	local run = scareRun
 	for _, c in ipairs(scare:GetChildren()) do if c:IsA("Model") then c:Destroy() end end
@@ -527,7 +529,196 @@ local function jumpscare(kind, form)
 		if e > SCARE_LEN then
 			conn:Disconnect()
 			scare.Visible = false
+			if stats and showDeath then showDeath(stats) end -- the end screen only pops up once the animation has fully finished
 		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- v1.4.1 end screens: YOU DIED (after the jumpscare animation fully ends), the monster's KILL popup
+-- (after its kill cam, fades out so it keeps playing), spectating, and the full round results screen.
+---------------------------------------------------------------------------
+local deathAt, killPopAt, killcamOn = 0, 0, false
+local function fmtSecs(t) t = math.max(0, math.floor(t or 0)); return ("%d:%02d"):format(t // 60, t % 60) end
+local death = new("Frame", { BackgroundColor3 = Color3.fromRGB(20, 0, 0), BackgroundTransparency = 0.25, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 40 }, gui)
+local deathTitle = label(death, "YOU DIED", 92, { Font = Enum.Font.Creepster, TextColor3 = Color3.fromRGB(235, 20, 20), Position = UDim2.new(0, 0, 0.2, 0), Size = UDim2.new(1, 0, 0, 100), ZIndex = 41, TextStrokeTransparency = 0.4 })
+local deathBy = label(death, "", 24, { Font = Enum.Font.GothamBold, RichText = true, Position = UDim2.new(0, 0, 0.2, 108), Size = UDim2.new(1, 0, 0, 30), ZIndex = 41 })
+local deathStats = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.5, -330, 0.2, 152), Size = UDim2.new(0, 660, 0, 78), ZIndex = 41 }, death)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, deathStats)
+local statBoxes = {}
+for i, cap in ipairs({ "Time survived", "Damage dealt", "Monster knockdowns", "Coins earned" }) do
+	local b = new("Frame", { BackgroundColor3 = Color3.fromRGB(30, 6, 8), BackgroundTransparency = 0.1, Size = UDim2.new(0, 155, 1, 0), LayoutOrder = i, ZIndex = 41 }, deathStats)
+	corner(b, 8)
+	new("UIStroke", { Color = Color3.fromRGB(150, 20, 24), Thickness = 1.5 }, b)
+	statBoxes[i] = label(b, "0", 28, { Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 215, 107), Position = UDim2.new(0, 0, 0, 8), Size = UDim2.new(1, 0, 0, 34), ZIndex = 42 })
+	label(b, cap, 13, { TextColor3 = Color3.fromRGB(220, 200, 200), Position = UDim2.new(0, 0, 0, 46), Size = UDim2.new(1, 0, 0, 20), ZIndex = 42 })
+end
+local deathLeft = label(death, "", 15, { TextColor3 = Color3.fromRGB(120, 180, 255), Position = UDim2.new(0, 0, 0.2, 242), Size = UDim2.new(1, 0, 0, 20), ZIndex = 41 })
+local deathBtns = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.5, -200, 0.2, 272), Size = UDim2.new(0, 400, 0, 46), ZIndex = 41 }, death)
+label(death, "Round results will appear when the round ends.", 12, { TextColor3 = MUTED, Position = UDim2.new(0, 0, 0.2, 326), Size = UDim2.new(1, 0, 0, 18), ZIndex = 41 })
+
+-- spectating: follow living players (camera subject), the server streams the map around them
+local spec = { on = false, i = 1, list = {} }
+local specBar = new("Frame", { BackgroundColor3 = DARK, BackgroundTransparency = 0.15, Size = UDim2.new(0, 470, 0, 46), Position = UDim2.new(0.5, -235, 1, -64), Visible = false, ZIndex = 39 }, gui)
+corner(specBar, 10)
+new("UIStroke", { Color = Color3.fromRGB(70, 110, 200), Thickness = 1.5 }, specBar)
+local specName = label(specBar, "", 15, { Font = Enum.Font.GothamBold, RichText = true, Position = UDim2.new(0, 50, 0, 0), Size = UDim2.new(1, -210, 1, 0), ZIndex = 40 })
+local function specTargets()
+	local out = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p:GetAttribute("Role") == "Survivor" and p:GetAttribute("Alive") and not p:GetAttribute("Escaped") then table.insert(out, p) end
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p:GetAttribute("Role") == "Monster" then table.insert(out, p) end
+	end
+	return out
+end
+local function specShow()
+	spec.list = specTargets()
+	local cam = workspace.CurrentCamera
+	if #spec.list == 0 then specName.Text = "Nobody left to watch"; return end
+	spec.i = ((spec.i - 1) % #spec.list) + 1
+	local t = spec.list[spec.i]
+	local hum = t.Character and t.Character:FindFirstChildOfClass("Humanoid")
+	if hum then cam.CameraType = Enum.CameraType.Custom; cam.CameraSubject = hum end
+	Action:FireServer("spectate", t.UserId)
+	local mon = t:GetAttribute("Role") == "Monster"
+	local def = mon and Config.MONSTERS[t:GetAttribute("Monster") or ""]
+	specName.Text = ("Spectating <font color=\"#%s\">%s</font>  -  %s"):format(mon and "ff5050" or "5aff8a", t.DisplayName, mon and (def and def.name or "Monster") or "Survivor")
+end
+local function stopSpec()
+	if not spec.on then return end
+	spec.on = false
+	specBar.Visible = false
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then workspace.CurrentCamera.CameraSubject = hum end
+	Action:FireServer("spectate", nil)
+end
+local function startSpec()
+	death.Visible = false
+	spec.on, spec.i = true, 1
+	specBar.Visible = true
+	specShow()
+end
+button(specBar, "<", { Size = UDim2.new(0, 38, 0, 34), Position = UDim2.new(0, 6, 0, 6), ZIndex = 40, BackgroundColor3 = Color3.fromRGB(40, 60, 110) }, function() spec.i -= 1; specShow() end)
+button(specBar, ">", { Size = UDim2.new(0, 38, 0, 34), Position = UDim2.new(1, -156, 0, 6), ZIndex = 40, BackgroundColor3 = Color3.fromRGB(40, 60, 110) }, function() spec.i += 1; specShow() end)
+button(specBar, "Lobby", { Size = UDim2.new(0, 106, 0, 34), Position = UDim2.new(1, -112, 0, 6), TextSize = 14, ZIndex = 40, BackgroundColor3 = Color3.fromRGB(120, 30, 30) }, function() stopSpec() end)
+UserInputService.InputBegan:Connect(function(inp, gp)
+	if gp or not spec.on then return end
+	if inp.KeyCode == Enum.KeyCode.Right or inp.KeyCode == Enum.KeyCode.N then spec.i += 1; specShow()
+	elseif inp.KeyCode == Enum.KeyCode.Left then spec.i -= 1; specShow() end
+end)
+
+button(deathBtns, "Spectate", { Size = UDim2.new(0, 190, 1, 0), Position = UDim2.new(0, 0, 0, 0), ZIndex = 42, BackgroundColor3 = Color3.fromRGB(40, 80, 150) }, function() startSpec() end)
+-- you are already back in the lobby (the server moved you there when you were caught): this just closes the screen
+button(deathBtns, "Return to Lobby", { Size = UDim2.new(0, 190, 1, 0), Position = UDim2.new(1, -190, 0, 0), ZIndex = 42, BackgroundColor3 = Color3.fromRGB(140, 30, 30) }, function() death.Visible = false; stopSpec() end)
+
+showDeath = function(s)
+	if type(s) ~= "table" then return end
+	deathAt = os.clock()
+	deathBy.Text = ("Killed by <font color=\"#ff5050\">%s</font>%s"):format(tostring(s.killer or "the dark"), (s.by and s.by ~= "") and (" <font size=\"18\" color=\"#cccccc\">(" .. tostring(s.by) .. ")</font>") or "")
+	statBoxes[1].Text = fmtSecs(s.time)
+	statBoxes[2].Text = tostring(s.dmg or 0)
+	statBoxes[3].Text = tostring(s.downs or 0)
+	statBoxes[4].Text = tostring(s.earn or 0)
+	local left = tonumber(s.left) or 0
+	deathLeft.Text = left > 0 and (("%d survivor%s still alive"):format(left, left == 1 and "" or "s")) or "Nobody is left alive"
+	death.Visible = true
+	deathTitle.TextTransparency = 1
+	TweenService:Create(deathTitle, TweenInfo.new(0.6), { TextTransparency = 0 }):Play()
+	playSound("rbxasset://sounds/uuhhh.mp3", 0.45, 1.5)
+end
+
+-- the monster's KILL popup after its kill cam: fades out so the hunt keeps going
+local killPop = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 150), Position = UDim2.new(0, 0, 0.18, 0), Visible = false, ZIndex = 38 }, gui)
+local kpTitle = label(killPop, "KILL", 84, { Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 32, 32), Size = UDim2.new(1, 0, 0, 86), ZIndex = 39, TextStrokeTransparency = 0.5 })
+local kpName = label(killPop, "", 26, { Font = Enum.Font.GothamBlack, Position = UDim2.new(0, 0, 0, 88), Size = UDim2.new(1, 0, 0, 30), ZIndex = 39, TextStrokeTransparency = 0.5 })
+local kpSub = label(killPop, "", 15, { TextColor3 = Color3.fromRGB(255, 215, 107), Position = UDim2.new(0, 0, 0, 120), Size = UDim2.new(1, 0, 0, 20), ZIndex = 39 })
+local function showKillPop(name, kind)
+	local def = Config.MONSTERS[kind or ""]
+	kpName.Text = tostring(name) .. " eliminated"
+	kpSub.Text = (def and def.name or "") .. "  -  +" .. Config.EARN.catch .. " coins"
+	killPopAt = os.clock()
+	killPop.Visible = true
+	for _, l in ipairs({ kpTitle, kpName, kpSub }) do
+		l.TextTransparency = 0; l.TextStrokeTransparency = 0.5
+		TweenService:Create(l, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 1.1), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	end
+	kpTitle.Size = UDim2.new(1, 0, 0, 120)
+	TweenService:Create(kpTitle, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Size = UDim2.new(1, 0, 0, 86) }):Play()
+	playSound("rbxasset://sounds/electronicpingshort.wav", 0.5, 1.5)
+	task.delay(2.8, function() if os.clock() - killPopAt >= 2.7 then killPop.Visible = false end end)
+end
+
+-- full round results
+local res = new("Frame", { BackgroundColor3 = Color3.fromRGB(8, 8, 14), BackgroundTransparency = 0.08, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 45 }, gui)
+local resTitle = label(res, "", 64, { Font = Enum.Font.GothamBlack, Position = UDim2.new(0, 0, 0, 30), Size = UDim2.new(1, 0, 0, 70), ZIndex = 46, TextStrokeTransparency = 0.5 })
+local resBadge = label(res, "", 18, { Font = Enum.Font.GothamBlack, BackgroundTransparency = 0, Position = UDim2.new(0.5, -70, 0, 106), Size = UDim2.new(0, 140, 0, 28), ZIndex = 46 })
+corner(resBadge, 14)
+local resReason = label(res, "", 16, { TextColor3 = Color3.fromRGB(220, 220, 230), Position = UDim2.new(0, 0, 0, 140), Size = UDim2.new(1, 0, 0, 22), ZIndex = 46 })
+local resTable = new("Frame", { BackgroundColor3 = Color3.fromRGB(20, 20, 30), Position = UDim2.new(0.5, -360, 0, 176), Size = UDim2.new(0, 720, 0, 30), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 46 }, res)
+corner(resTable, 8)
+new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, resTable)
+local resCoins = label(res, "", 20, { Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 215, 107), Position = UDim2.new(0, 0, 1, -110), Size = UDim2.new(1, 0, 0, 26), ZIndex = 46 })
+local resCount = label(res, "", 14, { Position = UDim2.new(0, 0, 1, -76), Size = UDim2.new(1, 0, 0, 20), ZIndex = 46 })
+local COLS = { { "PLAYER", 0.22 }, { "ROLE", 0.18 }, { "RESULT", 0.16 }, { "KILLS / DMG", 0.13 }, { "KNOCKDOWNS", 0.13 }, { "COINS", 0.18 } }
+local function resRow(vals, order, head, mine, colors)
+	local r = new("Frame", { BackgroundColor3 = mine and Color3.fromRGB(60, 50, 20) or Color3.fromRGB(14, 14, 20), BackgroundTransparency = head and 1 or 0.2, Size = UDim2.new(1, 0, 0, head and 26 or 28), LayoutOrder = order, ZIndex = 47 }, resTable)
+	local x = 0
+	for i, c in ipairs(COLS) do
+		label(r, tostring(vals[i]), head and 12 or 14, { Font = head and Enum.Font.GothamBlack or Enum.Font.GothamMedium, TextColor3 = head and Color3.fromRGB(255, 210, 120) or (colors and colors[i]) or TEXT, Position = UDim2.new(x, 0, 0, 0), Size = UDim2.new(c[2], 0, 1, 0), ZIndex = 48 })
+		x += c[2]
+	end
+end
+local pendingResults
+local function showResults(headline, lines, rows)
+	pendingResults = nil
+	death.Visible = false
+	stopSpec()
+	killPop.Visible = false
+	for _, c in ipairs(resTable:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
+	local survWin = headline == "SURVIVORS WIN"
+	resTitle.Text = headline
+	resTitle.TextColor3 = survWin and Color3.fromRGB(90, 255, 140) or Color3.fromRGB(255, 50, 50)
+	local myRole = player:GetAttribute("Role")
+	local won = (myRole == "Monster") ~= survWin
+	resBadge.Text = won and "VICTORY" or "DEFEAT"
+	resBadge.BackgroundColor3 = won and Color3.fromRGB(30, 120, 50) or Color3.fromRGB(130, 30, 30)
+	resReason.Text = (type(lines) == "table" and lines[1]) or ""
+	resRow({ "PLAYER", "ROLE", "RESULT", "KILLS / DMG", "KNOCKDOWNS", "COINS" }, 0, true)
+	local mine = 0
+	if type(rows) == "table" then
+		for i, r in ipairs(rows) do
+			local resCol = r.res == "Escaped" and Color3.fromRGB(90, 255, 120) or r.res == "Survived" and Color3.fromRGB(120, 200, 255) or Color3.fromRGB(255, 80, 80)
+			resRow({ r.name, r.role, r.res, r.monster and tostring(r.kills) or tostring(r.dmg), r.downs, r.coins .. " coins" }, i, false, r.id == player.UserId,
+				{ r.monster and Color3.fromRGB(255, 90, 90) or Color3.fromRGB(120, 200, 255), TEXT, resCol, TEXT, TEXT, Color3.fromRGB(255, 215, 107) })
+			if r.id == player.UserId then mine = r.coins end
+		end
+	elseif type(lines) == "table" then
+		for i = 2, #lines do resRow({ lines[i], "", "", "", "", "" }, i, false, false) end
+	end
+	resCoins.Text = ("+%d coins earned  (total %d)"):format(mine, player:GetAttribute("Coins") or 0)
+	res.Visible = true
+	resultsUntil = os.clock() + Config.RESULTS_TIME
+	task.spawn(function()
+		while res.Visible do
+			local left = math.max(0, math.ceil(resultsUntil - os.clock()))
+			resCount.Text = ("Back to the lobby in %ds..."):format(left)
+			if State:GetAttribute("State") == "Lobby" or State:GetAttribute("State") == "Flight" then res.Visible = false end
+			task.wait(0.25)
+		end
+	end)
+end
+-- results wait until the jumpscare / kill cam is over and the death screen / kill popup have been seen
+local function endBusy()
+	return scare.Visible or killcamOn or (death.Visible and os.clock() - deathAt < 3.5) or (killPop.Visible and os.clock() - killPopAt < 1.6)
+end
+local function queueResults(headline, lines, rows)
+	pendingResults = { headline, lines, rows }
+	task.spawn(function()
+		local t0 = os.clock()
+		while pendingResults and endBusy() and os.clock() - t0 < 8 do task.wait(0.1) end
+		if pendingResults then showResults(table.unpack(pendingResults, 1, 3)) end
 	end)
 end
 
@@ -736,6 +927,26 @@ local function myProfile()
 	pr.ownedSet = owned
 	return pr
 end
+-- v1.4.1 emotes: standard avatar emote animations played on your own character (they replicate to everyone)
+local myEmote = "wave"
+local emoteTrack
+local function playEmote(id)
+	id = id or myEmote
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local animator = hum and (hum:FindFirstChildOfClass("Animator") or hum:WaitForChild("Animator", 1))
+	if not animator or not Config.EMOTE_ANIMS[id] then return end
+	Action:FireServer("emote", id)
+	if emoteTrack then emoteTrack:Stop() end
+	local a = Instance.new("Animation")
+	a.AnimationId = Config.EMOTE_ANIMS[id]
+	local ok, tr = pcall(function() return animator:LoadAnimation(a) end)
+	if ok and tr then
+		emoteTrack = tr
+		tr.Priority = Enum.AnimationPriority.Action
+		tr:Play()
+		task.delay(4, function() if emoteTrack == tr then tr:Stop() end end)
+	end
+end
 local locker = new("Frame", { BackgroundColor3 = PANEL, Size = UDim2.new(0, 440, 0, 470), Position = UDim2.new(0.5, -220, 0.5, -235), Visible = false, ZIndex = 50 }, gui)
 corner(locker, 12)
 padding(locker, 12)
@@ -744,15 +955,23 @@ local lockerScroll = new("ScrollingFrame", { BackgroundTransparency = 1, Positio
 list(lockerScroll, 6)
 button(locker, "Close", { Position = UDim2.new(0, 0, 1, -38), Size = UDim2.new(1, 0, 0, 36), ZIndex = 52 }, function() locker.Visible = false end)
 local refreshLocker
-local lockerTab = "shop" -- shop (item counter) / look (dressing room) / skins (gallery)
-local tabBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 34), Size = UDim2.new(1, 0, 0, 30), ZIndex = 52 }, locker)
-for i, tb in ipairs({ { "shop", "Item counter" }, { "look", "Dressing room" }, { "skins", "Skins" } }) do
-	button(tabBar, tb[2], { Size = UDim2.new(1 / 3, -4, 1, 0), Position = UDim2.new((i - 1) / 3, 2, 0, 0), TextSize = 12, ZIndex = 53, BackgroundColor3 = Color3.fromRGB(70, 50, 40) }, function() lockerTab = tb[1]; refreshLocker() end)
+-- v1.4.1: one section per store on the shopping street (walking up to a store's counter opens its section)
+local lockerTab = "food"
+local STORE_ALIAS = { shop = "food", look = "clothing", skins = "monskins" }
+local STORE_SHORT = { skinshop = "Skins", weapons = "Weapons", armor = "Armor", food = "Food", monskins = "Monsters", emotes = "Emotes", pets = "Pets", clothing = "Clothes", crate = "Crates" }
+local STORE_BY = {}
+for _, st in ipairs(Config.STORES) do STORE_BY[st.k] = st end
+local tabBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 34), Size = UDim2.new(1, 0, 0, 56), ZIndex = 52 }, locker)
+for i, st in ipairs(Config.STORES) do
+	local row_, col = (i <= 5) and 0 or 1, (i <= 5) and (i - 1) or (i - 6)
+	local per = row_ == 0 and 5 or 4
+	button(tabBar, STORE_SHORT[st.k], { Size = UDim2.new(1 / per, -4, 0, 25), Position = UDim2.new(col / per, 2, 0, row_ * 28), TextSize = 12, ZIndex = 53, BackgroundColor3 = st.c:Lerp(Color3.new(0, 0, 0), 0.55) }, function() lockerTab = st.k; refreshLocker() end)
 end
-lockerScroll.Position = UDim2.new(0, 0, 0, 70)
-lockerScroll.Size = UDim2.new(1, 0, 1, -114)
-locker.Size = UDim2.new(0, 460, 0, 540)
-locker.Position = UDim2.new(0.5, -230, 0.5, -270)
+local crateMsg = ""
+lockerScroll.Position = UDim2.new(0, 0, 0, 96)
+lockerScroll.Size = UDim2.new(1, 0, 1, -140)
+locker.Size = UDim2.new(0, 480, 0, 560)
+locker.Position = UDim2.new(0.5, -240, 0.5, -280)
 local function row(text, order, actions)
 	local r = new("Frame", { BackgroundColor3 = DARK, Size = UDim2.new(1, -8, 0, 34), LayoutOrder = order, ZIndex = 52 }, lockerScroll)
 	corner(r, 6)
@@ -765,11 +984,34 @@ local monsterPrefIdx = 0
 refreshLocker = function()
 	for _, c in ipairs(lockerScroll:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end
 	local pr = myProfile()
-	lockerTitle.Text = ("%s  -  %d coins"):format(({ shop = "ITEM COUNTER", look = "DRESSING ROOM", skins = "SKINS GALLERY" })[lockerTab], pr.coins or 0)
+	lockerTab = STORE_ALIAS[lockerTab] or lockerTab
+	if not STORE_BY[lockerTab] then lockerTab = "food" end
+	lockerTitle.Text = ("%s  -  %d coins"):format(STORE_BY[lockerTab].name, pr.coins or 0)
+	lockerTitle.TextColor3 = STORE_BY[lockerTab].c
 	local o = 0
 	local function nxt() o += 1; return o end
-	local cats = ({ shop = { "hat", "acc", "supply" }, look = { "outfit" }, skins = { "skin" } })[lockerTab]
-	if lockerTab == "look" then
+	local cats = ({ skinshop = { "hat", "acc" }, weapons = { "supply" }, armor = { "supply" }, food = { "supply" }, monskins = { "skin" },
+		emotes = { "emote" }, pets = { "pet", "trail" }, clothing = { "outfit" }, crate = {} })[lockerTab]
+	if lockerTab == "crate" then
+		label(lockerScroll, "Mystery Crate - a random hat, accessory, outfit, monster skin, pet, trail or emote you don't own yet", 14, { LayoutOrder = nxt(), ZIndex = 52, Size = UDim2.new(1, -8, 0, 40) })
+		row(("Open a crate  -  %d coins"):format(Config.CRATE_PRICE), nxt(), { { "Open", function() Action:FireServer("crate") end, Color3.fromRGB(130, 70, 200) } })
+		if crateMsg ~= "" then label(lockerScroll, crateMsg, 18, { LayoutOrder = nxt(), Font = Enum.Font.GothamBlack, TextColor3 = Color3.fromRGB(255, 215, 107), ZIndex = 52, Size = UDim2.new(1, -8, 0, 50) }) end
+	end
+	if lockerTab == "emotes" then
+		label(lockerScroll, "Buy an emote, then press B (or the Emote button) to play it. Wave is free.", 13, { LayoutOrder = nxt(), ZIndex = 52, TextColor3 = MUTED, Size = UDim2.new(1, -8, 0, 34) })
+		local items = {}
+		for id, price in pairs(Config.SHOP.emote) do table.insert(items, { id, price }) end
+		table.sort(items, function(x, y) return x[2] < y[2] end)
+		for _, it in ipairs(items) do
+			local id, price = it[1], it[2]
+			local have = price == 0 or pr.ownedSet["emote:" .. id]
+			row(("%s%s%s"):format(id:sub(1, 1):upper() .. id:sub(2), have and "" or ("  -  " .. price .. " coins"), (myEmote == id) and "  (on B)" or ""), nxt(), {
+				have and { "Play", function() myEmote = id; playEmote(id) end, Color3.fromRGB(60, 60, 70) } or { "Buy", function() Action:FireServer("buy", { cat = "emote", id = id }) end },
+			})
+		end
+		cats = {}
+	end
+	if lockerTab == "clothing" then
 	label(lockerScroll, "Your survivor (check the mirror!)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local cyc = function(k, n) return function() Action:FireServer("look", { [k] = ((pr.look[k] or 1) % n) + 1 }) end end
 	row("Skin tone", nxt(), { { "Next", cyc("sk", #Config.SKIN_TONES) } })
@@ -779,13 +1021,13 @@ refreshLocker = function()
 	row("Pants", nxt(), { { "Next", cyc("pants", #Config.CLOTHES) } })
 	end
 	for _, cat in ipairs(cats) do
-		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins", outfit = "Outfits", supply = "Round supplies (max 2, handed out next round)" })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins", outfit = "Outfits", pet = "Pets (follow you around)", trail = "Trails", supply = ("Round supplies (max %d, handed out next round)"):format(Config.KIT_MAX) })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 		if cat == "supply" then
 			local kit = {}
 			for _, k in ipairs(pr.kit or {}) do table.insert(kit, Config.ITEMS[k] and Config.ITEMS[k].name or k) end
 			label(lockerScroll, "Packed: " .. (#kit > 0 and table.concat(kit, ", ") or "nothing"), 13, { LayoutOrder = nxt(), ZIndex = 52, TextColor3 = MUTED })
 			local items = {}
-			for id, price in pairs(Config.SHOP.supply) do table.insert(items, { id, price }) end
+			for id, price in pairs(Config.SHOP.supply) do if Config.SUPPLY_SHOP[id] == lockerTab then table.insert(items, { id, price }) end end
 			table.sort(items, function(x, y) return x[2] < y[2] end)
 			for _, it in ipairs(items) do
 				row(("%s  -  %d coins"):format(Config.ITEMS[it[1]] and Config.ITEMS[it[1]].name or it[1], it[2]), nxt(), { { "Buy", function() Action:FireServer("buy", { cat = "supply", id = it[1] }) end } })
@@ -806,7 +1048,7 @@ refreshLocker = function()
 			})
 		end
 	end
-	if lockerTab ~= "skins" then return end
+	if lockerTab ~= "monskins" then return end
 	label(lockerScroll, "Monster preference (if you become a monster)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local prefName = (pr.pref and pr.pref ~= "" and Config.MONSTERS[pr.pref]) and Config.MONSTERS[pr.pref].name or "Random"
 	row(prefName, nxt(), { { "Next", function()
@@ -819,6 +1061,32 @@ local lockerBtn = button(lobbyPanel, "Locker & shop", { LayoutOrder = 9, Backgro
 	if locker.Visible then refreshLocker() end
 end)
 _ = lockerBtn
+local emoteBtn = button(lobbyPanel, "Emote (B)", { LayoutOrder = 9, TextSize = 13, BackgroundColor3 = Color3.fromRGB(110, 90, 20) }, function() playEmote(myEmote) end)
+_ = emoteBtn
+UserInputService.InputBegan:Connect(function(inp, gp)
+	if gp then return end
+	if inp.KeyCode == Enum.KeyCode.B and State:GetAttribute("State") ~= "Hunt" then playEmote(myEmote) end
+end)
+-- shopping street props: disco tiles flash, crates and the disco ball spin, pets on their beds bob
+task.spawn(function()
+	local lobbyModel = workspace:WaitForChild("Lobby", 30)
+	local street = lobbyModel and lobbyModel:WaitForChild("ShoppingStreet", 30)
+	if not street then return end
+	local disco, spin, bob = {}, {}, {}
+	for _, d in ipairs(street:GetDescendants()) do
+		if d:IsA("BasePart") and d:GetAttribute("Disco") then table.insert(disco, d) end
+		if d:IsA("BasePart") and d:GetAttribute("Spin") then table.insert(spin, { d, d.CFrame }) end
+		if d:IsA("Model") and d:GetAttribute("Bob") then table.insert(bob, { d, d:GetPivot() }) end
+	end
+	local t = 0
+	RunService.Heartbeat:Connect(function(dt)
+		t += dt
+		if State:GetAttribute("State") == "Hunt" then return end
+		for i, d in ipairs(disco) do d.Color = Color3.fromHSV((t * 0.6 + i * 0.137) % 1, 0.8, 1) end
+		for _, sp in ipairs(spin) do sp[1].CFrame = sp[2] * CFrame.new(0, math.sin(t * 2) * 0.3, 0) * CFrame.Angles(0, t * 1.2, 0) end
+		for i, b in ipairs(bob) do b[1]:PivotTo(b[2] * CFrame.new(0, math.abs(math.sin(t * 3 + i)) * 0.5, 0)) end
+	end)
+end)
 local roundBtn = button(lobbyPanel, "", { LayoutOrder = 10, TextSize = 13, BackgroundColor3 = Color3.fromRGB(60, 50, 90) }, function()
 	local cur = State:GetAttribute("RoundLen") or 420
 	local i = table.find(Config.ROUND_LENGTHS, cur) or 2
@@ -1038,12 +1306,12 @@ workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale
 ---------------------------------------------------------------------------
 -- Server notifications
 ---------------------------------------------------------------------------
-local resultsUntil = 0
 Notify.OnClientEvent:Connect(function(kind, a, b, c)
 	if kind == "toast" then
 		toast(a)
 	elseif kind == "jumpscare" then
-		jumpscare(a, b)
+		stopSpec()
+		jumpscare(a, b, c)
 	elseif kind == "scare" then
 		-- someone else got caught near you: hear the scream from their spot
 		if a ~= player.UserId and typeof(c) == "Vector3" then
@@ -1063,6 +1331,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 			local cap = label(kfx, "YOU CAUGHT " .. tostring(c):upper(), 40, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.78, 0), Size = UDim2.new(1, 0, 0, 50), ZIndex = 31, Visible = false })
 			local impact = IMPACT[a] or 1.55
 			local start, hit = os.clock(), false
+			killcamOn = true
 			local conn
 			conn = RunService.RenderStepped:Connect(function()
 				local e = os.clock() - start
@@ -1080,8 +1349,12 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 					conn:Disconnect()
 					kfx:Destroy()
 					cam.CameraType = prevType == Enum.CameraType.Scriptable and Enum.CameraType.Custom or prevType
+					killcamOn = false
+					showKillPop(c, a) -- KILL popup only after the kill animation has fully finished
 				end
 			end)
+		else
+			task.delay(2.4, showKillPop, c, a) -- wait the same length as the kill animation
 		end
 	elseif kind == "effect" then
 		if a == "grey" then greyUntil = os.clock() + b end
@@ -1104,10 +1377,16 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 		if a == "cthulhu" then lightning(2) end
 		sfx(a == "cthulhu" and "thunder" or "splash")
 	elseif kind == "store" then
-		-- walked up to a counter in the lobby store: open the locker on that section
-		lockerTab = (a == "look" or a == "skins") and a or "shop"
+		-- walked up to a store counter on the shopping street: open that store's section
+		lockerTab = type(a) == "string" and a or "food"
 		locker.Visible = true
 		refreshLocker()
+	elseif kind == "crate" then
+		local nice = ({ hat = "Hat", acc = "Accessory", outfit = "Outfit", skin = "Monster skin", pet = "Pet", trail = "Trail", emote = "Emote" })[a]
+		crateMsg = nice and ("You won: %s - %s!"):format(nice, tostring(b)) or ("You got " .. tostring(b))
+		toast("Mystery Crate: " .. crateMsg)
+		playSound("rbxasset://sounds/electronicpingshort.wav", 1.2, 1.5)
+		if locker.Visible then task.delay(0.3, refreshLocker) end
 	elseif kind == "sfx" then
 		sfx(a, b)
 	elseif kind == "sight" then
@@ -1125,6 +1404,8 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 	elseif kind == "escaped" then
 		toast("You escaped! Watch from the lobby.")
 	elseif kind == "flight" then
+		death.Visible = false; res.Visible = false; killPop.Visible = false; pendingResults = nil
+		stopSpec()
 		overlay.Visible = true
 		overlayTitle.Text = "TAKING OFF..."
 		local role = player:GetAttribute("Role")
@@ -1136,10 +1417,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 			overlayText.Text = ("Flying to %s\n\nYou are a SURVIVOR.\nSearch chests and bags for food, armor and weapons. Fight back, hide, and survive %d minutes - the extraction helicopter lands with %ds left."):format(a, len // 60, math.min(Config.EXTRACT_AT, len - 30))
 		end
 	elseif kind == "results" then
-		resultsUntil = os.clock() + Config.RESULTS_TIME
-		overlay.Visible = true
-		overlayTitle.Text = a
-		overlayText.Text = table.concat(b, "\n")
+		queueResults(a, b, c)
 	end
 end)
 
@@ -1214,7 +1492,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if st == "Flight" then
 		overlay.Visible = true
 	elseif st == "Results" then
-		overlay.Visible = os.clock() < resultsUntil
+		overlay.Visible = false -- v1.4.1: the full results screen replaces the old text overlay
 	else
 		overlay.Visible = false
 	end

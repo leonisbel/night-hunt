@@ -949,7 +949,15 @@ export function buildProp(k, w, d, o = {}) {
     case 'booth': { const c = mat('#5a1a3a', { map: 'cloth', r: .9 }); c.side = THREE.DoubleSide; for (const sx of [-1, 1]) B3(.06, 2.4, d, mat('#2a2a2e', { m: .5 }), [sx * w / 2, 1.2, 0]); B3(w, .06, d, mat('#2a2a2e', { m: .5 }), [0, 2.4, 0]); add(g, new THREE.PlaneGeometry(w, 2.2), c, [0, 1.25, -d / 2]); break; }
     case 'pedestal': { B3(w, .9, d, mat('#1a1a1e', { m: .5, r: .3 }), [0, .45, 0]); B3(w + .1, .06, d + .1, mat('#c8a040', { m: .9, r: .3 }), [0, .92, 0]); add(g, G.cyl(w * .35, w * .35, .02, 24), mat('#ff3a3a', { e: '#ff2020', ei: 2 }), [0, .96, 0]); g.userData.statue = o.m; break; }
     case 'mannequin': { const pl = mat('#d8d4cc', { r: .4 }); add(g, G.cyl(.25, .25, .05, 20), mat('#2a2a2e', { m: .5 }), [0, .03, 0]); add(g, G.cyl(.02, .02, .9, 8), steel, [0, .5, 0]); g.userData.dress = true; break; }
-    case 'storesign': { const sm = new THREE.MeshBasicMaterial({ map: signTex('STORE', 'ITEMS • DRESSING ROOM • SKINS') }); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 3.6, 0]); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 3.6, -.02], [0, Math.PI, 0]); for (const sx of [-1, 1]) add(g, G.cyl(.06, .06, 3.6, 8), dark, [sx * w * .45, 1.8, 0]); g.userData.light = '#ff3a3a'; break; }
+    case 'storesign': { const sm = new THREE.MeshBasicMaterial({ map: signTex(o.t || 'STORE', o.s || 'ITEMS • DRESSING ROOM • SKINS', o.c || '#ff3a3a') }); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 3.6, 0]); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 3.6, -.02], [0, Math.PI, 0]); for (const sx of [-1, 1]) add(g, G.cyl(.06, .06, 3.6, 8), dark, [sx * w * .45, 1.8, 0]); g.userData.light = '#ff3a3a'; break; }
+    case 'display': { const top = mat('#1a1a20', { m: .4, r: .3 }); B3(w, .95, d, mat('#3a3a44', { map: 'metal', m: .5, r: .5 }), [0, .475, 0]); B3(w + .06, .05, d + .06, top, [0, .97, 0]); B3(w * .96, .3, .02, mat('#c8e8ff', { r: .05, m: .1 }), [0, 1.15, d / 2 - .02]);
+      const it = o.items || []; it.forEach((k, i) => { const m = buildItem(k); m.scale.setScalar(2.2); m.position.set((i + .5 - it.length / 2) * (w / Math.max(1, it.length)), 1.1, 0); m.rotation.set(0, Math.PI / 2, 0); g.add(m); }); break; }
+    case 'dancefloor': { const cs = ['#ff3a8a', '#3a8aff', '#ffd23a', '#3aff8a', '#c03aff']; const nx = Math.max(2, Math.round(w / .8)), nz = Math.max(2, Math.round(d / .8)); g.userData.tiles = [];
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const c = cs[(i * 3 + j * 2) % cs.length]; const t = add(g, G.box(w / nx - .04, .04, d / nz - .04), mat(c, { e: c, ei: .9, r: .2 }), [(i + .5) * w / nx - w / 2, .02, (j + .5) * d / nz - d / 2]); g.userData.tiles.push(t); }
+      add(g, G.sph(.35, 16, 12), mat('#e8e8f0', { m: 1, r: .08 }), [0, 3.1, 0]); break; }
+    case 'petbed': { B3(w, .25, d, fab('#6a4a8a'), [0, .12, 0]); add(g, G.tor(Math.min(w, d) * .38, .09), fab('#8a6aaa'), [0, .25, 0], [Math.PI / 2, 0, 0]); const pt = buildPet(o.pet || 'puppy'); pt.scale.setScalar(1.8); pt.position.set(0, .3, 0); g.add(pt); g.userData.pet = pt; break; }
+    case 'crate': { const c1 = mat('#5a2a8a', { map: 'wood', r: .6 }), gold = mat('#ffcc3a', { m: .9, r: .3 }); B3(w * .9, d * .9, d * .9, c1, [0, d * .45, 0]); B3(w * .92, .08, d * .92, gold, [0, d * .9, 0]); B3(.1, d * .91, d * .92, gold, [0, d * .45, 0]); B3(w * .92, d * .91, .1, gold, [0, d * .45, 0]);
+      const q = new THREE.Mesh(new THREE.PlaneGeometry(d * .5, d * .5), new THREE.MeshBasicMaterial({ map: signTex('?', '', '#ffcc3a', '#2a0a3a'), transparent: true })); q.position.set(0, d * .5, d * .46); g.add(q); g.userData.spin = true; break; }
     case 'lobbysign': { const sm = new THREE.MeshBasicMaterial({ map: signTex('STORE →', 'COINS BUY ITEMS & SKINS', '#ffcc3a') }); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, 0]); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, -.02], [0, Math.PI, 0]); add(g, G.cyl(.05, .05, 2, 8), dark, [0, 1, 0]); break; }
     case 'hay': add(g, G.cyl(Math.min(w, d) / 2, Math.min(w, d) / 2, w, 18), mat('#c8a050', { map: 'hay', bump: 'hay', r: 1 }), [0, Math.min(w, d) / 2, 0], [0, 0, Math.PI / 2]); break;
     case 'tractor': { const red = mat('#a8261a', { m: .3, r: .5, map: 'metal' }), tire = mat('#141414', { r: .9 }); B3(w * .55, 1.0, d * .6, red, [w * .15, 1.0, 0]); B3(w * .35, 1.2, d * .7, red, [-w * .2, 1.4, 0]); B3(w * .3, .05, d * .7, red, [-w * .2, 2.3, 0]);
@@ -960,4 +968,25 @@ export function buildProp(k, w, d, o = {}) {
     default: B3(w, .8, d, wood, [0, .4, 0]);
   }
   return g;
+}
+
+// v1.4.1: little procedural pets that follow their owner (bought in the PETS & TRAILS store)
+export const PET_INFO = { puppy: ['#b07a48', '#f0e0c8'], kitty: ['#e8963a', '#fff0e0'], bat: ['#2a2230', '#5a3a4a'], ghost: ['#f0f4ff', '#c0d0ff'], dragon: ['#3aa84a', '#e8c040'], slime: ['#5aff6a', '#2a8a3a'], owl: ['#8a6a48', '#f0d8a0'], pumpkin: ['#ff8a1a', '#3a6a1a'] };
+export function buildPet(k) {
+  const g = new THREE.Group(), [c1, c2] = PET_INFO[k] || PET_INFO.puppy, m1 = mat(c1, { r: .8 }), m2 = mat(c2, { r: .8 }), eye = mat('#111', { r: .2 });
+  if (k === 'ghost') { const gm = new THREE.MeshStandardMaterial({ color: c1, transparent: true, opacity: .75, emissive: c2, emissiveIntensity: .4 }); add(g, G.sph(.22, 14, 10), gm, [0, .35, 0]); add(g, G.cone(.22, .3, 12), gm, [0, .12, 0], [Math.PI, 0, 0]); add(g, G.sph(.04, 6, 6), eye, [-.08, .4, .19]); add(g, G.sph(.04, 6, 6), eye, [.08, .4, .19]); }
+  else if (k === 'slime') { add(g, G.sph(.22, 14, 10), new THREE.MeshStandardMaterial({ color: c1, transparent: true, opacity: .8, roughness: .1 }), [0, .16, 0], [0, 0, 0], [1, .7, 1]); add(g, G.sph(.04, 6, 6), eye, [-.07, .22, .18]); add(g, G.sph(.04, 6, 6), eye, [.07, .22, .18]); }
+  else if (k === 'pumpkin') { for (let i = 0; i < 6; i++) add(g, G.sph(.18, 12, 10), m1, [Math.cos(i) * .06, .18, Math.sin(i) * .06], [0, i, 0], [.7, 1, 1]); add(g, G.cyl(.03, .04, .12, 6), m2, [0, .38, 0]); const e = mat('#ffd23a', { e: '#ffaa00', ei: 2 }); add(g, G.box(.06, .05, .02), e, [-.07, .22, .19]); add(g, G.box(.06, .05, .02), e, [.07, .22, .19]); add(g, G.box(.14, .03, .02), e, [0, .12, .19]); }
+  else {
+    const fly = k === 'bat' || k === 'owl' || k === 'dragon';
+    add(g, G.sph(.16, 12, 10), m1, [0, .2, 0], [0, 0, 0], [1, .9, 1.3]); add(g, G.sph(.13, 12, 10), m1, [0, .36, .16]); add(g, G.sph(.07, 10, 8), m2, [0, .31, .27]);
+    add(g, G.sph(.03, 6, 6), eye, [-.05, .4, .27]); add(g, G.sph(.03, 6, 6), eye, [.05, .4, .27]);
+    if (k === 'puppy') { add(g, G.box(.05, .12, .08), m2, [-.12, .38, .14], [0, 0, .3]); add(g, G.box(.05, .12, .08), m2, [.12, .38, .14], [0, 0, -.3]); }
+    if (k === 'kitty' || k === 'owl' || k === 'bat') { add(g, G.cone(.04, .1, 6), m1, [-.07, .5, .14]); add(g, G.cone(.04, .1, 6), m1, [.07, .5, .14]); }
+    if (k === 'dragon') { add(g, G.cone(.03, .12, 6), m2, [-.06, .5, .12]); add(g, G.cone(.03, .12, 6), m2, [.06, .5, .12]); }
+    if (!fly) for (const [x, z] of [[-.08, .1], [.08, .1], [-.08, -.1], [.08, -.1]]) add(g, G.cyl(.03, .03, .12, 6), m1, [x, .06, z]);
+    if (fly) { const wm = new THREE.MeshStandardMaterial({ color: k === 'dragon' ? c2 : c1, side: THREE.DoubleSide, roughness: .8 }); g.userData.wings = [-1, 1].map(sx => add(g, new THREE.PlaneGeometry(.32, .18), wm, [sx * .2, .26, 0], [Math.PI / 2, 0, 0])); g.userData.fly = true; }
+    add(g, G.cyl(.02, .01, .2, 6), m1, [0, .22, -.25], [-.8, 0, 0]);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g;
 }

@@ -1,7 +1,7 @@
 // Night Hunt 3D renderer (three.js): level building, lighting, characters, particles, post-processing.
 import * as THREE from '../vendor/three.module.min.js';
 import { tex, glowTex, softTex, beamTex, textSprite } from './textures.js';
-import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick } from './models.js';
+import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet } from './models.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 
 export const S = 1 / 20; // simulation pixels -> metres
@@ -324,19 +324,23 @@ export class World {
       const f = own(new THREE.Mesh(new THREE.PlaneGeometry(b.w * S, b.h * S), fm)); f.rotation.x = -Math.PI / 2; f.position.set((b.x + b.w / 2) * S, .025, (b.y + b.h / 2) * S); L.add(f);
       if (b.type === 'facility') { const sign = textSprite(b.kind.toUpperCase(), b.kind === 'lab' ? '#9ad8ff' : '#ffd27a', 30); sign.material.depthTest = true; sign.position.set((b.x + b.w / 2) * S, 4.2, b.y * S); sign.scale.set(3.5, .65, 1); L.add(sign); }
     }
-    this.spinners = [];
+    this.spinners = []; this.animProps = [];
     const DRESS = ['3,1,2,,,tophat,cape,knight', '1,3,0,,,witch,none,pajamas', '4,0,1,,,halo,wings,astronaut', '2,2,3,,,viking,chain,hazmat', '0,4,2,,,pirate,bandana,ninja'];
     let dressN = 0;
     for (const pr of map.props || []) { const o = buildProp(pr.k, pr.w * S, pr.h * S, pr); o.position.set((pr.x + pr.w / 2) * S, 0, (pr.y + pr.h / 2) * S); o.rotation.y = pr.a || 0; L.add(o);
       if (o.userData.statue) { const st = buildMonster(o.userData.statue); const h = monsterHeight(o.userData.statue); st.scale.setScalar(1.5 / h); st.position.y = .97; applySkin(st, ['golden', 'neon', 'lava', 'abyss'][this.spinners.length % 4]); o.add(st); this.spinners.push(st); }
+      if (o.userData.spin || o.userData.tiles || o.userData.pet) this.animProps.push(o);
       if (o.userData.dress) { const sv = buildSurvivor('#888', DRESS[dressN++ % DRESS.length]); sv.position.y = .05; o.add(sv); }
       if (o.userData.light && o.userData.lightPos) { o.updateMatrixWorld(true); const lp = o.userData.lightPos.clone().applyMatrix4(o.matrixWorld); this.lamps.push({ x: (pr.x + pr.w / 2), y: (pr.y + pr.h / 2), obj: { userData: { glow: { material: {} }, bulb: { material: {} } } }, lp, flick: R() < .3, broken: R() < .1, phase: R() * 100 }); }
     }
-    // the lobby store: bright warm interior lights, and a neon STORE sign on the roof line
-    for (const b of map.bld || []) if (b.type === 'store') { for (let i = 0; i < 3; i++) { const l = new THREE.PointLight('#ffe2b0', 22, 26, 1.2); l.position.set((b.x + b.w * .62) * S, 3.2, (b.y + b.h * (i + .5) / 3) * S); L.add(l); }
-      const sg = textSprite('★ STORE ★', '#ff4a4a', 46); sg.material.depthTest = true; sg.position.set(b.x * S - .2, 5.2, (b.y + b.h / 2) * S); sg.scale.set(9, 1.7, 1); L.add(sg);
-      for (const z of (map.zones || [])) { const zs = textSprite(z.name, z.k === 'shop' ? '#ffd27a' : z.k === 'mirror' ? '#9ad8ff' : '#ff9af0', 34); zs.material.depthTest = true; zs.position.set((z.x + 40) * S, 3.3, (z.y + z.h / 2) * S); zs.scale.set(5.5, 1, 1); L.add(zs);
-        const rug = own(new THREE.Mesh(new THREE.PlaneGeometry(z.w * S * .9, z.h * S * .85), new THREE.MeshStandardMaterial({ color: z.k === 'shop' ? '#5a3a10' : z.k === 'mirror' ? '#103a5a' : '#4a104a', roughness: .9 }))); rug.rotation.x = -Math.PI / 2; rug.position.set((z.x + z.w / 2) * S, .035, (z.y + z.h / 2) * S); L.add(rug); } }
+    // v1.4.1 lobby shopping street: per-store interior lights, a floating store name above each roof, coloured counter rugs and an asphalt street
+    if (map.road) { const rd = own(new THREE.Mesh(new THREE.PlaneGeometry(map.road.w * S, map.road.h * S), new THREE.MeshStandardMaterial({ color: '#1c1c20', roughness: .85 }))); rd.rotation.x = -Math.PI / 2; rd.position.set((map.road.x + map.road.w / 2) * S, .02, (map.road.y + map.road.h / 2) * S); rd.receiveShadow = true; L.add(rd);
+      for (let x = map.road.x + 40; x < map.road.x + map.road.w - 60; x += 140) { const ln = new THREE.Mesh(new THREE.PlaneGeometry(3, .3), new THREE.MeshBasicMaterial({ color: '#e8d06a' })); ln.rotation.x = -Math.PI / 2; ln.position.set(x * S, .03, (map.road.y + map.road.h / 2) * S); L.add(ln); } }
+    for (const b of map.bld || []) if (b.type === 'store') { const many = !!b.store;
+      for (let i = 0; i < (many ? 2 : 3); i++) { const l = new THREE.PointLight(many ? b.c : '#ffe2b0', many ? 30 : 22, many ? 32 : 26, 1.1); if (many) l.color.lerp(new THREE.Color('#ffe8c8'), .6); l.position.set((b.x + b.w * (many ? (i + .5) / 2 : .62)) * S, 3.2, (b.y + b.h * (many ? .5 : (i + .5) / 3)) * S); L.add(l); }
+      const sg = textSprite(many ? b.name : '★ STORE ★', many ? b.c : '#ff4a4a', 46); sg.material.depthTest = true; if (many) sg.position.set((b.x + b.w / 2) * S, 6.4, (b.y + b.h / 2) * S); else sg.position.set(b.x * S - .2, 5.2, (b.y + b.h / 2) * S); sg.scale.set(many ? 14 : 9, many ? 2.4 : 1.7, 1); L.add(sg); }
+    for (const z of (map.zones || [])) { const col = z.c || (z.k === 'shop' ? '#ffd27a' : z.k === 'mirror' ? '#9ad8ff' : '#ff9af0'); const zs = textSprite((z.ic ? z.ic + ' ' : '') + (z.c ? z.name : 'COUNTER'), col, 34); zs.material.depthTest = true; const bS = (map.bld || []).find(b => b.store === z.k), cy2 = bS ? (bS.north ? bS.y + 120 : bS.y + bS.h - 120) : z.y + z.h / 2; zs.position.set((z.x + z.w / 2) * S, 3.5, cy2 * S); zs.scale.set(z.c ? 3 : 5.5, z.c ? .56 : 1, 1); L.add(zs);
+      const rug = own(new THREE.Mesh(new THREE.PlaneGeometry(z.w * S * .9, z.h * S * .85), new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(.22), roughness: .9 }))); rug.rotation.x = -Math.PI / 2; rug.position.set((z.x + z.w / 2) * S, .035, (z.y + z.h / 2) * S); L.add(rug); }
     // loot containers
     this.loot = new Map();
     for (const c of map.loot || []) { const o = c.kind === 'chest' ? buildChest() : buildBag(); o.position.set(c.x * S, 0, c.y * S); o.rotation.y = c.a || 0; L.add(o); this.loot.set(c.id, { o, c, open: false, t: 0 }); }
@@ -463,6 +467,10 @@ export class World {
       for (const o of this.lod) { const dx = o.position.x - px, dz = o.position.z - pz, rr = R0 + o.userData.lr; o.visible = dx * dx + dz * dz < rr * rr; } }
     if (this.waterTex) { this.waterTex.offset.x = t * .012; this.waterTex.offset.y = Math.sin(t * .2) * .03; }
     if (this.spinners) for (const s2 of this.spinners) s2.rotation.y = t * .6;
+    if (this.animProps) for (const o of this.animProps) { const u = o.userData;
+      if (u.spin) { o.children.forEach(c => {}); o.position.y = .15 + Math.sin(t * 2 + o.position.x) * .12; o.rotation.y = (o.userData.a0 ??= o.rotation.y) + t * .8; }
+      if (u.tiles) u.tiles.forEach((m, i) => { m.material.emissiveIntensity = .3 + 1.4 * Math.max(0, Math.sin(t * 4 + i * 1.7)); });
+      if (u.pet) { u.pet.position.y = .3 + Math.abs(Math.sin(t * 3 + o.position.x)) * .08; u.pet.rotation.y = Math.sin(t * .7) * .8; } }
     if (this.flickerWins) for (const w of this.flickerWins) w.material.emissiveIntensity = Math.sin(t * 11 + w.id) + Math.sin(t * 6.3 + w.id * 2) > 1.2 ? .1 : 1.6;
     // boats
     const bts = snap.bt || [], seenB = new Set();
@@ -508,7 +516,7 @@ export class World {
   charFor(p, state) {
     const kind = p.role === 'monster' && state !== 'lobby' ? p.mt + ':' + (p.sk || 'classic') + ':' + (p.fm || 0) : 'survivor:' + p.c + ':' + (p.lk || '');
     let c = this.chars.get(p.id);
-    if (c && c.kind !== kind) { this.dyn.remove(c.obj); c = null; }
+    if (c && c.kind !== kind) { this.dropChar(c); c = null; }
     if (!c) {
       const obj = kind.startsWith('survivor') ? buildSurvivor(p.c, p.lk) : buildMonster(modelKey(p.mt, p.fm)); if (!kind.startsWith('survivor') && p.sk) applySkin(obj, p.sk);
       obj.userData.sea = SEA.has(p.mt); const surv = kind.startsWith('survivor'), th = surv ? 2.15 : monsterHeight(modelKey(p.mt, p.fm)) + .3;
@@ -522,6 +530,7 @@ export class World {
     }
     return c;
   }
+  dropChar(c) { this.dyn.remove(c.obj); if (c.pet) this.dyn.remove(c.pet); if (c.trail) c.trail.forEach(m => this.dyn.remove(m)); }
   drawHp(c, v, mon) {
     const hb = c.obj.userData.hpBar; if (hb.v === v) return; hb.v = v; const g = hb.c.getContext('2d');
     g.clearRect(0, 0, 128, 16); g.fillStyle = 'rgba(0,0,0,.75)'; g.fillRect(0, 0, 128, 16);
@@ -582,6 +591,19 @@ export class World {
         parts.body.position.y = Math.abs(Math.sin(c.phase)) * .05 * sp; parts.body.rotation.x = sp > 1.1 ? .12 : .03;
         if (p.st.stun || p.st.root) parts.body.rotation.z = Math.sin(t * 20) * .05; else parts.body.rotation.z = 0;
       }
+      // v1.4.1: pets follow their owner; trails glow behind them (PETS & TRAILS store)
+      { const lk = (p.lk || '').split(','), petK = c.kind.startsWith('survivor') ? lk[8] : null, trK = c.kind.startsWith('survivor') ? lk[9] : null, hidden = (playing && (!p.al || p.es || p.role === 'ghost')) || p.st.invis;
+        if (petK && petK !== 'none') { if (!c.pet || c.petK !== petK) { if (c.pet) this.dyn.remove(c.pet); c.pet = buildPet(petK); c.pet.scale.setScalar(1.1); c.petK = petK; c.pet.position.set(x - 1, 0, z); this.dyn.add(c.pet); }
+          const pt = c.pet, side = new THREE.Vector3(Math.cos(c.yaw) * 1.1 - Math.sin(c.yaw) * .9, 0, -Math.sin(c.yaw) * 1.1 - Math.cos(c.yaw) * .9), tx = x + side.x, tz = z + side.z;
+          pt.position.x = lerp(pt.position.x, tx, Math.min(1, dt * 4)); pt.position.z = lerp(pt.position.z, tz, Math.min(1, dt * 4)); pt.position.y = (pt.userData.fly ? 1.5 + Math.sin(t * 3) * .15 : Math.abs(Math.sin(t * 8)) * .08 * Math.min(1, c.speed));
+          pt.rotation.y = angLerp(pt.rotation.y, c.yaw, Math.min(1, dt * 6)); if (pt.userData.wings) pt.userData.wings.forEach((wg, i) => wg.rotation.y = (i ? 1 : -1) * Math.sin(t * 16) * .6); pt.visible = !hidden;
+        } else if (c.pet) { this.dyn.remove(c.pet); c.pet = null; }
+        if (trK && trK !== 'none') { const TC = { fire: '#ff7a1a', ice: '#9ae8ff', toxic: '#7aff3a', rainbow: null, shadow: '#3a1a5a', stars: '#fff2a0', blood: '#8a0a0a' };
+          if (!c.trail || c.trK !== trK) { if (c.trail) c.trail.forEach(m => this.dyn.remove(m)); c.trK = trK; c.trail = []; c.trailT = 0;
+            for (let i = 0; i < 22; i++) { const m = new THREE.Mesh(G.sph(.16, 8, 6), new THREE.MeshBasicMaterial({ color: TC[trK] || '#fff', transparent: true, opacity: 0, depthWrite: false })); m.visible = false; this.dyn.add(m); c.trail.push(m); } }
+          if ((c.trailT -= dt) <= 0 && c.speed > .5) { c.trailT = .05; const m = c.trail.shift(); c.trail.push(m); m.position.set(x + (Math.random() - .5) * .3, .25 + Math.random() * .5 + o.position.y, z + (Math.random() - .5) * .3); m.userData.age = 0; if (trK === 'rainbow') m.material.color.setHSL((t * .5) % 1, 1, .6); m.visible = !hidden; }
+          for (const m of c.trail) if (m.visible) { m.userData.age = (m.userData.age || 0) + dt; const k = 1 - m.userData.age / 1.1; if (k <= 0) m.visible = false; else { m.material.opacity = k * .8; m.scale.setScalar(.4 + k * .8); if (trK === 'fire' || trK === 'stars') m.position.y += dt * .6; } }
+        } else if (c.trail) { c.trail.forEach(m => this.dyn.remove(m)); c.trail = null; } }
       // asleep in a bed: lie down on the mattress
       if (p.st.sleep) { o.rotation.set(-Math.PI / 2, 0, 0, 'YXZ'); o.rotation.y = c.yaw; o.position.y = .62; } else if (o.rotation.x) { o.rotation.x = 0; o.position.y = 0; }
       else {
@@ -600,6 +622,16 @@ export class World {
         const down = !!p.st.down; c.down = lerp(c.down || 0, down ? 1 : 0, Math.min(1, dt * 5));
         parts.body.rotation.x = -c.down * 1.45; parts.body.position.y += c.down * .25; parts.body.position.z = -c.down * .2;
       }
+      // v1.4.1: emotes (bought at EMOTES & DANCES) play a short procedural animation
+      if (p.em && c.kind.startsWith('survivor')) { const e = p.em, k2 = t * 6;
+        if (e === 'wave') { parts.armR.rotation.set(-2.8, 0, -.4 + Math.sin(k2 * 1.5) * .5); }
+        else if (e === 'dance') { parts.body.position.y = Math.abs(Math.sin(k2)) * .18; parts.body.rotation.z = Math.sin(k2) * .2; parts.armL.rotation.x = -2.4 + Math.sin(k2) * .6; parts.armR.rotation.x = -2.4 - Math.sin(k2) * .6; }
+        else if (e === 'spin') { o.rotation.y = c.yaw + t * 9; parts.armL.rotation.z = 1.3; parts.armR.rotation.z = -1.3; }
+        else if (e === 'jump') { o.position.y += Math.abs(Math.sin(k2 * .8)) * .9; parts.armL.rotation.x = parts.armR.rotation.x = -2.9; }
+        else if (e === 'flex') { parts.armL.rotation.set(-1.5, 0, 1.2); parts.armR.rotation.set(-1.5, 0, -1.2); parts.armL.userData.low.rotation.x = parts.armR.userData.low.rotation.x = -1.6 - Math.abs(Math.sin(k2)) * .4; }
+        else if (e === 'floss') { const f = Math.sin(k2 * 1.3); parts.armL.rotation.set(.2, 0, f * .9); parts.armR.rotation.set(.2, 0, f * .9); parts.body.rotation.z = -f * .15; }
+        else if (e === 'zombie') { parts.armL.rotation.set(-1.55, 0, .05); parts.armR.rotation.set(-1.55, 0, -.05); parts.body.rotation.z = Math.sin(t * 3) * .12; }
+        else if (e === 'scream') { parts.armL.rotation.set(-2.6, 0, .9); parts.armR.rotation.set(-2.6, 0, -.9); parts.body.rotation.x = -.25; if (parts.head) parts.head.rotation.x = -.4; } }
       if (p.id === me) { if (!c.selfNoShadow) { o.traverse(m => { if (m.isMesh) m.castShadow = false; }); c.selfNoShadow = true; } }
       // visibility styling
       const pGhost = playing && (!p.al || p.es || p.role === 'ghost');
@@ -612,7 +644,7 @@ export class World {
       if (hb.s.visible) this.drawHp(c, p.hp, p.role === 'monster');
       if (p.role === 'survivor' && p.al && !p.es && st !== 'lobby' && st !== 'results' && p.id !== me) survivorsLit.push({ p, d, dist });
     }
-    for (const [id, c] of this.chars) if (!seen.has(id)) { this.dyn.remove(c.obj); this.chars.delete(id); }
+    for (const [id, c] of this.chars) if (!seen.has(id)) { this.dropChar(c); this.chars.delete(id); }
 
     // local flashlight
     const myPos = new THREE.Vector3(md.dx * S, 0, md.dy * S), aim = v.aim ?? mp.a;
