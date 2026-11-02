@@ -269,7 +269,10 @@ local scareFx = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScal
 local scareBlack = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 33, Visible = false }, scareFx)
 local scareText = label(scareFx, "CAUGHT", 70, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.42, 0), Size = UDim2.new(1, 0, 0, 80), ZIndex = 36, Visible = false })
 local bloodOn = true -- settings toggle (default on). Teen-level only: red splatter / drips, no gore.
-local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, monochrome = 2.0, locust = 1.9 }
+local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, monochrome = 2.0, locust = 1.9,
+	-- v1.4 phase 2 (keyed by template: the Megalodon has a water and a land form)
+	megalodon = 1.95, megalodon_h = 1.45, kraken = 1.7, cthulhu = 1.8, leviathan = 1.7, mosasaurus = 1.25, nessie = 1.55, spinosaurus = 1.6,
+	yeti = 1.6, chupacabra = 1.05, vampire = 1.45, bigfoot = 1.5, trex = 1.6, quetzalcoatlus = 1.35, gargoyle = 1.35, dragon = 1.5, fester = 1.75 }
 local SCARE_LEN = 2.6
 local scareRun = 0
 
@@ -304,6 +307,7 @@ local function jumpscare(kind, form)
 	for _, c in ipairs(scareFx:GetChildren()) do if c ~= scareBlack and c ~= scareText then c:Destroy() end end
 	local key = kind
 	if kind == "drnowhere" and Config.DN_FORMS[form or 1] then key = Config.DN_FORMS[form or 1].key end
+	if kind == "megalodon" and form == 2 then key = "megalodon_h" end
 	local t = Templates:FindFirstChild(key) or Templates:FindFirstChild("freddy")
 	local m = t:Clone()
 	m.Parent = scare
@@ -315,7 +319,39 @@ local function jumpscare(kind, form)
 	scareText.Visible, scareBlack.Visible = false, false
 	scare.Visible = true
 	local fnaf = table.find({ "freddy", "bonnie", "chica", "foxy", "springtrap" }, kind) ~= nil
-	local impact = IMPACT[kind] or 1.55
+	local impact = IMPACT[key] or IMPACT[kind] or 1.55
+	-- extra props for the phase-2 scares (water surface, circling fins, tentacles, flashes)
+	local extras = Instance.new("Model")
+	extras.Name = "ScareExtras"
+	extras.Parent = scare
+	local function xp(size, cf, color, mat, shape, transp)
+		local q = Instance.new("Part")
+		q.Anchored, q.Size, q.CFrame, q.Color = true, size, cf, color
+		q.Material = mat or Enum.Material.SmoothPlastic
+		if shape then q.Shape = shape end
+		q.Transparency = transp or 0
+		q.Parent = extras
+		return q
+	end
+	local water, fins, tents = nil, {}, {}
+	if key == "megalodon" or key == "nessie" or key == "spinosaurus" or key == "mosasaurus" or key == "kraken" or key == "leviathan" then
+		water = xp(Vector3.new(300, 0.2, 300), CFrame.new(0, 0, 0), key == "spinosaurus" and Color3.fromRGB(50, 70, 40) or Color3.fromRGB(30, 80, 110), Enum.Material.Glass, nil, 0.35)
+	end
+	if key == "megalodon" then
+		for i = 1, 5 do
+			local w = Instance.new("WedgePart")
+			w.Anchored, w.Size, w.Color = true, Vector3.new(0.3, 1.6, 1.6), Color3.fromRGB(70, 84, 96)
+			w.Parent = extras
+			fins[i] = w
+		end
+	end
+	if key == "kraken" then
+		for j = 1, 6 do
+			tents[j] = {}
+			for i = 1, 7 do tents[j][i] = xp(Vector3.one * (1.3 - i * 0.12), CFrame.new(), Color3.fromRGB(150, 50, 60), Enum.Material.Rubber, Enum.PartType.Ball) end
+		end
+	end
+	local flash = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 33 }, scareFx)
 	local start = os.clock()
 	local hit = false
 	local squares = {}
@@ -355,6 +391,110 @@ local function jumpscare(kind, form)
 			if form == 2 then camPos = Vector3.new(0, 2 + ease(e / 1.2) * (headY - 2), -6 + l * 3); shake = 0.1 + l * 0.4
 			elseif form == 3 then m:PivotTo(base * CFrame.new(0, 0, -l * 2)); camPos = Vector3.new(0, headY, -7 + l * 3)
 			else camPos = Vector3.new(0, headY, -7.5 + l * 4.4); shake = 0.05 + l * 0.35 end
+		elseif key == "megalodon" then -- swarmed by fins, a shadow rises, it leaps, swallows you and dives
+			camPos, look = Vector3.new(0, 1.3, -9), Vector3.new(0, -0.6, 0)
+			for i, w in ipairs(fins) do
+				local a = e * 2.2 + i * math.pi * 0.4
+				local r = math.max(2.5, 7 - e * 3)
+				w.CFrame = CFrame.lookAt(Vector3.new(math.cos(a) * r, 0.6, -9 + math.sin(a) * r), Vector3.new(math.cos(a + 0.3) * r, 0.6, -9 + math.sin(a + 0.3) * r))
+			end
+			if e < 1.0 then -- the shadow rises under the water
+				local r = ease(e / 1.0)
+				m:PivotTo(CFrame.new(0, -26 + r * 14, -2) * CFrame.Angles(math.rad(90), 0, 0)); shake = 0.03 + r * 0.1
+			elseif e < 1.5 then -- the leap
+				local l = ease((e - 1.0) / 0.5)
+				m:PivotTo(CFrame.new(0, -12 + l * 14, -2 - l * 4) * CFrame.Angles(math.rad(90 - l * 30), 0, 0))
+				look = Vector3.new(0, 1.5 + l, -5); shake = 0.2 + l * 0.4
+			else -- swallowed: inside the jaws, then the dive
+				local d = ease((e - 1.5) / 0.45)
+				local mcf = CFrame.new(0, 2 - d * 10, -6 + d * 3) * CFrame.Angles(math.rad(60 - d * 140), 0, 0)
+				m:PivotTo(mcf)
+				local mouth = (mcf * CFrame.new(0, -1.6, -10.5)).Position
+				camPos = mouth + mcf.LookVector * 1.2 + Vector3.new(0, 0.3, 0); look = (mcf * CFrame.new(0, -1.6, -2)).Position; shake = 0.35; fov = 70
+				if water then water.Transparency = 0.1 end
+			end
+		elseif key == "megalodon_h" then -- a buff shark-man grabs you and bites down
+			local l = ease((e - 0.5) / 0.8)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 2) * CFrame.Angles(math.rad(-25 * l), 0, 0))
+			camPos = Vector3.new(0, headY - 1, -6.5 + l * 2); look = Vector3.new(0, headY - 0.5 - l, -l * 3); shake = 0.15 + l * 0.4
+		elseif key == "kraken" then -- tentacles close in around you, then the beak
+			local u = ease(e / 1.3)
+			camPos = Vector3.new(0, 2, -12); look = Vector3.new(0, 1.5 + u * 1.5, 0)
+			for j, list2 in ipairs(tents) do
+				local a = j / 6 * math.pi * 2 + e * 0.8
+				for i, q in ipairs(list2) do
+					local r = (4.5 - u * 2.8) + i * 0.15
+					q.CFrame = CFrame.new(Vector3.new(math.cos(a + i * 0.25 * u) * r, -5 + i * 1.3 * (0.4 + u), -12 + math.sin(a + i * 0.25 * u) * r))
+				end
+			end
+			local l = ease((e - 1.2) / 0.5)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 8)); shake = 0.05 + u * 0.2 + l * 0.3
+		elseif key == "cthulhu" then -- a towering figure in the storm, lit by lightning
+			camPos = Vector3.new(0, 2, -11 + ease((e - 0.8) / 0.9) * 5); look = Vector3.new(0, headY, 0)
+			flash.BackgroundTransparency = ((e > 0.25 and e < 0.35) or (e > 0.9 and e < 1.0) or (e > 1.45 and e < 1.52)) and 0.1 or 1
+			m:PivotTo(base * CFrame.Angles(math.rad(-ease((e - 0.9) / 0.8) * 25), 0, 0)); shake = 0.05 + ease((e - 0.9) / 0.8) * 0.4
+		elseif key == "leviathan" then -- the coils wind around you, then it strikes
+			local a = e * 2.6
+			local l = ease((e - 1.25) / 0.45)
+			camPos = Vector3.new(math.sin(a) * (9 - l * 4), 2.2, -9 + math.cos(a) * (9 - l * 4) * 0.4 - l * 2); look = Vector3.new(0, 1, -8)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 4)); shake = 0.05 + l * 0.4
+		elseif key == "mosasaurus" then -- the jaws burst up out of the water under you
+			local l = ease((e - 0.6) / 0.6)
+			m:PivotTo(CFrame.new(0, -14 + l * 14, -4 + l * 2) * CFrame.Angles(math.rad(80 - l * 25), 0, 0))
+			camPos = Vector3.new(0, 2.4, -8); look = Vector3.new(0, -2 + l * 4, -4); shake = 0.05 + l * 0.45
+		elseif key == "nessie" then -- a long neck rises from the water and the head swoops down at you
+			local r = ease(e / 1.0)
+			local l = ease((e - 1.0) / 0.5)
+			m:PivotTo(CFrame.new(0, -14 + r * 13, 2) * CFrame.Angles(math.rad(-35 * l), 0, 0) * CFrame.new(0, 0, -l * 3))
+			camPos = Vector3.new(0, 2, -10); look = Vector3.new(0, 2 + r * 12 - l * 9, -2 - l * 5); shake = 0.04 + l * 0.4
+		elseif key == "spinosaurus" then -- the sail cuts through the swamp, then it lunges out
+			local r = ease(e / 1.0)
+			local l = ease((e - 1.0) / 0.55)
+			m:PivotTo(base * CFrame.new(r * 0, -10 + r * 10, 6 - r * 4 - l * 5))
+			camPos = Vector3.new(0, 3, -9); look = Vector3.new(0, 2 + r * 6, 0); shake = 0.04 + l * 0.4
+		elseif key == "yeti" or key == "trex" then -- a deafening roar, then the bite
+			local roar = (e > 0.3 and e < 1.1) and 1 or 0
+			local l = ease((e - 1.1) / 0.45)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 3) * CFrame.Angles(math.rad(-20 * l), 0, 0))
+			camPos = Vector3.new(0, key == "trex" and 2 or headY - 2, -9 + l * 3); look = Vector3.new(0, headY, -l * 4); shake = 0.05 + roar * 0.55 + l * 0.3
+			if key == "yeti" and math.random() < 0.7 then
+				table.insert(squares, new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.3, Position = UDim2.fromScale(math.random(), math.random()), Size = UDim2.fromOffset(math.random(6, 30), math.random(6, 30)), ZIndex = 33 }, scareFx))
+			end
+		elseif key == "chupacabra" then -- it leaps at you from the side
+			local l = ease(e / 1.0)
+			m:PivotTo(base * CFrame.new(9 - l * 9, math.sin(l * math.pi) * 3, -l * 5))
+			camPos = Vector3.new(0, 2, -8); look = Vector3.new(9 - l * 9, 2, -l * 5); shake = 0.05 + l * 0.4
+		elseif key == "vampire" then -- nothing there... you turn around: it's right behind you
+			local tr = ease((e - 0.55) / 0.35)
+			local l = ease((e - 1.0) / 0.4)
+			camPos = Vector3.new(0, headY, -5.5 + l * 2)
+			local ahead = Vector3.new(0, headY, -20)
+			look = ahead:Lerp(Vector3.new(0, headY, 0), tr); shake = 0.02 + l * 0.4
+		elseif key == "bigfoot" then -- it charges out of the dark woods
+			local l = ease(e / 1.45)
+			m:PivotTo(base * CFrame.new(0, math.abs(math.sin(e * 9)) * 0.6, 22 - l * 22))
+			camPos = Vector3.new(0, headY - 1, -6); look = Vector3.new(0, headY, 22 - l * 22); shake = 0.05 + l * 0.35
+		elseif key == "quetzalcoatlus" then -- a shriek from above, then it dives out of the sky
+			local l = ease(e / 1.3)
+			m:PivotTo(CFrame.new(0, 34 - l * 34, 14 - l * 14) * CFrame.Angles(math.rad(-50 * (1 - l)), 0, 0))
+			camPos = Vector3.new(0, 2, -8); look = Vector3.new(0, 34 - l * 30, 14 - l * 14); shake = 0.04 + l * 0.4
+		elseif key == "gargoyle" then -- a still statue... its eyes light up and it lunges
+			local l = ease((e - 1.0) / 0.3)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 4))
+			camPos = Vector3.new(0, headY, -7 + l * 2); shake = e < 1 and 0 or 0.5
+		elseif key == "dragon" then -- a wall of fire, then the jaws
+			local f2 = ease((e - 0.4) / 0.6)
+			flash.BackgroundColor3 = Color3.fromRGB(255, 120, 20)
+			flash.BackgroundTransparency = e > 0.4 and e < 1.2 and (1 - f2 * 0.6) or 1
+			local l = ease((e - 1.1) / 0.4)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 5))
+			camPos = Vector3.new(0, headY - 1, -12 + l * 4); look = Vector3.new(0, headY - 1, -l * 6); shake = 0.1 + f2 * 0.2 + l * 0.3
+		elseif key == "fester" then -- the lights flicker; every time they come back he is closer
+			local step = math.floor(e / 0.3)
+			local dark = (e % 0.3) < 0.1 and e < 1.5
+			scareBlack.Visible = dark
+			m:PivotTo(base * CFrame.new(0, 0, 14 - math.min(5, step) * 3.2))
+			camPos = Vector3.new(0, headY - 1, -7); look = Vector3.new(0, headY - 0.6, 14 - math.min(5, step) * 3.2); shake = 0.03 + step * 0.05
 		else
 			local l = ease((e - 0.3) / 0.8)
 			camPos = Vector3.new(0, headY, -9 + l * 6); shake = 0.05 + l * 0.35
@@ -456,7 +596,40 @@ local SFX = { -- uploads in Config.SOUNDS win; otherwise built-in Roblox sounds,
 	swing = { "rbxasset://sounds/swoosh.wav", 1.4 }, hit = { "rbxasset://sounds/collide.wav", 0.8 },
 	pistol = { "rbxasset://sounds/electronicpingshort.wav", 3 }, shotgun = { "rbxasset://sounds/electronicpingshort.wav", 2 }, rifle = { "rbxasset://sounds/electronicpingshort.wav", 3.5 },
 	dry = { "rbxasset://sounds/electronicpingshort.wav", 4 }, drink = { "rbxasset://sounds/impact_water.mp3", 1.4 }, eat = { "rbxasset://sounds/swoosh.wav", 2.5 },
+	-- v1.4 phase 2
+	wave = { "rbxasset://sounds/impact_water.mp3", 0.5 }, splash = { "rbxasset://sounds/impact_water.mp3", 0.8 }, whirl = { "rbxasset://sounds/swoosh.wav", 0.25 },
+	tentacle = { "rbxasset://sounds/swoosh.wav", 0.6 }, thunder = { "rbxasset://sounds/action_falling.mp3", 0.25 }, slam = { "rbxasset://sounds/collide.wav", 0.4 },
+	roar = { "rbxasset://sounds/uuhhh.mp3", 0.45 }, drain = { "rbxasset://sounds/swoosh.wav", 1.8 }, bats = { "rbxasset://sounds/electronicpingshort.wav", 2.8 },
+	throw = { "rbxasset://sounds/swoosh.wav", 0.8 }, screech = { "rbxasset://sounds/electronicpingshort.wav", 1.6 }, stone = { "rbxasset://sounds/collide.wav", 0.3 },
+	fire = { "rbxasset://sounds/swoosh.wav", 0.4 }, fester = { "rbxasset://sounds/uuhhh.mp3", 0.6 },
 }
+-- phase-2 screen effects: tint pulses, camera shake, lightning
+local tintOver = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 13 }, gui)
+local tintText = label(tintOver, "", 34, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.3, 0), Size = UDim2.new(1, 0, 0, 50), ZIndex = 13 })
+local function tint(color, from, secs, text)
+	tintOver.BackgroundColor3 = color
+	tintOver.BackgroundTransparency = from
+	tintText.Text = text or ""
+	TweenService:Create(tintOver, TweenInfo.new(secs), { BackgroundTransparency = 1 }):Play()
+	if text then task.delay(secs, function() if tintText.Text == text then tintText.Text = "" end end) end
+end
+local shakeUntil, shakeAmt = 0, 0
+RunService:BindToRenderStep("NH_Shake", Enum.RenderPriority.Camera.Value + 1, function()
+	if os.clock() < shakeUntil then
+		local cam = workspace.CurrentCamera
+		cam.CFrame = cam.CFrame * CFrame.Angles((math.random() - 0.5) * shakeAmt, (math.random() - 0.5) * shakeAmt, 0)
+	end
+end)
+local function shakeFor(secs, amt) shakeUntil = os.clock() + secs; shakeAmt = amt or 0.02 end
+local function lightning(n)
+	for i = 1, n do task.delay((i - 1) * 0.35 + math.random() * 0.2, function() tint(Color3.new(1, 1, 1), 0.15, 0.25) end) end
+end
+local OMEN = {
+	kraken = "Tentacles break the surface nearby...", leviathan = "Huge coils roll through the water...", mosasaurus = "A giant tail flicks out of the sea...",
+	megalodon = "A dorsal fin is circling...", nessie = "A long neck rises out of the water...", spinosaurus = "A sail glides through the swamp...",
+	cthulhu = "Red eyes and wings in the storm clouds...",
+}
+local lastStormWarn = 0
 local function sfx(kind, pos)
 	local up = Config.SOUNDS[kind]
 	local d = SFX[kind]
@@ -571,6 +744,15 @@ local lockerScroll = new("ScrollingFrame", { BackgroundTransparency = 1, Positio
 list(lockerScroll, 6)
 button(locker, "Close", { Position = UDim2.new(0, 0, 1, -38), Size = UDim2.new(1, 0, 0, 36), ZIndex = 52 }, function() locker.Visible = false end)
 local refreshLocker
+local lockerTab = "shop" -- shop (item counter) / look (dressing room) / skins (gallery)
+local tabBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 34), Size = UDim2.new(1, 0, 0, 30), ZIndex = 52 }, locker)
+for i, tb in ipairs({ { "shop", "Item counter" }, { "look", "Dressing room" }, { "skins", "Skins" } }) do
+	button(tabBar, tb[2], { Size = UDim2.new(1 / 3, -4, 1, 0), Position = UDim2.new((i - 1) / 3, 2, 0, 0), TextSize = 12, ZIndex = 53, BackgroundColor3 = Color3.fromRGB(70, 50, 40) }, function() lockerTab = tb[1]; refreshLocker() end)
+end
+lockerScroll.Position = UDim2.new(0, 0, 0, 70)
+lockerScroll.Size = UDim2.new(1, 0, 1, -114)
+locker.Size = UDim2.new(0, 460, 0, 540)
+locker.Position = UDim2.new(0.5, -230, 0.5, -270)
 local function row(text, order, actions)
 	local r = new("Frame", { BackgroundColor3 = DARK, Size = UDim2.new(1, -8, 0, 34), LayoutOrder = order, ZIndex = 52 }, lockerScroll)
 	corner(r, 6)
@@ -583,18 +765,33 @@ local monsterPrefIdx = 0
 refreshLocker = function()
 	for _, c in ipairs(lockerScroll:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end
 	local pr = myProfile()
-	lockerTitle.Text = ("LOCKER  -  %d coins"):format(pr.coins or 0)
+	lockerTitle.Text = ("%s  -  %d coins"):format(({ shop = "ITEM COUNTER", look = "DRESSING ROOM", skins = "SKINS GALLERY" })[lockerTab], pr.coins or 0)
 	local o = 0
 	local function nxt() o += 1; return o end
-	label(lockerScroll, "Your survivor", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+	local cats = ({ shop = { "hat", "acc", "supply" }, look = { "outfit" }, skins = { "skin" } })[lockerTab]
+	if lockerTab == "look" then
+	label(lockerScroll, "Your survivor (check the mirror!)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local cyc = function(k, n) return function() Action:FireServer("look", { [k] = ((pr.look[k] or 1) % n) + 1 }) end end
 	row("Skin tone", nxt(), { { "Next", cyc("sk", #Config.SKIN_TONES) } })
 	row("Hair colour", nxt(), { { "Next", cyc("hc", #Config.HAIR_COLORS) } })
 	row("Hair style", nxt(), { { "Next", cyc("hs", 4) } })
 	row("Shirt", nxt(), { { "Next", cyc("top", #Config.CLOTHES) } })
 	row("Pants", nxt(), { { "Next", cyc("pants", #Config.CLOTHES) } })
-	for _, cat in ipairs({ "hat", "acc", "skin" }) do
-		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins" })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+	end
+	for _, cat in ipairs(cats) do
+		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins", outfit = "Outfits", supply = "Round supplies (max 2, handed out next round)" })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+		if cat == "supply" then
+			local kit = {}
+			for _, k in ipairs(pr.kit or {}) do table.insert(kit, Config.ITEMS[k] and Config.ITEMS[k].name or k) end
+			label(lockerScroll, "Packed: " .. (#kit > 0 and table.concat(kit, ", ") or "nothing"), 13, { LayoutOrder = nxt(), ZIndex = 52, TextColor3 = MUTED })
+			local items = {}
+			for id, price in pairs(Config.SHOP.supply) do table.insert(items, { id, price }) end
+			table.sort(items, function(x, y) return x[2] < y[2] end)
+			for _, it in ipairs(items) do
+				row(("%s  -  %d coins"):format(Config.ITEMS[it[1]] and Config.ITEMS[it[1]].name or it[1], it[2]), nxt(), { { "Buy", function() Action:FireServer("buy", { cat = "supply", id = it[1] }) end } })
+			end
+			continue
+		end
 		local cur = cat == "skin" and (pr.skin or "classic") or (pr.look[cat] or "none")
 		row((cat == "skin" and "classic" or "none") .. ((cur == "none" or cur == "classic") and "  (worn)" or ""), nxt(), { { "Wear", function() Action:FireServer("equip", { cat = cat, id = cat == "skin" and "classic" or "none" }) end, Color3.fromRGB(60, 60, 70) } })
 		local items = {}
@@ -609,6 +806,7 @@ refreshLocker = function()
 			})
 		end
 	end
+	if lockerTab ~= "skins" then return end
 	label(lockerScroll, "Monster preference (if you become a monster)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local prefName = (pr.pref and pr.pref ~= "" and Config.MONSTERS[pr.pref]) and Config.MONSTERS[pr.pref].name or "Random"
 	row(prefName, nxt(), { { "Next", function()
@@ -869,7 +1067,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 			conn = RunService.RenderStepped:Connect(function()
 				local e = os.clock() - start
 				if vh and vh.Parent and myHead.Parent then
-					local eye = myHead.Position + Vector3.new(0, 4, 0)
+					local eye = myHead.Position + Vector3.new(0, ({ sirenhead = 26, nessie = 14, trex = 11, spinosaurus = 12, dragon = 10, cthulhu = 10, yeti = 8, bigfoot = 7, fester = 9, quetzalcoatlus = 8 })[a] or 4, 0)
 					cam.CFrame = CFrame.lookAt(eye, vh.Position + Vector3.new(0, 1.5, 0)) * CFrame.new((math.random() - 0.5) * 0.15, (math.random() - 0.5) * 0.15, 0)
 				end
 				kfx.BackgroundTransparency = 0.75 + math.sin(e * 9) * 0.08
@@ -890,6 +1088,26 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 		if a == "dark" then darkUntil = os.clock() + b end
 		if a == "halluc" then hallucUntil = os.clock() + b end
 		if a == "lightsout" then toast("Your flashlight died...") end
+		local d = tonumber(b) or 1
+		if a == "wave" then tint(Color3.fromRGB(40, 110, 170), 0.2, d); shakeFor(d * 0.6, 0.03)
+		elseif a == "whirl" then tint(Color3.fromRGB(20, 70, 110), 0.35, d); shakeFor(d, 0.025); toast("You're caught in a whirlpool!")
+		elseif a == "thunder" then lightning(3); shakeFor(0.6, 0.02)
+		elseif a == "snow" then tint(Color3.fromRGB(235, 245, 255), 0.15, d); toast("Avalanche! You're buried in snow")
+		elseif a == "shake" then shakeFor(d, 0.04)
+		elseif a == "burn" then tint(Color3.fromRGB(255, 110, 20), 0.35, d); toast("You're on fire!")
+		elseif a == "storm" then tint(Color3.fromRGB(20, 30, 60), 0.4, d); if math.random() < 0.25 then lightning(1) end; shakeFor(0.4, 0.02)
+		elseif a == "stormwarn" then
+			if os.clock() - lastStormWarn > 4 then lastStormWarn = os.clock(); tint(Color3.fromRGB(20, 30, 60), 0.6, 1.5, "STORM AHEAD - TURN BACK") end
+		elseif a == "fester" then tint(Color3.new(0, 0, 0), 0, d, "HE IS GETTING CLOSER") end
+	elseif kind == "omen" then
+		toast(OMEN[a] or "Something stirs in the water...")
+		if a == "cthulhu" then lightning(2) end
+		sfx(a == "cthulhu" and "thunder" or "splash")
+	elseif kind == "store" then
+		-- walked up to a counter in the lobby store: open the locker on that section
+		lockerTab = (a == "look" or a == "skins") and a or "shop"
+		locker.Visible = true
+		refreshLocker()
 	elseif kind == "sfx" then
 		sfx(a, b)
 	elseif kind == "sight" then

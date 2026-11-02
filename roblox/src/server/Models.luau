@@ -13,6 +13,10 @@ local SKIN = {
 	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
 	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
 	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Pebble,
+	megalodon = Enum.Material.SmoothPlastic, megalodon_h = Enum.Material.SmoothPlastic, kraken = Enum.Material.Rubber, cthulhu = Enum.Material.Rubber,
+	leviathan = Enum.Material.Pebble, mosasaurus = Enum.Material.Pebble, nessie = Enum.Material.Pebble, spinosaurus = Enum.Material.Pebble,
+	trex = Enum.Material.Pebble, yeti = FABRIC, bigfoot = FABRIC, chupacabra = Enum.Material.Pebble, vampire = FABRIC,
+	quetzalcoatlus = Enum.Material.Pebble, gargoyle = SLATE, dragon = Enum.Material.Pebble, fester = FABRIC,
 }
 local defaultMat = PLASTIC
 
@@ -345,13 +349,35 @@ end
 
 -- Weld a monster model onto a character. Returns the model.
 -- lobby-shop monster skins (cosmetic colour grades, bought with in-game coins)
+do -- v1.4 phase-2 monsters
+	local more = require(script.Parent:WaitForChild("ModelsP2"))({ rgb = rgb, at = at, BALL = BALL, CYL = CYL, NEON = NEON, humanoidBody = humanoidBody })
+	for k, f in pairs(more) do BUILD[k] = f end
+end
 local SKINS = {
 	shadow = { tint = Color3.fromRGB(10, 10, 14), k = 0.65 },
 	toxic = { tint = Color3.fromRGB(90, 220, 60), k = 0.45 },
 	frost = { tint = Color3.fromRGB(150, 210, 255), k = 0.5 },
 	blood = { tint = Color3.fromRGB(150, 10, 10), k = 0.5 },
 	golden = { tint = Color3.fromRGB(255, 200, 60), k = 0.6, mat = Enum.Material.Foil },
+	lava = { tint = Color3.fromRGB(255, 90, 20), k = 0.55, mat = Enum.Material.CrackedLava },
+	neon = { tint = Color3.fromRGB(255, 40, 220), k = 0.5, mat = Enum.Material.Neon },
+	abyss = { tint = Color3.fromRGB(10, 30, 80), k = 0.6, mat = Enum.Material.Glass },
 }
+-- Father Fester grows stronger as more survivors see him: stage parts appear, his eyes burn red
+function Models.festerStage(model, stage)
+	if not model then return end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if d.Name == "Stage3" then d.Transparency = stage >= 3 and 0 or 1 end
+			if d.Name == "Stage5" then d.Transparency = stage >= 5 and 0 or 1 end
+			if d.Name == "Stage6" then d.Transparency = stage >= 6 and 0.6 or 1 end
+			if d.Name == "Pupil" then d.Color = Color3.fromRGB(255, 255 - stage * 40, 255 - stage * 42) end
+		end
+	end
+	local root = model.PrimaryPart
+	local glow = root and root:FindFirstChildOfClass("PointLight")
+	if glow then glow.Range = 14 + stage * 4; glow.Brightness = 0.7 + stage * 0.25 end
+end
 function Models.applySkin(model, skin)
 	local s = SKINS[skin]
 	if not s or not model then return end
@@ -394,6 +420,7 @@ function Models.morph(character, kind, skin)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
 	Models.applySkin(model, skin)
+	if kind == "fester" then Models.festerStage(model, 0) end
 	-- hide the player's own avatar
 	for _, d in ipairs(character:GetDescendants()) do
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and not d:IsDescendantOf(model) then
@@ -427,6 +454,7 @@ function Models.template(kind)
 	(BUILD[kind] or BUILD.freddy)(P)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
+	if kind == "fester" then Models.festerStage(model, 6) end
 	return model
 end
 

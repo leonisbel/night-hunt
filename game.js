@@ -77,15 +77,16 @@ function onMsg(m) {
     case 's': snap = m; break;
     case 'event': addEvent(m.msg, m.kind); break;
     case 'flight': { const mine = m.roles.find(r => r.id === me); flight = { start: performance.now(), until: performance.now() + m.secs * 1000, theme: m.theme, mine }; showFlightCard(); sfx('heli'); break; }
-    case 'caught': jumpscare = { type: m.by, fm: m.fm || 0, start: performance.now(), until: performance.now() + SCARE_LEN * 1000 }; sfx(scareSound(m.by)); if (navigator.vibrate) navigator.vibrate([80, 40, 200]); break;
+    case 'caught': jumpscare = { type: m.by, fm: m.fm || 0, start: performance.now(), until: performance.now() + scareLen(m.by, m.fm || 0) * 1000 }; sfx(scareSound(m.by)); if (navigator.vibrate) navigator.vibrate([80, 40, 200]); break;
     case 'scare': if (m.mid === me && world) { // the monster who made the catch sees the kill from its own view
         const v = snap && snap.ps.find(p => p.id === m.id); world.addWitness(m, disp);
         killcam = { start: performance.now(), type: m.by, x: m.x, y: m.y, name: v ? v.n : 'a survivor', zoom: cam.zoom, pitch: cam.pitch }; killSplats = null; sfx('scare');
         break; }
       if (m.id !== me && world) { const md = disp[me]; const d = md ? Math.hypot(md.dx - m.x, md.dy - m.y) : 1e9; if (d < 900) { world.addWitness(m, disp); sfx('scream', { vol: Math.max(.25, 1 - d / 900), pan: md ? (m.x - md.dx) / 900 : 0 }); } } break;
     case 'fx': if (world) world.addFx(m); if (m.kind === 'siren') world.shake = .6; fxSound(m); break;
-    case 'sfx': { const pan = posPan(m); if (m.kind === 'sirenhead') sfx('siren'); else if (m.kind === 'heli') sfx('heli'); else if (['open', 'down', 'dry', 'eat', 'drink', 'hit', 'pickup', 'laugh', 'dark', 'portal', 'inject', 'dream', 'buzz', 'stretch', 'sleep', 'sonlaugh', 'quake', 'shift', 'paranoia'].includes(m.kind)) sfx(m.kind, m.kind === 'laugh' || m.kind === 'dark' || m.kind === 'sonlaugh' ? {} : pan); else sfx('ability'); break; }
+    case 'sfx': { const pan = posPan(m); if (m.kind === 'sirenhead') sfx('siren'); else if (m.kind === 'heli') sfx('heli'); else if (['open', 'down', 'dry', 'eat', 'drink', 'hit', 'pickup', 'laugh', 'dark', 'portal', 'inject', 'dream', 'buzz', 'stretch', 'sleep', 'sonlaugh', 'quake', 'shift', 'paranoia', 'wave', 'tentacle', 'thunder', 'whirl', 'nessie', 'roar', 'screech', 'fire', 'drain', 'bats', 'fester', 'boat'].includes(m.kind)) sfx(m.kind, m.kind === 'laugh' || m.kind === 'dark' || m.kind === 'sonlaugh' ? {} : pan); else sfx('ability'); break; }
     case 'locust': locustSlam(); break;
+    case 'kitused': if (locker) { locker.kitUsed(m.k); addEvent(`🎒 Your store supplies were packed: ${m.k.map(k => ITEMS[k] ? ITEMS[k].icon + ' ' + ITEMS[k].name : k).join(', ')}`, 'good'); } break;
     case 'pickup': { const I = ITEMS[m.k]; sfx('pickup'); if (I) addEvent(`Picked up ${I.icon} ${I.name}${m.n > 1 ? ' ×' + m.n : ''}`, 'good'); break; }
     case 'used': { const I = ITEMS[m.k]; if (I) sfx(I.drink ? 'drink' : I.type === 'armor' ? 'pickup' : 'eat'); break; }
     case 'hurt': sfx('hurt'); $('hpbar').classList.remove('hurt'); void $('hpbar').offsetWidth; $('hpbar').classList.add('hurt'); if (world) world.shake = Math.max(world.shake || 0, .35); if (navigator.vibrate) navigator.vibrate(60); break;
@@ -110,7 +111,7 @@ function fxSound(m) {
   else if (m.kind === 'hit' || m.kind === 'slash') sfx('hit', o);
 }
 let earnedLast = 0;
-function sendProfile() { if (room && locker) { const P = locker.profile; send({ t: 'profile', look: P.look, pref: P.pref, skin: P.owned.includes('skin:' + P.skin) ? P.skin : 'classic' }); } }
+function sendProfile() { if (room && locker) { const P = locker.profile; send({ t: 'profile', look: P.look, pref: P.pref, skin: P.owned.includes('skin:' + P.skin) ? P.skin : 'classic', kit: P.kit }); } }
 const locker = initLocker({ onChange: () => sendProfile(), monsters: () => MON, sfx });
 function showFlightCard() {
   const f = flight, M = f.mine && f.mine.role === 'monster' ? MON[f.mine.mt] : null, c = $('flightcard');
@@ -126,7 +127,7 @@ addEventListener('keydown', e => {
   audio.unlock();
   if (KM[e.code]) { keys[KM[e.code]] = 1; e.preventDefault(); }
   if (e.code === 'Space') { if (!e.repeat) { primary(true); } e.preventDefault(); }
-  if (e.code === 'KeyE') { if (amSurvivor()) send({ t: 'open' }); else send({ t: 'ability' }); e.preventDefault(); }
+  if (e.code === 'KeyE') { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k]); else if (amSurvivor()) send({ t: 'open' }); else send({ t: 'ability' }); e.preventDefault(); }
   if (e.code === 'KeyQ' && !amSurvivor()) send({ t: 'ability' });
   if (/^Digit[1-6]$/.test(e.code)) send({ t: 'sel', i: +e.code[5] - 1 });
   if (e.code === 'KeyG') send({ t: 'drop' });
@@ -152,7 +153,7 @@ $('c').addEventListener('mousedown', e => { if (touch.active && e.sourceCapabili
 addEventListener('mouseup', e => { if (e.button === 0) primary(false); });
 
 let boardOn = false;
-const touch = initTouch({ onAttack: on => primary(on), onOpen: () => send({ t: 'open' }), onAbility: () => send({ t: 'ability' }), onBoard: () => { boardOn = !boardOn; showBoard(boardOn); }, onMute: () => (muted = audio.toggleMute()), unlock: () => audio.unlock() });
+const touch = initTouch({ onAttack: on => primary(on), onOpen: () => { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k]); else send({ t: 'open' }); }, onAbility: () => send({ t: 'ability' }), onBoard: () => { boardOn = !boardOn; showBoard(boardOn); }, onMute: () => (muted = audio.toggleMute()), unlock: () => audio.unlock() });
 setInterval(() => {
   if (!room) return;
   // movement is relative to the camera: forward = where the camera looks
@@ -245,10 +246,33 @@ function hud(mp, ghost) {
   $('stam').classList.toggle('hide', !(st === 'playing' && mp.role === 'survivor' && !ghost)); $('stam').firstChild.style.width = snap.me.stamina + '%'; $('stam').firstChild.style.background = mp.st.grey ? '#777' : snap.me.stamina < 25 ? '#c33' : '#3c3';
   $('hostbox').classList.toggle('hide', !(isHost && st === 'lobby'));
   document.body.classList.toggle('inlobby', st === 'lobby');
-  invHud(mp, ghost);
+  invHud(mp, ghost); p2Hud(mp, ghost);
   const boarded = snap.boarded.length, humans = snap.ps.filter(p => !p.b), hb = humans.filter(p => snap.boarded.includes(p.id)).length;
   $('lobbyhint').classList.toggle('hide', st !== 'lobby');
   if (st === 'lobby') $('lobbyhint').innerHTML = `🚁 Walk onto the helicopter pad to board — ${boarded}/${snap.ps.length} boarded<br><small>${snap.ps.length < 2 ? 'Need at least 2 players. Invite friends with the code' + (isHost ? ' or add a bot' : '') : hb < humans.length ? 'Waiting for everyone to board…' : isHost ? 'Everyone is aboard — press Take off!' : 'Waiting for the host to take off…'}</small>`;
+}
+// ---------- v1.4: the walk-in lobby store, boats, storm / weather overlays, Father Fester stage ----------
+const ZONE_TAB = { shop: 'shop', mirror: 'look', skins: 'skins' };
+let lastZone = null;
+function storeZone() { if (!snap || snap.state !== 'lobby' || !map || !map.zones) return null; const md = disp[me]; if (!md) return null; return map.zones.find(z => md.dx > z.x && md.dx < z.x + z.w && md.dy > z.y && md.dy < z.y + z.h) || null; }
+function p2Hud(mp, ghost) {
+  const z = storeZone(), zp = $('zoneprompt');
+  if (z !== lastZone) { lastZone = z; if (z) { sfx('click'); locker.open(ZONE_TAB[z.k]); } }
+  zp.classList.toggle('hide', !z); if (z) { zp.innerHTML = `${{ shop: '🛒', mirror: '🪞', skins: '✨' }[z.k]} ${z.name}<small>${touch.active ? 'Tap here' : 'Press E'} to browse · walk out to leave</small>`; zp.onclick = () => locker.open(ZONE_TAB[z.k]); }
+  const live = snap.state === 'playing' && !ghost, S2 = mp.st || {}, ov = $('p2over');
+  const cls = live ? (S2.burn ? 'burn' : S2.fog ? 'fog' : S2.snow ? 'snow' : S2.storm ? 'storm' : S2.soak ? 'soak' : '') : '';
+  if (ov.className !== cls) ov.className = cls;
+  let warn = '';
+  if (live && S2.storm) warn = '⛈ STORM! TURN BACK TO CALM WATER ⛈';
+  else if (live && S2.thunder) warn = '⚡ LIGHTNING INCOMING — KEEP MOVING ⚡';
+  else if (live && map && map.islands && mp.role === 'survivor') { const md = disp[me]; if (md && Math.hypot(md.dx - map.w / 2, md.dy - map.h / 2) > map.safe * .86) warn = '⚠ Storm ahead — the sea gets deadly past the red buoys'; }
+  else if (live && mp.role === 'monster' && mp.mt === 'fester') warn = `Father Fester · stage ${mp.fm || 0}/6`;
+  const pw = $('p2warn'); pw.classList.toggle('hide', !warn); if (warn && pw.textContent !== warn) pw.textContent = warn;
+}
+function boatPrompt(mp) {
+  if (!snap.bt || !snap.bt.length || mp.role !== 'survivor') return null; const md = disp[me]; if (!md) return null;
+  if (mp.bt) return 'E — get off the boat ⚓';
+  const b = snap.bt.find(b => Math.hypot(b[1] - md.dx, b[2] - md.dy) < (b[4] ? 120 : 90)); return b ? `E — board the ${b[4] ? 'ship 🚢' : 'boat 🚤'}` : null;
 }
 let hotSig = '';
 function invHud(mp, ghost) {
@@ -258,7 +282,8 @@ function invHud(mp, ghost) {
   let near = null;
   if (sv && map.loot) { const md = disp[me], lo = new Set(snap.lo || []); let bd = 75; for (const c of map.loot) if (!lo.has(c.id)) { const d = Math.hypot(c.x - md.dx, c.y - md.dy); if (d < bd) { bd = d; near = c; } } }
   let bed = null; if (sv && !near && !mp.st.sleep && map.props) { const md = disp[me]; bed = map.props.find(o => o.k === 'bed' && md.dx > o.x - 40 && md.dx < o.x + o.w + 40 && md.dy > o.y - 40 && md.dy < o.y + o.h + 40); }
-  $('prompt').classList.toggle('hide', !near && !bed); if (near) $('prompt').textContent = `E — open ${near.kind === 'chest' ? 'chest 🧰' : 'bag 🎒'}`; else if (bed) $('prompt').textContent = 'E — sleep in bed 🛏️ (heals)';
+  const bp = sv && !near && !bed ? boatPrompt(mp) : null;
+  $('prompt').classList.toggle('hide', !near && !bed && !bp); if (bp) $('prompt').textContent = bp; else if (near) $('prompt').textContent = `E — open ${near.kind === 'chest' ? 'chest 🧰' : 'bag 🎒'}`; else if (bed) $('prompt').textContent = 'E — sleep in bed 🛏️ (heals)';
   $('topen').classList.toggle('hide', !near && !bed && !(sv && mp.st.sleep)); $('topen').firstChild.textContent = near ? '📦' : bed ? '🛏️' : '⏰'; $('topen').querySelector('small').textContent = near ? 'OPEN' : bed ? 'SLEEP' : 'WAKE';
   if (!sv) return;
   const M = snap.me, hp = Math.max(0, M.hp), pct = hp / M.mhp * 100;
@@ -347,13 +372,15 @@ requestAnimationFrame(frame);
 if (params.has('desktop') && $('dlwin')) $('dlwin').remove();
 
 // ---------- jumpscares: one per monster, then a cut to black at impact (with optional teen-level blood splatter) ----------
-const SCARE_LEN = 2.6, IMPACT = { sirenhead: 2.0, cartooncat: 1.9, monochrome: 2.0, locust: 1.9 };
+const IMPACT = { sirenhead: 2.0, cartooncat: 1.9, monochrome: 2.0, locust: 1.9, megalodon: 2.95, kraken: 2.05, cthulhu: 2.25, leviathan: 2.05, mosasaurus: 1.65, nessie: 2.15, spinosaurus: 2.05, trex: 2.05, quetzalcoatlus: 2.15, dragon: 2.15, yeti: 2.0, bigfoot: 2.0, chupacabra: 1.65, vampire: 2.0, gargoyle: 1.6, fester: 2.1 };
+const impactOf = (type, fm) => type === 'megalodon' && fm === 1 ? 1.25 : IMPACT[type] || 1.55;
+const scareLen = (type, fm) => Math.max(2.6, impactOf(type, fm) + 1.05);
 let scareShown = false, splats = null, killcam = null, killSplats = null;
 const KILL_LEN = 2.4;
-function scareSound(k) { return { sonicexe: 'sonlaugh', sirenhead: 'siren', locust: 'locust', monochrome: 'dark' }[k] ? 'scare2' : 'scare'; }
+function scareSound(k) { const x = { trex: 'roar', spinosaurus: 'roar', yeti: 'roar', bigfoot: 'roar', dragon: 'fire', quetzalcoatlus: 'screech', gargoyle: 'screech', vampire: 'bats', fester: 'fester', cthulhu: 'thunder', kraken: 'tentacle', leviathan: 'wave', nessie: 'nessie', megalodon: 'wave', mosasaurus: 'wave' }[k]; if (x) setTimeout(() => sfx(x), 200); return { sonicexe: 'sonlaugh', sirenhead: 'siren', locust: 'locust', monochrome: 'dark' }[k] || x ? 'scare2' : 'scare'; }
 function drawScare(type, e) {
   const c = $('scareover'); if (!scareShown) { scareShown = true; c.classList.remove('hide'); splats = null; c.width = innerWidth; c.height = innerHeight; }
-  const g = c.getContext('2d'), W = c.width, H = c.height, imp = IMPACT[type] || 1.55; g.clearRect(0, 0, W, H);
+  const g = c.getContext('2d'), W = c.width, H = c.height, imp = impactOf(type, jumpscare ? jumpscare.fm : 0); g.clearRect(0, 0, W, H);
   if (e < imp) {
     if (type === 'locust') { // possession: screen tears, colour channels split, static
       for (let i = 0; i < 14; i++) { const y = Math.random() * H, h = 4 + Math.random() * 30; g.fillStyle = `rgba(${Math.random() < .5 ? 255 : 0},${Math.random() * 80 | 0},${Math.random() < .5 ? 255 : 0},${.08 + e * .08})`; g.fillRect((Math.random() - .5) * 60, y, W, h); }
@@ -386,7 +413,7 @@ function drawScare(type, e) {
 // the catching monster's own view of the kill: the victim's animation in the world, a red pulse, blood at the edges, caption
 function drawKill(e) {
   const c = $('scareover'); c.classList.remove('hide'); if (c.width !== innerWidth) { c.width = innerWidth; c.height = innerHeight; }
-  const g = c.getContext('2d'), W = c.width, H = c.height, imp = IMPACT[killcam.type] || 1.55; g.clearRect(0, 0, W, H);
+  const g = c.getContext('2d'), W = c.width, H = c.height, imp = impactOf(killcam.type, 0); g.clearRect(0, 0, W, H);
   const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .25, W / 2, H / 2, Math.max(W, H) * .7); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(90,0,0,${.35 + Math.sin(e * 9) * .1})`); g.fillStyle = vg; g.fillRect(0, 0, W, H);
   if (e >= imp) {
     if (opt.blood) {

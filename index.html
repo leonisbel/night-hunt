@@ -8,7 +8,7 @@
 <div id="menu" class="panel hide">
   <h1>NIGHT HUNT <span class="r13" title="Rated 13+">13+</span></h1><p class="sub">a multiplayer monster survival game (fan-made, play with friends)</p>
   <label>Your name <input id="pname" maxlength="16" placeholder="Player"></label>
-  <div class="lockrow"><button class="blocker">🎨 Customize · Monster · Shop</button><span class="coinpill">🪙 <b class="coinv">0</b></span></div>
+  <div class="lockrow storebar"><button class="blocker" data-tab="look">🪞<b>Dressing Room</b></button><button class="blocker" data-tab="monster">👹<b>Monster</b></button><button class="blocker" data-tab="shop">🛒<b>Item Counter</b></button><button class="blocker" data-tab="skins">✨<b>Skins</b></button><span class="coinpill">🪙 <b class="coinv">0</b></span></div>
   <label>Play mode <select id="mode"><option value="online">🌐 Online (internet, peer-to-peer)</option><option value="server">📶 This server (Wi-Fi / LAN)</option></select></label>
   <label class="chk"><input type="checkbox" id="optblood" checked> Blood effects (jumpscares)</label>
   <div class="tabs"><button data-tab="create" class="on">Create Server</button><button data-tab="join">Join with Code</button><button data-tab="browse">Public Servers</button></div>
@@ -35,13 +35,14 @@
   <div id="vitals" class="hide"><div id="hpbar"><div></div><span></span></div><div id="armor"></div></div>
   <div id="hotbar" class="hide"></div>
   <div id="prompt" class="hide"></div>
-  <button class="blocker lobbyonly" id="blocker2">🎨 Locker &amp; Shop · 🪙 <b class="coinv">0</b></button>
+  <div class="storebar lobbyonly" id="blocker2"><span class="sbt">🏬 STORE</span><button class="blocker" data-tab="look">🪞<b>Dressing Room</b></button><button class="blocker" data-tab="monster">👹<b>Monster</b></button><button class="blocker" data-tab="shop">🛒<b>Items</b></button><button class="blocker" data-tab="skins">✨<b>Skins</b></button><span class="coinpill">🪙 <b class="coinv">0</b></span></div>
   <div id="ability"></div>
   <div id="hostbox" class="hide"><b>Host controls</b><div><button id="bstart" class="big">🚁 Take off!</button></div>
     <div><button id="baddbot">+ Bot</button><button id="bkick">− Bot</button></div>
     <label>Round <select id="hround"><option value="300">5 min</option><option value="420">7 min</option><option value="600">10 min</option></select></label>
     <label>Max <input id="hmax" type="number" min="2" max="15"></label> <label><input type="checkbox" id="hpub"> Public</label></div>
   <div id="lobbyhint"></div>
+  <div id="zoneprompt" class="hide"></div><div id="p2over"></div><div id="p2warn" class="hide"></div>
   <div id="events"></div>
   <div id="board" class="hide"></div>
   <button id="bleave">Leave</button>

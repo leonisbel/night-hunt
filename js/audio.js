@@ -63,6 +63,12 @@ export function setAmbience(theme) {
     if (theme === 'Foggy Woods') { if (r < .3) for (let i = 0; i < 6; i++) tone(4200 + Math.random() * 300, .04, 'sine', .015, 0, .1, pan, i * .09); else if (r < .45) { tone(380, .35, 'sine', .04, 330, .7, pan); tone(330, .5, 'sine', .035, 300, .7, pan, .45); } else if (r < .6) burst(.25, .08, 900, 4, 'bandpass', .6, pan); }
     else if (theme === 'Static Fields') { if (r < .45) burst(.2 + Math.random() * .6, .05, 3000, .5, 'highpass', .2, pan); else if (r < .55) tone(950, .8, 'sine', .02, 0, .8, pan); }
     else if (theme === 'Abandoned Pizzeria Town') { if (r < .3) tone(70 + Math.random() * 40, 1.2, 'sawtooth', .03, 50, .8, pan); else if (r < .45) { tone(1500, .05, 'square', .02, 0, .7, pan); tone(1100, .05, 'square', .02, 0, .7, pan, .15); } else if (r < .55) burst(.6, .05, 300, 8, 'bandpass', .9, pan); }
+    else if (theme === 'Stormy Ocean') { if (r < .4) burst(2.5, .07, 500, .6, 'lowpass', .6, pan); else if (r < .5) sfx('thunder', { vol: .45, pan }); else if (r < .6) tone(1800, .3, 'sine', .02, 1500, .5, pan); }
+    else if (theme === 'Rainforest Swamp') { if (r < .35) for (let i = 0; i < 4; i++) tone(700 + Math.random() * 200, .12, 'triangle', .025, 400, .3, pan, i * .25); else if (r < .5) burst(.4, .05, 300, 2, 'bandpass', .5, pan); }
+    else if (theme === 'Snowy Mountain') { if (r < .35) burst(2.4, .06, 1100, 1.2, 'bandpass', .6, pan); else if (r < .42) tone(160, 1.5, 'sawtooth', .03, 110, .95, pan); }
+    else if (theme === 'Haunted Farm') { if (r < .25) tone(500, .25, 'square', .02, 420, .6, pan); else if (r < .4) burst(.6, .05, 900, 3, 'bandpass', .6, pan); }
+    else if (theme === 'Vampire Castle') { if (r < .25) sfx('bats', { vol: .3, pan }); else if (r < .4) tone(110, 2, 'sine', .04, 105, .95, pan); }
+    else if (theme === 'Fester Street') { if (r < .2) tone(880, .8, 'sine', .015, 860, .95, pan); else if (r < .3) burst(.15, .05, 2000, 3, 'bandpass', .4, pan); }
     else if (theme === 'lobby' && r < .2) burst(.4, .03, 600, 2, 'bandpass', .5, pan);
   }, 1700);
   amb = { theme, gain, nodes, timer };
@@ -151,6 +157,21 @@ export function sfx(k, o = {}) {
       for (const [f, f2] of [[1300, 420], [1700, 600], [900, 300]]) tone(f, 1.1, 'sawtooth', .14, f2, .6);
       burst(.25, .7, 3500, .7, 'highpass', .4); for (let i = 0; i < 6; i++) burst(.04, .35, 5000, 2, 'bandpass', .3, (Math.random() - .5), .05 + i * .03);
       tone(60, .5, 'sine', .5, 35, .3); break; }
+    // phase 2 creatures and weather
+    case 'wave': burst(2.2, .45 * v, 700, .6, 'lowpass', .6, pan); burst(1.4, .2 * v, 2400, .4, 'highpass', .5, pan, .3); tone(48, 1.6, 'sine', .35 * v, 30, .5, pan); break;
+    case 'tentacle': burst(.5, .3 * v, 500, 2, 'bandpass', .5, pan); for (let i = 0; i < 3; i++) burst(.12, .2 * v, 1200, 3, 'bandpass', .4, pan, .15 + i * .14); tone(90, .7, 'sawtooth', .1 * v, 50, .6, pan); break;
+    case 'thunder': burst(.15, .7 * v, 4000, .5, 'highpass', .3, pan); burst(2.6, .55 * v, 220, .7, 'lowpass', .9, pan, .05); tone(38, 2.2, 'sine', .45 * v, 26, .8, pan, .05); break;
+    case 'whirl': burst(3, .25 * v, 600, 1.5, 'bandpass', .8, pan); tone(120, 3, 'sine', .12 * v, 40, .8, pan); break;
+    case 'nessie': tone(140, 2.2, 'sawtooth', .14 * v, 90, .95, pan); tone(212, 2, 'sine', .08 * v, 140, .95, pan, .2); break;
+    case 'roar': { const t = AC.currentTime, d = distortion(160), g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.6 * v, t + .15); g.gain.exponentialRampToValueAtTime(.0001, t + 2);
+      for (const fr of [70, 104, 143]) { const o = AC.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(fr * 1.3, t); o.frequency.exponentialRampToValueAtTime(fr * .7, t + 1.9); o.connect(d); o.start(t); o.stop(t + 2); }
+      d.connect(f).connect(g); out(g, .6, pan); burst(1.8, .3 * v, 500, 1, 'lowpass', .6, pan); break; }
+    case 'screech': for (let i = 0; i < 2; i++) { tone(2400, .7, 'sawtooth', .1 * v, 1100, .6, pan, i * .35); tone(3100, .6, 'square', .05 * v, 1500, .6, pan, i * .35); } break;
+    case 'fire': burst(1.6, .5 * v, 900, .5, 'lowpass', .4, pan); burst(1.4, .2 * v, 3000, .5, 'highpass', .3, pan, .1); tone(60, 1.4, 'sawtooth', .15 * v, 40, .5, pan); break;
+    case 'drain': tone(300, 1.2, 'sine', .12 * v, 90, .9, pan); burst(1, .1 * v, 1800, 6, 'bandpass', .9, pan); break;
+    case 'bats': for (let i = 0; i < 14; i++) tone(5000 + Math.random() * 2500, .03, 'square', .025 * v, 0, .3, (Math.random() - .5) * 1.6, i * .07); burst(1, .1 * v, 1600, 4, 'bandpass', .5, pan); break;
+    case 'fester': { tone(95, 2.4, 'sine', .2 * v, 60, .95, pan); for (let i = 0; i < 4; i++) tone(1200 + i * 40, .5, 'sine', .03 * v, 1180, .95, pan, .4 + i * .5); break; }
+    case 'boat': tone(70, .5, 'sawtooth', .08 * v, 74, .2, pan); burst(.5, .08 * v, 400, 1, 'lowpass', .3, pan); break;
     default: tone(220, .3, 'triangle', .12, 90, .3);
   }
 }

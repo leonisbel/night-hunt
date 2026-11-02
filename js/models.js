@@ -2,15 +2,17 @@
 // Units are metres, feet at y=0, models face +Z.
 import * as THREE from '../vendor/three.module.min.js';
 import { tex, faceTex, glowTex } from './textures.js';
+import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { clone as skClone } from '../vendor/SkeletonUtils.js';
 
 const geo = {};
 const G = {
-  box: (x, y, z) => geo['b' + x + y + z] || (geo['b' + x + y + z] = new THREE.BoxGeometry(x, y, z)),
+  box: (x, y, z) => { const k = 'b' + [x, y, z]; return geo[k] || (geo[k] = new THREE.BoxGeometry(x, y, z)); },
   sph: (r, w = 18, h = 14, ...x) => { const k = 's' + [r, w, h, ...x]; return geo[k] || (geo[k] = new THREE.SphereGeometry(r, w, h, ...x)); },
   cyl: (a, b, h, s = 14, ...x) => { const k = 'c' + [a, b, h, s, ...x]; return geo[k] || (geo[k] = new THREE.CylinderGeometry(a, b, h, s, ...x)); },
-  cone: (r, h, s = 12) => geo['k' + r + h + s] || (geo['k' + r + h + s] = new THREE.ConeGeometry(r, h, s)),
-  cap: (r, l) => geo['p' + r + l] || (geo['p' + r + l] = new THREE.CapsuleGeometry(r, l, 6, 12)),
-  tor: (r, t) => geo['t' + r + t] || (geo['t' + r + t] = new THREE.TorusGeometry(r, t, 8, 24)),
+  cone: (r, h, s = 12) => { const k = 'k' + [r, h, s]; return geo[k] || (geo[k] = new THREE.ConeGeometry(r, h, s)); },
+  cap: (r, l) => { const k = 'p' + [r, l]; return geo[k] || (geo[k] = new THREE.CapsuleGeometry(r, l, 6, 12)); },
+  tor: (r, t) => { const k = 't' + [r, t]; return geo[k] || (geo[k] = new THREE.TorusGeometry(r, t, 8, 24)); },
 };
 export { G };
 
@@ -334,17 +336,297 @@ B.sonicexe = r => {
   add(head, G.box(.26, .03, .02), blk, [0, -.17, .37]); for (let i = -4; i <= 4; i++) add(head, G.box(.012, .025, .012), wht, [i * .028, -.155, .38]);
 };
 
+
+// ---------- v1.4 creature kit: CC0 glTF bases (Quaternius, public domain) + detailed procedural monsters ----------
+const GLB = {}, GLB_WAIT = {};
+export const GLB_LIST = ['trex', 'shark2', 'apato', 'raptor', 'dragon', 'bat'];
+export function loadGLB(n) {
+  if (n in GLB) return Promise.resolve(GLB[n]); if (GLB_WAIT[n]) return GLB_WAIT[n];
+  return (GLB_WAIT[n] = new GLTFLoader().loadAsync(new URL('../models/glb/' + n + '.glb', import.meta.url).href).then(g => (GLB[n] = g)).catch(e => { console.warn('model', n, e); return (GLB[n] = null); }));
+}
+if (typeof document !== 'undefined') GLB_LIST.forEach(loadGLB);
+export function glbReady() { return Promise.all(GLB_LIST.map(loadGLB)); }
+let WIG = null; // procedural idle motion collected while a monster is built
+function wig(o, a, m, f, p = 0) { if (WIG) WIG.push({ o, a, m, f, p, b: o.rotation[a] }); return o; }
+export function wiggleTick(root, t) { const w = root.userData.wiggle; if (w) for (const q of w) q.o.rotation[q.a] = q.b + Math.sin(t * q.f + q.p) * q.m; }
+function rootOf(o) { while (o.parent && !o.userData.kind) o = o.parent; return o; }
+// a skinned glTF creature dropped into `parent`, scaled to `len` (longest side) or `h`, tinted, with named animation clips
+function glbPart(parent, name, o = {}) {
+  const holder = grp(parent, [0, o.y || 0, o.z || 0], 'glb');
+  const fill = g => {
+    if (!g || holder.userData.filled) return; holder.userData.filled = true;
+    const m = skClone(g.scene); m.rotation.y = o.rot || 0; m.updateMatrixWorld(true);
+    const sz = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
+    m.scale.multiplyScalar(o.h ? o.h / sz.y : o.len / Math.max(sz.x, sz.z)); m.updateMatrixWorld(true);
+    const b2 = new THREE.Box3().setFromObject(m), c = b2.getCenter(new THREE.Vector3()); m.position.set(-c.x, -b2.min.y, -c.z);
+    const tint = o.tint ? new THREE.Color(o.tint) : null;
+    m.traverse(x => { if (!x.isMesh) return; x.castShadow = true; x.receiveShadow = true; x.frustumCulled = false;
+      x.material = (Array.isArray(x.material) ? x.material[0] : x.material).clone(); const M = x.material;
+      if (tint && M.color) M.color.lerp(tint, o.mix ?? .5); M.roughness = o.r ?? .7; M.metalness = 0;
+      if (o.bump && x.geometry.attributes.uv && !M.map) { M.bumpMap = tex(o.bump, o.rep || 4, { bump: true }); M.bumpScale = 1.2; }
+      if (o.eyes && M.name && /eye/i.test(M.name)) { M.emissive = new THREE.Color(o.eyes); M.emissiveIntensity = 2.5; } });
+    holder.add(m);
+    const root = rootOf(holder);
+    if (g.animations.length && o.anims) {
+      const mx = new THREE.AnimationMixer(m), A = {};
+      for (const [k, re] of Object.entries(o.anims)) { const clip = g.animations.find(a => re.test(a.name.split('|').pop())); if (clip) A[k] = mx.clipAction(clip); }
+      root.userData.anim = { mx, A, cur: null };
+    }
+    if (o.ready) o.ready(m, b2.getSize(new THREE.Vector3()), holder);
+    if (root.userData.skin) applySkin(holder, root.userData.skin);
+    root.userData.dirty = true;
+  };
+  if (GLB[name] !== undefined) fill(GLB[name]); else loadGLB(name).then(fill);
+  return holder;
+}
+// drive a glTF creature's clips: idle / walk / run / attack / swim
+export function animTick(root, dt, want, speed = 1) {
+  const a = root.userData.anim; if (!a) return false;
+  const act = a.A[want] || (want === 'run' && a.A.walk) || (want === 'swim' && (a.A.walk || a.A.idle)) || a.A.idle || a.A.walk; if (!act) return false;
+  if (a.cur !== act) { act.reset(); act.play(); if (a.cur) a.cur.crossFadeTo(act, .22, false); a.cur = act; }
+  act.timeScale = speed; a.mx.update(dt); return true;
+}
+// segmented tentacle / tail / neck: a chain of tapered segments, each bent a little from the last
+function chain(parent, p, n, len, r0, r1, m, bend = .15, opt = {}) {
+  const root = grp(parent, p), segs = []; let g = root; const rr = v => Math.round(v * 100) / 100;
+  for (let i = 0; i < n; i++) {
+    const t = i / n, r = rr(r0 + (r1 - r0) * t), r2 = rr(r0 + (r1 - r0) * (i + 1) / n);
+    add(g, G.cyl(Math.max(.01, r2), r, len, 10), m, [0, len / 2, 0]); add(g, G.sph(r, 10, 8), m);
+    if (opt.suck) add(g, G.sph(rr(r * .38), 8, 6), opt.suck, [0, len * .5, r * .82], [0, 0, 0], [1, 1, .5]);
+    if (opt.spike) add(g, G.cone(rr(r * .35), rr(r * 1.2), 5), opt.spike, [0, len * .5, -r * .9], [-.6, 0, 0]);
+    segs.push(g); const ng = grp(g, [0, len, 0]); ng.rotation.x = opt.bends ? opt.bends[i] ?? bend : bend; g = ng;
+    if (opt.wave) wig(ng, opt.axis || 'x', opt.wave, opt.f || 1.6, i * .55 + (opt.ph || 0));
+  }
+  root.userData.segs = segs; root.userData.tip = g; return root;
+}
+// bat / dragon-style wing: finger bones + a leathery membrane (side = -1 left, 1 right)
+function wing(parent, p, side, span, bone, memb) {
+  const w = grp(parent, p), sh = new THREE.Shape();
+  sh.moveTo(0, 0); sh.lineTo(span * .45, span * .32); sh.lineTo(span, span * .12); sh.quadraticCurveTo(span * .82, -span * .1, span * .78, -span * .32);
+  sh.quadraticCurveTo(span * .6, -span * .15, span * .5, -span * .42); sh.quadraticCurveTo(span * .35, -span * .2, span * .22, -span * .38); sh.quadraticCurveTo(span * .12, -span * .15, 0, -span * .18);
+  const mm = new THREE.Mesh(new THREE.ShapeGeometry(sh, 6), memb); mm.castShadow = true; w.add(mm);
+  for (const [x, y] of [[span * .45, span * .32], [span, span * .12], [span * .78, -span * .32], [span * .5, -span * .42], [span * .22, -span * .38]]) {
+    const l = Math.hypot(x, y), b = add(w, G.cyl(.035 * span / 3, .02 * span / 3, l, 6), bone, [x / 2, y / 2, 0]); b.rotation.z = Math.atan2(y, x) - Math.PI / 2; }
+  w.scale.x = side; return w;
+}
+function claws(parent, p, n, m, len = .14, spread = .05) { for (let i = 0; i < n; i++) add(parent, G.cone(.025, len, 5), m, [p[0] + (i - (n - 1) / 2) * spread, p[1], p[2]], [Math.PI * .85, 0, 0]); }
+function teethRow(parent, cx, cy, cz, rx, rz, n, m, down = true, size = .07) {
+  for (let i = 0; i < n; i++) { const a = Math.PI * (i + .5) / n, x = cx + Math.cos(a) * rx, z = cz + Math.sin(a) * rz; add(parent, G.cone(+(size * .38).toFixed(3), size, 4), m, [x, cy, z], [down ? Math.PI : 0, 0, 0]); }
+}
+const EYE = (c, ei = 3) => mat(c, { e: c, ei, r: .2 });
+
+// --- Megalodon (sea form): CC0 shark, scaled to 15 m, scarred grey
+B.megalodon = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 1.4, 6.4], 'head');
+  glbPart(body, 'shark2', { len: 15, tint: '#55606a', mix: .3, r: .5, anims: { idle: /^Swim$/, walk: /^Swim$/, run: /Swim_Fast/, attack: /Swim_Bite/ } }); };
+// --- Megalodon (land form): a giant, buff humanoid shark
+B.megalodon_h = r => {
+  const grey = mat('#5b6976', { map: 'skin', bump: 'skin', bs: 1.4, r: .42 }), belly = mat('#d9d6cb', { map: 'skin', bump: 'skin', r: .5 }), dark = mat('#252c34', { r: .5 });
+  const tooth = mat('#f4f0e2', { r: .3 }), gum = mat('#6e1e26', { r: .55 }), eyeM = mat('#040404', { r: .05, m: .4 });
+  const body = grp(r, [0, 0, 0], 'body');
+  [-1, 1].forEach(sx => { const l = limb(body, [sx * .45, 1.6, 0], .82, .27, grey, null, .78); l.name = sx < 0 ? 'legL' : 'legR'; add(l.userData.low, G.box(.48, .2, .78), grey, [0, -.8, .16]); claws(l.userData.low, [0, -.82, .56], 3, tooth, .16, .13); });
+  add(body, G.sph(.56, 18, 14), grey, [0, 1.72, 0], [0, 0, 0], [1.35, .72, 1]);
+  add(body, G.sph(.82, 22, 18), grey, [0, 2.5, -.02], [0, 0, 0], [1.42, 1.08, .92]);
+  add(body, G.sph(.7, 20, 16), belly, [0, 2.38, .24], [0, 0, 0], [1.08, 1.02, .72]);
+  for (let i = 0; i < 3; i++) for (const sx of [-1, 1]) add(body, G.sph(.15, 10, 8), belly, [sx * .17, 2.0 + i * .28, .72], [0, 0, 0], [1.2, .8, .5]);
+  for (const sx of [-1, 1]) { add(body, G.sph(.4, 16, 12), grey, [sx * .4, 2.9, .38], [0, 0, 0], [1.15, .78, .62]); add(body, G.sph(.36, 14, 12), grey, [sx * .98, 3.05, -.05]); }
+  add(body, G.cone(.4, 1.5, 4), grey, [0, 3.35, -.78], [-.55, 0, 0], [.22, 1, 1.1]);         // dorsal fin
+  const tail = chain(body, [0, 1.75, -.55], 5, .5, .3, .07, grey, .22, { wave: .12, axis: 'z', f: 2.2 }); tail.rotation.x = -2.0;
+  add(tail.userData.tip, G.cone(.25, 1.1, 4), grey, [0, .3, 0], [0, 0, .5], [.2, 1, 1]);
+  [-1, 1].forEach(sx => { const a = limb(body, [sx * 1.18, 3.0, 0], .88, .25, grey, null, .82); a.name = sx < 0 ? 'armL' : 'armR'; a.rotation.z = sx * .22;
+    add(a, G.sph(.3, 12, 10), grey, [0, -.4, 0], [0, 0, 0], [1, 1.3, 1]); add(a.userData.low, G.cone(.16, .7, 4), grey, [0, -.35, -.25], [-.4, 0, 0], [.25, 1, 1]);
+    const hand = grp(a.userData.low, [0, -.85, 0]); add(hand, G.sph(.2, 12, 10), grey, [0, -.05, 0], [0, 0, 0], [1, .9, .8]); claws(hand, [0, -.2, .1], 4, tooth, .2, .08); });
+  add(body, G.cyl(.42, .55, .5, 14), grey, [0, 3.35, .05]);
+  const head = grp(body, [0, 3.62, .22], 'head');
+  add(head, G.sph(.56, 22, 16), grey, [0, .02, .3], [0, 0, 0], [1, .82, 1.65]);
+  add(head, G.sph(.46, 18, 12), belly, [0, -.24, .4], [0, 0, 0], [.95, .5, 1.45]);
+  const jaw = grp(head, [0, -.28, .05], 'jaw'); jaw.rotation.x = .4;
+  add(jaw, G.box(.78, .14, .95), grey, [0, -.06, .48]); add(jaw, G.box(.66, .05, .84), gum, [0, .03, .48]);
+  teethRow(jaw, 0, .1, .4, .3, .5, 11, tooth, false, .13); teethRow(head, 0, -.3, .42, .32, .55, 12, tooth, true, .14);
+  add(head, G.box(.6, .05, .7), gum, [0, -.26, .55]);
+  for (const sx of [-1, 1]) { add(head, G.sph(.07, 12, 10), eyeM, [sx * .42, .12, .55]); for (let i = 0; i < 4; i++) add(head, G.box(.02, .3, .05), dark, [sx * .5, -.12, -.05 - i * .13]); }
+  add(head, G.sph(.04, 8, 6), dark, [-.14, -.02, 1.18]); add(head, G.sph(.04, 8, 6), dark, [.14, -.02, 1.18]);
+};
+// --- Kraken: a colossal squid; mantle and two eyes break the surface, ten tentacles thrash
+B.kraken = r => {
+  const skin = mat('#7a2e28', { map: 'skin', bump: 'skin', bs: 2, r: .35 }), pale = mat('#d8a090', { r: .4 }), suck = mat('#e8c0b0', { r: .5 });
+  const body = grp(r, [0, 0, 0], 'body');
+  add(body, G.sph(1.6, 24, 18), skin, [0, 4.4, -.6], [-.35, 0, 0], [1, 1.9, 1]);
+  add(body, G.cone(1.2, 1.8, 4), skin, [0, 7.4, -1.6], [-.35, 0, 0], [1.4, 1, .25]); // mantle fin
+  add(body, G.sph(1.3, 20, 16), skin, [0, 2.1, .2], [0, 0, 0], [1.2, .85, 1.1]);
+  const head = grp(body, [0, 2.5, 1.1], 'head');
+  for (const sx of [-1, 1]) { add(head, G.sph(.42, 16, 12), pale, [sx * .9, .2, 0]); add(head, G.sph(.26, 14, 10), EYE('#ffcc20', 2), [sx * .98, .2, .22]); add(head, G.box(.08, .3, .05), mat('#050505'), [sx * .98, .2, .45]); glow(head, '#ffcc30', [sx * 1.0, .2, .5], .8); }
+  add(head, G.cone(.3, .6, 8), mat('#1a0a08'), [0, -.6, .3], [Math.PI, 0, 0]); // beak
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, long = i === 2 || i === 7, n = long ? 9 : 7;
+    const t = chain(body, [Math.cos(a) * 1.1, 1.6, Math.sin(a) * 1.1], n, long ? .9 : .75, .38, .06, skin, .2, { suck, wave: .14, f: 1.3 + (i % 3) * .2, ph: i });
+    t.rotation.set(Math.sin(a) * 1.25, 0, -Math.cos(a) * 1.25); }
+};
+// --- Cthulhu: winged, octopus-headed titan with a beard of feelers and red eyes
+B.cthulhu = r => {
+  const skin = mat('#5a8a5e', { map: 'scales', bump: 'scales', bs: 2, r: .45 }), dark = mat('#2a4430', { r: .5 }), memb = mat('#3a5440', { r: .6 }); memb.side = THREE.DoubleSide;
+  const claw = mat('#0a0a08', { r: .3 }), body = grp(r, [0, 0, 0], 'body');
+  [-1, 1].forEach(sx => { const l = limb(body, [sx * .6, 2.6, 0], 1.3, .34, skin, null, 1.25); l.name = sx < 0 ? 'legL' : 'legR'; add(l.userData.low, G.box(.6, .25, 1), skin, [0, -1.25, .25]); claws(l.userData.low, [0, -1.25, .8], 3, claw, .3, .2); });
+  add(body, G.sph(1.15, 22, 18), skin, [0, 3.9, 0], [0, 0, 0], [1.25, 1.35, .9]);
+  for (let i = 0; i < 4; i++) add(body, G.box(1.3 - i * .1, .12, .3), dark, [0, 3.3 + i * .35, .85]);
+  [-1, 1].forEach(sx => { const a = limb(body, [sx * 1.55, 5.0, 0], 1.25, .3, skin, null, 1.2); a.name = sx < 0 ? 'armL' : 'armR'; a.rotation.z = sx * .3;
+    const hand = grp(a.userData.low, [0, -1.25, 0]); add(hand, G.sph(.3, 12, 10), skin); claws(hand, [0, -.35, .1], 4, claw, .45, .14); });
+  for (const sx of [-1, 1]) wig(wing(body, [sx * .7, 5.2, -.8], sx, 5.2, dark, memb), 'y', .25, 1.1, sx > 0 ? 0 : Math.PI);
+  const head = grp(body, [0, 6.1, .25], 'head');
+  add(head, G.sph(1.0, 22, 18), skin, [0, .5, -.25], [-.4, 0, 0], [1, 1.35, 1.05]);
+  for (const sx of [-1, 1]) { add(head, G.sph(.16, 12, 10), EYE('#ff1a10', 4), [sx * .42, .35, .7]); glow(head, '#ff2010', [sx * .44, .35, .82], .9); }
+  for (let i = 0; i < 9; i++) { const x = (i - 4) * .17, t = chain(head, [x, -.1, .6 - Math.abs(i - 4) * .06], 6, .3, .1, .025, skin, .12, { wave: .2, f: 1.8, ph: i * .7 }); t.rotation.x = Math.PI * .92; }
+};
+// --- Leviathan: an armoured sea serpent; coils arch out of the water behind a horned head
+B.leviathan = r => {
+  const sc = mat('#1f3e52', { map: 'scales', bump: 'scales', bs: 2.2, r: .3, m: .2 }), belly = mat('#8aa6a0', { r: .45 }), fin = mat('#2a6a7a', { r: .4 }); fin.side = THREE.DoubleSide;
+  const body = grp(r, [0, 0, 0], 'body'), tooth = mat('#e8e4d4', { r: .3 });
+  const segs = 16; let prev = null;
+  for (let i = 0; i < segs; i++) { const t = i / segs, z = 2 - i * 1.35, y = 1.0 + Math.max(0, Math.sin(t * Math.PI * 2.2)) * 3.2, rad = 1.5 - t * .95;
+    const s = add(body, G.sph(+rad.toFixed(2), 16, 12), sc, [0, y, z], [0, 0, 0], [1, .95, 1.4]); wig(s, 'z', .08, 1.2, i * .5);
+    add(body, G.cone(+(rad * .35).toFixed(2), +(rad * .9).toFixed(2), 4), fin, [0, y + rad * .9, z], [-.5, 0, 0], [.3, 1, 1]); }
+  const head = grp(body, [0, 2.2, 3.4], 'head'); head.rotation.x = .1;
+  add(head, G.sph(.9, 20, 16), sc, [0, 0, 0], [0, 0, 0], [1, .7, 1.6]);
+  const jaw = grp(head, [0, -.35, .2], 'jaw'); jaw.rotation.x = .45; add(jaw, G.box(1.1, .2, 1.6), belly, [0, -.05, .7]); teethRow(jaw, 0, .08, .55, .45, .9, 12, tooth, false, .2); teethRow(head, 0, -.42, .7, .48, .95, 12, tooth, true, .22);
+  for (const sx of [-1, 1]) { add(head, G.cone(.16, 1.4, 6), mat('#d8d0b8', { r: .4 }), [sx * .5, .6, -.6], [-1.0, 0, sx * -.3]); add(head, G.sph(.13, 12, 10), EYE('#40f0ff', 3.5), [sx * .55, .2, .7]); glow(head, '#30e0ff', [sx * .58, .2, .8], .7);
+    wing(head, [sx * .7, 0, -.4], sx, 1.4, fin, fin); }
+  wig(head, 'y', .12, .9);
+};
+// --- Mosasaurus: a 13 m marine lizard with a crocodile skull and a shark-like tail fluke
+B.mosasaurus = r => {
+  const sc = mat('#3c4a52', { map: 'scales', bump: 'scales', bs: 1.8, r: .38 }), belly = mat('#c8c4b4', { r: .5 }), tooth = mat('#efe9d6', { r: .3 }), gum = mat('#5a1a1e', { r: .5 });
+  const body = grp(r, [0, 0, 0], 'body');
+  add(body, G.sph(1.4, 22, 16), sc, [0, 1.6, 0], [0, 0, 0], [1, .85, 3]); add(body, G.sph(1.25, 20, 14), belly, [0, 1.25, .2], [0, 0, 0], [.92, .6, 2.7]);
+  const tail = chain(body, [0, 1.55, -3.6], 7, .9, .9, .15, sc, 0, { wave: .13, axis: 'z', f: 1.8 }); tail.rotation.x = -Math.PI / 2;
+  add(tail.userData.tip, G.cone(.6, 1.6, 4), sc, [0, .2, .5], [.9, 0, 0], [.18, 1, 1]); add(tail.userData.tip, G.cone(.4, 1.0, 4), sc, [0, .1, -.3], [-1.1, 0, 0], [.18, 1, 1]);
+  for (const [sx, z, s] of [[-1, 2, 1], [1, 2, 1], [-1, -2, .8], [1, -2, .8]]) wig(add(body, G.sph(.55 * s, 12, 10), sc, [sx * 1.4, .9, z], [0, 0, sx * .5], [1.8, .18, .8]), 'z', .25, 1.6, z);
+  const head = grp(body, [0, 1.85, 4.4], 'head');
+  add(head, G.sph(.85, 18, 14), sc, [0, 0, .6], [0, 0, 0], [.85, .55, 1.9]);
+  const jaw = grp(head, [0, -.25, -.2], 'jaw'); jaw.rotation.x = .35; add(jaw, G.box(1.0, .2, 2.6), sc, [0, -.08, 1.3]); add(jaw, G.box(.85, .05, 2.4), gum, [0, .03, 1.3]);
+  for (let i = 0; i < 12; i++) for (const sx of [-1, 1]) { add(jaw, G.cone(.05, .18, 4), tooth, [sx * .4, .14, .3 + i * .2]); add(head, G.cone(.05, .2, 4), tooth, [sx * .38, -.38, .1 + i * .2], [Math.PI, 0, 0]); }
+  for (const sx of [-1, 1]) add(head, G.sph(.1, 10, 8), EYE('#ffb020', 1.6), [sx * .5, .22, .5]);
+};
+// --- Nessie: CC0 long-neck dinosaur, dark green-black, slick
+B.nessie = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 7, 5.5], 'head');
+  glbPart(body, 'apato', { len: 15, tint: '#22342c', mix: .78, r: .3, anims: { idle: /Apatosaurus_Idle/, walk: /Apatosaurus_Walk/, run: /Apatosaurus_Run/, attack: /Apatosaurus_Attack/ } }); };
+// --- Spinosaurus: CC0 theropod base, swamp-brown, with a tall red-orange sail along the spine
+B.spinosaurus = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 4.6, 5.2], 'head');
+  const sailM = mat('#a83a1e', { map: 'skin', r: .5, e: '#3a0800', ei: .4 }); sailM.side = THREE.DoubleSide;
+  glbPart(body, 'trex', { len: 14, tint: '#5e4a2c', mix: .62, anims: { idle: /TRex_Idle/, walk: /TRex_Walk/, run: /TRex_Run/, attack: /TRex_Attack/ },
+    ready: (m, size, holder) => { const sh = new THREE.Shape(), L = size.z * .42, H = size.y * .42; sh.moveTo(-L / 2, 0); for (let i = 0; i <= 10; i++) { const x = -L / 2 + L * i / 10; sh.lineTo(x, H * Math.sin(Math.PI * i / 10) * (1 + (i % 2) * .08)); } sh.lineTo(L / 2, 0);
+      const s = new THREE.Mesh(new THREE.ShapeGeometry(sh, 4), sailM); s.rotation.y = -Math.PI / 2; s.position.set(0, size.y * .66, -size.z * .02); s.castShadow = true; holder.add(s); holder.userData.sail = s; } }); };
+// --- T-Rex: CC0 Quaternius base, olive-dark, glowing amber eyes
+B.trex = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 4.3, 5.0], 'head');
+  glbPart(body, 'trex', { len: 13, tint: '#3e4a30', mix: .5, eyes: '#ffa020', anims: { idle: /TRex_Idle/, walk: /TRex_Walk/, run: /TRex_Run/, attack: /TRex_Attack/ } }); };
+// --- Quetzalcoatlus: giraffe-tall pterosaur stalking on folded wings, huge beak and crest
+B.quetzalcoatlus = r => {
+  const skin = mat('#7a6a58', { map: 'skin', bump: 'skin', r: .55 }), dark = mat('#3a2e26', { r: .6 }), memb = mat('#5a3a2a', { r: .7 }); memb.side = THREE.DoubleSide;
+  const beak = mat('#c8a060', { r: .35 }), crest = mat('#a02a1a', { r: .4 }), body = grp(r, [0, 0, 0], 'body');
+  [-1, 1].forEach(sx => { const l = limb(body, [sx * .3, 1.4, -.5], .75, .08, skin, null, .7); l.name = sx < 0 ? 'legL' : 'legR'; claws(l.userData.low, [0, -.7, .1], 3, dark, .15, .06); });
+  add(body, G.sph(.6, 18, 14), skin, [0, 1.75, -.2], [.4, 0, 0], [.9, .8, 1.4]);
+  [-1, 1].forEach(sx => { const a = limb(body, [sx * .45, 2.1, .3], 1.15, .1, skin, null, 1.15); a.name = sx < 0 ? 'armL' : 'armR'; a.rotation.set(-.45, 0, sx * .12); claws(a.userData.low, [0, -1.15, .05], 3, dark, .14, .05);
+    const gm = new THREE.BufferGeometry(); gm.setAttribute('position', new THREE.Float32BufferAttribute([sx * .5, 2.15, .3, sx * .62, .35, 1.25, sx * .34, 1.55, -.7, sx * .62, .35, 1.25, sx * .3, 1.0, -.2, sx * .34, 1.55, -.7], 3)); gm.computeVertexNormals();
+    const wm = new THREE.Mesh(gm, memb); wm.castShadow = true; body.add(wm); });
+  const neck = chain(body, [0, 2.2, .5], 6, .45, .2, .12, skin, -.08, { wave: .04, f: 1.1 }); neck.rotation.x = .25;
+  const head = grp(neck.userData.tip, [0, .2, 0], 'head'); head.rotation.x = .35;
+  add(head, G.sph(.22, 14, 10), skin, [0, 0, 0], [0, 0, 0], [1, 1, 1.3]); add(head, G.cone(.16, 1.9, 10), beak, [0, -.05, 1.0], [Math.PI / 2, 0, 0], [1, 1, .7]);
+  add(head, G.cone(.25, 1.0, 4), crest, [0, .35, -.25], [-.9, 0, 0], [.15, 1, 1]); for (const sx of [-1, 1]) add(head, G.sph(.05, 8, 6), EYE('#ffcc00', 2), [sx * .15, .06, .12]);
+};
+// --- shared ape-man builder for the Yeti and Bigfoot
+function apeman(r, c) {
+  const fur = mat(c.fur, { map: 'fur', bump: 'fur', bs: 3, r: 1 }), face = mat(c.face, { map: 'skin', bump: 'skin', r: .65 }), claw = mat('#1a1612', { r: .35 }), tooth = mat('#e6e0cc', { r: .3 });
+  const H = c.h, body = grp(r, [0, 0, 0], 'body');
+  [-1, 1].forEach(sx => { const l = limb(body, [sx * .32 * H, .48 * H, 0], .25 * H, .14 * H, fur, null, .23 * H); l.name = sx < 0 ? 'legL' : 'legR'; add(l.userData.low, G.box(.26 * H, .08 * H, .38 * H), face, [0, -.23 * H, .08 * H]); claws(l.userData.low, [0, -.24 * H, .27 * H], 4, claw, .08 * H, .06 * H); });
+  add(body, G.sph(.36 * H, 18, 14), fur, [0, .7 * H, -.02 * H], [.15, 0, 0], [1.25, 1.35, 1]);
+  add(body, G.sph(.28 * H, 16, 12), c.chest ? face : fur, [0, .72 * H, .16 * H], [0, 0, 0], [1, 1.1, .6]);
+  for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; add(body, G.cone(.07 * H, .22 * H, 5), fur, [Math.cos(a) * .4 * H, .52 * H, Math.sin(a) * .3 * H], [Math.PI, 0, 0]); } // shaggy hem
+  [-1, 1].forEach(sx => { const a = limb(body, [sx * .5 * H, .9 * H, .02 * H], .3 * H, .12 * H, fur, null, .32 * H); a.name = sx < 0 ? 'armL' : 'armR'; a.rotation.z = sx * .18;
+    const hand = grp(a.userData.low, [0, -.32 * H, 0]); add(hand, G.sph(.1 * H, 12, 10), face, [0, -.03 * H, 0], [0, 0, 0], [1, 1.2, .7]); claws(hand, [0, -.14 * H, .04 * H], 4, claw, .1 * H, .035 * H); });
+  const head = grp(body, [0, 1.06 * H, .14 * H], 'head');
+  add(head, G.sph(.19 * H, 18, 14), fur, [0, .02 * H, -.03 * H], [0, 0, 0], [1, 1.12, 1]); add(head, G.cone(.12 * H, .18 * H, 10), fur, [0, .18 * H, -.06 * H]);
+  add(head, G.sph(.13 * H, 16, 12), face, [0, -.02 * H, .09 * H], [0, 0, 0], [1, .95, .7]);
+  add(head, G.box(.24 * H, .04 * H, .06 * H), face, [0, .06 * H, .16 * H]); // heavy brow
+  for (const sx of [-1, 1]) { add(head, G.sph(.022 * H, 10, 8), EYE(c.eye, c.eg), [sx * .05 * H, .025 * H, .19 * H]); if (c.eg > 2) glow(head, c.eye, [sx * .05 * H, .025 * H, .21 * H], .25 * H); }
+  const jaw = grp(head, [0, -.07 * H, .1 * H], 'jaw'); jaw.rotation.x = .25; add(jaw, G.box(.16 * H, .04 * H, .09 * H), face, [0, -.02 * H, .05 * H]);
+  for (const sx of [-1, 1]) { add(head, G.cone(.012 * H, .06 * H, 4), tooth, [sx * .05 * H, -.08 * H, .18 * H], [Math.PI, 0, 0]); add(jaw, G.cone(.012 * H, .05 * H, 4), tooth, [sx * .04 * H, .0, .1 * H]); }
+  if (c.horns) for (const sx of [-1, 1]) add(head, G.cone(.03 * H, .2 * H, 6), mat('#c8c0a8', { r: .4 }), [sx * .14 * H, .14 * H, -.02 * H], [-.4, 0, sx * -.7]);
+}
+B.yeti = r => apeman(r, { h: 3.4, fur: '#e8eef2', face: '#7a8a9a', eye: '#40c8ff', eg: 3, chest: true, horns: true });
+B.bigfoot = r => apeman(r, { h: 3.0, fur: '#4a3220', face: '#2e2018', eye: '#ffb030', eg: 1.2 });
+// --- Dragon: CC0 dragon base, blood-red with ember eyes
+B.dragon = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 3.6, 3.6], 'head');
+  glbPart(body, 'dragon', { len: 12, y: .8, tint: '#5a1208', mix: .55, eyes: '#ff7a10', anims: { idle: /Dragon_Flying/, walk: /Dragon_Flying/, run: /Dragon_Flying/, attack: /Dragon_Attack$/ } }); };
+// --- Chupacabra: CC0 raptor base, hairless grey-green, with quills down the back
+B.chupacabra = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 1.3, 1.5], 'head');
+  const quill = mat('#2a2622', { r: .4 });
+  glbPart(body, 'raptor', { len: 3.6, tint: '#4a4e40', mix: .72, r: .55, eyes: '#ff2010', anims: { idle: /Velociraptor_Idle/, walk: /Velociraptor_Walk/, run: /Velociraptor_Run/, attack: /Velociraptor_Attack/ },
+    ready: (m, size, holder) => { for (let i = 0; i < 9; i++) { const q = new THREE.Mesh(G.cone(.05, .42, 5), quill); q.position.set(0, size.y * (.74 - Math.abs(i - 3) * .03), size.z * (.18 - i * .07)); q.rotation.x = -.5; holder.add(q); } } }); };
+// --- Vampire: tall pale count in a high-collared cape, red eyes and fangs
+B.vampire = r => {
+  const suit = mat('#121216', { map: 'cloth', bump: 'cloth', r: .7 }), shirt = mat('#e8e4dc', { map: 'cloth', r: .7 }), skin = mat('#c8c4c8', { map: 'skin', r: .5 }), hair = mat('#08080a', { r: .4 });
+  const cape = mat('#0a0a0c', { map: 'cloth', r: .6 }), lining = mat('#7a0a12', { map: 'cloth', r: .5 }); cape.side = lining.side = THREE.DoubleSide;
+  const body = grp(r, [0, 0, 0], 'body');
+  [-1, 1].forEach(sx => { const l = limb(body, [sx * .12, 1.05, 0], .52, .075, suit, null, .5); l.name = sx < 0 ? 'legL' : 'legR'; add(l.userData.low, G.box(.12, .08, .3), mat('#050505', { r: .2, m: .3 }), [0, -.5, .06]); });
+  add(body, G.cap(.17, .4), suit, [0, 1.42, 0], [0, 0, 0], [1.15, 1, .75]); add(body, G.box(.14, .5, .02), shirt, [0, 1.5, .13]); add(body, G.box(.05, .05, .03), lining, [0, 1.72, .15]);
+  [-1, 1].forEach(sx => { const a = limb(body, [sx * .25, 1.74, 0], .34, .055, suit, null, .32); a.name = sx < 0 ? 'armL' : 'armR'; a.rotation.z = sx * .08;
+    const hand = grp(a.userData.low, [0, -.33, 0]); add(hand, G.box(.07, .1, .03), skin, [0, -.05, 0]); for (let i = 0; i < 4; i++) add(hand, G.cyl(.008, .005, .12, 5), skin, [(i - 1.5) * .017, -.15, 0]); });
+  const cp = grp(body, [0, 1.8, -.12]); wig(cp, 'x', .06, 1.3);
+  const cg = new THREE.CylinderGeometry(.3, .62, 1.75, 16, 4, true, Math.PI * .32, Math.PI * 1.36); cg.translate(0, -.87, 0);
+  const cm = new THREE.Mesh(cg, cape); cm.castShadow = true; cp.add(cm); const lm = new THREE.Mesh(cg, lining); lm.scale.setScalar(.97); cp.add(lm);
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(.26, .2, .38, 14, 1, true, Math.PI * .15, Math.PI * 1.7), lining); col.position.set(0, .14, .02); cp.add(col);
+  const head = grp(body, [0, 2.0, .01], 'head');
+  add(head, G.sph(.12, 18, 14), skin, [0, 0, 0], [0, 0, 0], [.85, 1.18, .95]); add(head, G.sph(.125, 16, 10, 0, Math.PI * 2, 0, Math.PI * .5), hair, [0, .03, -.01], [-.25, 0, 0], [.9, 1.1, 1]);
+  add(head, G.cone(.03, .07, 4), hair, [0, .1, .1], [Math.PI, 0, 0]); add(head, G.cone(.025, .06, 6), skin, [0, -.01, .12], [Math.PI / 2, 0, 0]);
+  for (const sx of [-1, 1]) { add(head, G.sph(.018, 10, 8), EYE('#ff1010', 3.5), [sx * .04, .03, .1]); glow(head, '#ff1a1a', [sx * .04, .03, .115], .12); add(head, G.cone(.008, .035, 4), mat('#ffffff', { r: .2 }), [sx * .018, -.07, .1], [Math.PI, 0, 0]); add(head, G.cone(.03, .07, 4), skin, [sx * .11, .02, -.01], [0, 0, sx * -1.2]); }
+  add(head, G.box(.06, .008, .01), mat('#5a0a0e'), [0, -.06, .108]);
+};
+// --- Gargoyle: hunched stone demon with horns, wings and a barbed tail; turns to solid stone on guard
+B.gargoyle = r => {
+  const stone = mat('#6a6a6e', { map: 'stone', bump: 'stone', bs: 2.5, r: .95 }), dark = mat('#3a3a3e', { map: 'stone', r: .95 }), memb = mat('#4e4e54', { map: 'concrete', r: .95 }); memb.side = THREE.DoubleSide;
+  const body = grp(r, [0, 0, 0], 'body');
+  [-1, 1].forEach(sx => { const l = limb(body, [sx * .32, .95, -.1], .45, .14, stone, null, .48); l.name = sx < 0 ? 'legL' : 'legR'; l.rotation.x = -.5; l.userData.low.rotation.x = .9; add(l.userData.low, G.box(.24, .1, .4), stone, [0, -.48, .12]); claws(l.userData.low, [0, -.5, .34], 3, dark, .12, .07); });
+  add(body, G.sph(.5, 18, 14), stone, [0, 1.45, .12], [.5, 0, 0], [1.15, 1.2, .95]); for (let i = 0; i < 6; i++) add(body, G.cone(.06, .22, 5), dark, [0, 1.95 - i * .16, -.35 - i * .04], [-.9, 0, 0]);
+  [-1, 1].forEach(sx => { const a = limb(body, [sx * .58, 1.75, .3], .5, .12, stone, null, .55); a.name = sx < 0 ? 'armL' : 'armR'; a.rotation.set(-.4, 0, sx * .2);
+    const hand = grp(a.userData.low, [0, -.55, 0]); add(hand, G.sph(.13, 12, 10), stone); claws(hand, [0, -.16, .06], 4, dark, .16, .06); });
+  for (const sx of [-1, 1]) { const w = wing(body, [sx * .35, 1.9, -.35], sx, 2.1, dark, memb); w.rotation.set(-.3, sx * -.5, sx * .2); wig(w, 'y', .08, .8, sx); }
+  const tail = chain(body, [0, 1.0, -.4], 6, .3, .1, .04, stone, .25, { wave: .1, axis: 'z', f: 1.4 }); tail.rotation.x = -2.2; add(tail.userData.tip, G.cone(.12, .3, 4), dark, [0, .1, 0]);
+  const head = grp(body, [0, 2.15, .5], 'head');
+  add(head, G.sph(.26, 16, 12), stone, [0, 0, 0], [0, 0, 0], [1, .95, 1.1]); add(head, G.box(.4, .08, .14), dark, [0, .1, .2]);
+  const jaw = grp(head, [0, -.12, .1], 'jaw'); jaw.rotation.x = .5; add(jaw, G.box(.28, .08, .28), stone, [0, -.03, .12]);
+  for (const sx of [-1, 1]) { add(head, G.cone(.06, .42, 6), dark, [sx * .2, .25, -.05], [-.5, 0, sx * -.5]); add(head, G.sph(.04, 10, 8), EYE('#ff8a1a', 4), [sx * .1, .04, .26]); glow(head, '#ff7a10', [sx * .1, .04, .29], .3); }
+  teethRow(head, 0, -.1, .14, .11, .14, 8, mat('#d8d4c8'), true, .06);
+};
+// --- Father Fester: a gaunt priest-thing in a rotting cassock; every sighting makes him taller, longer-armed and hungrier (stage 0..6)
+B.fester = (r, arg) => {
+  const s = Math.max(0, Math.min(6, +arg || 0)), H = 1 + s * .12, cas = mat('#141012', { map: 'cloth', bump: 'cloth', bs: 1.2, r: .9 }), collar = mat('#e8e4d8', { r: .5 });
+  const skin = mat('#b8b0a0', { map: 'skin', bump: 'skin', bs: 2, r: .55 }), rot = mat('#4a3a2a', { map: 'skin', r: .8 }), claw = mat('#2a2018', { r: .4 });
+  const body = grp(r, [0, 0, 0], 'body');
+  [-1, 1].forEach(sx => { const l = limb(body, [sx * .12, 1.0 * H, 0], .5 * H, .06, cas, null, .48 * H); l.name = sx < 0 ? 'legL' : 'legR'; add(l.userData.low, G.box(.1, .06, .26), rot, [0, -.48 * H, .05]); });
+  const robe = add(body, G.cyl(.2, .5 + s * .03, 1.3 * H, 16, 3, true), cas, [0, .75 * H, 0]); robe.material.side = THREE.DoubleSide;
+  add(body, G.cap(.17, .45 * H), cas, [0, 1.55 * H, 0], [.18, 0, 0], [1.1, 1, .8]); add(body, G.tor(.07, .022), collar, [0, 1.92 * H, .03], [Math.PI / 2, 0, 0]);
+  add(body, G.box(.04, .2, .015), collar, [0, 1.7 * H, .15]); add(body, G.box(.12, .04, .015), collar, [0, 1.75 * H, .15]); // tarnished cross
+  const al = .38 * H + s * .06;
+  [-1, 1].forEach(sx => { const a = limb(body, [sx * .24, 1.82 * H, 0], al, .05, cas, null, al); a.name = sx < 0 ? 'armL' : 'armR'; a.rotation.z = sx * .1;
+    const hand = grp(a.userData.low, [0, -al, 0]); add(hand, G.box(.08, .12, .03), skin, [0, -.06, 0]); for (let i = 0; i < 4; i++) add(hand, G.cyl(.009, .006, .14 + s * .02, 5), skin, [(i - 1.5) * .02, -.18 - s * .01, 0]); claws(hand, [0, -.27 - s * .02, 0], 4, claw, .05, .02); });
+  const head = grp(body, [0, 2.1 * H, .06], 'head');
+  add(head, G.sph(.13, 18, 14), skin, [0, 0, 0], [0, 0, 0], [.82, 1.25, .92]); add(head, G.sph(.1, 12, 10), rot, [0, .08, -.04], [0, 0, 0], [1, .6, 1]);
+  for (const sx of [-1, 1]) { add(head, G.sph(.03, 10, 8), mat('#050505'), [sx * .045, .03, .095]); add(head, G.sph(.01, 6, 4), EYE('#e8ffb0', 1 + s * .6), [sx * .045, .03, .118]); if (s >= 3) glow(head, '#d8ff90', [sx * .045, .03, .13], .08 + s * .02); }
+  const mouthW = .05 + s * .012; add(head, G.box(mouthW * 2, .012 + s * .006, .01), mat('#2a0a08'), [0, -.07, .112]);
+  for (let i = 0; i < 5; i++) add(head, G.box(.004, .03, .004), mat('#2a1a12'), [(i - 2) * mouthW * .45, -.07, .118]); // stitched grin
+  if (s >= 4) for (let i = 0; i < s - 2; i++) add(head, G.cone(.006, .03, 4), mat('#e8e0c8'), [(i - (s - 3) / 2) * .02, -.06, .118], [Math.PI, 0, 0]);
+};
+
 const TEMPLATE = {};
 export function buildMonster(kind) {
-  const root = new THREE.Group(); root.userData.kind = kind;
-  (B[kind] || B.freddy)(root);
+  const root = new THREE.Group(); root.userData.kind = kind; const [base, arg] = String(kind).split('#');
+  WIG = []; (B[base] || B.freddy)(root, arg); root.userData.wiggle = WIG; WIG = null;
   root.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); } });
-  root.userData.parts = { legL: root.getObjectByName('legL'), legR: root.getObjectByName('legR'), armL: root.getObjectByName('armL'), armR: root.getObjectByName('armR'), head: root.getObjectByName('head'), body: root.getObjectByName('body'), stat: root.getObjectByName('static'), tail: root.getObjectByName('tail') };
+  root.userData.parts = { legL: root.getObjectByName('legL'), legR: root.getObjectByName('legR'), armL: root.getObjectByName('armL'), armR: root.getObjectByName('armR'), head: root.getObjectByName('head'), body: root.getObjectByName('body') || root.children[0] || new THREE.Group(), stat: root.getObjectByName('static'), tail: root.getObjectByName('tail') };
   return root;
 }
 // monster skins from the lobby shop: recolour every material
-const SKIN_FX = { shadow: { mul: '#2a2a32', e: '#ff1010' }, golden: { mul: '#ffd24a', m: .8, e: null }, toxic: { mul: '#7aff5a', e: '#3aff1a' }, frost: { mul: '#a8d8ff', e: '#4ac0ff' }, blood: { mul: '#ff5a5a', e: '#600000' } };
+const SKIN_FX = { shadow: { mul: '#2a2a32', e: '#ff1010' }, golden: { mul: '#ffd24a', m: .8, e: null }, toxic: { mul: '#7aff5a', e: '#3aff1a' }, frost: { mul: '#a8d8ff', e: '#4ac0ff' }, blood: { mul: '#ff5a5a', e: '#600000' },
+  lava: { mul: '#ff7a3a', e: '#ff4a00' }, neon: { mul: '#c05aff', e: '#ff2af0' }, ghost: { mul: '#d8f0ff', e: '#9ae8ff', op: .55 }, zombie: { mul: '#8aa86a', e: '#aaff3a' }, abyss: { mul: '#1a2a5a', e: '#2a8aff', m: .4 } };
 export function applySkin(root, skin) {
+  if (root.userData.kind) root.userData.skin = skin;
   const f = SKIN_FX[skin]; if (!f) return; const mul = new THREE.Color(f.mul);
   root.traverse(o => { if (!o.isMesh) return; for (const m of Array.isArray(o.material) ? o.material : [o.material]) { if (!m.color) continue; m.color.multiply(mul).lerp(mul, .25); if (f.m != null) { m.metalness = f.m; m.roughness = .3; } if (f.e && m.emissive && m.emissiveIntensity > .5) m.emissive.set(f.e); else if (f.e && skin === 'toxic' && m.emissive) { m.emissive.set('#0a3000'); m.emissiveIntensity = .5; } } });
 }
@@ -363,9 +645,10 @@ function locustScreen() {
   g.fillStyle = '#fff'; g.font = 'bold 12px monospace'; g.fillText('"come play with me!"', 58, 182);
   _lscr = new THREE.CanvasTexture(c); _lscr.colorSpace = THREE.SRGBColorSpace; return _lscr;
 }
-export function monsterHeight(kind) { return { sirenhead: 7.7, cartooncat: 3.7, locust: 3.75, dn_conezone: 4.3, dn_sixarm: 4.5, sonicexe: 2.1 }[kind] || 2.8; }
+export function monsterHeight(kind) { const [b, a] = String(kind).split('#'); if (b === 'fester') return 2.25 * (1 + (+a || 0) * .12); return { sirenhead: 7.7, cartooncat: 3.7, locust: 3.75, dn_conezone: 4.3, dn_sixarm: 4.5, sonicexe: 2.1,
+  megalodon: 3.0, megalodon_h: 4.0, kraken: 6.5, cthulhu: 7.6, leviathan: 4.6, mosasaurus: 3.2, nessie: 7.2, spinosaurus: 6.4, trex: 5.2, quetzalcoatlus: 4.6, yeti: 3.6, bigfoot: 3.1, dragon: 4.6, chupacabra: 1.6, vampire: 2.2, gargoyle: 2.6 }[b] || 2.8; }
 export const DN_MODELS = ['drnowhere', 'dn_conezone', 'dn_nightmare', 'dn_sixarm'];
-export function modelKey(mt, fm) { return mt === 'drnowhere' ? DN_MODELS[fm || 0] : mt; }
+export function modelKey(mt, fm) { return mt === 'drnowhere' ? DN_MODELS[fm || 0] : mt === 'megalodon' && fm === 1 ? 'megalodon_h' : mt === 'fester' ? 'fester#' + (fm || 0) : mt; }
 
 // ---------- realistic survivor (≈1.78 m, articulated hips/knees/shoulders/elbows) ----------
 const SKINS = ['#f1c7a5', '#e0ac85', '#c68863', '#9c6644', '#6e4630', '#f6d5b8'];
@@ -375,10 +658,24 @@ function seg(parent, len, r0, r1, m, y0 = 0) { // tapered limb segment hanging d
   const o = add(parent, G.cap(Math.max(r0, r1), Math.max(.01, len - Math.max(r0, r1) * 2)), m, [0, y0 - len / 2, 0]);
   o.scale.set(1, 1, r1 / r0 > 1 ? 1 : .92); return o;
 }
-export function parseLook(str) { const [sk, hc, hs, top, pants, hat, acc] = String(str || '').split(','); return { sk: +sk || 0, hc: +hc || 0, hs: +hs || 0, top: top || null, pants: pants || null, hat: hat || 'none', acc: acc || 'none' }; }
+export function parseLook(str) { const [sk, hc, hs, top, pants, hat, acc, of] = String(str || '').split(','); return { sk: +sk || 0, hc: +hc || 0, hs: +hs || 0, top: top || null, pants: pants || null, hat: hat || 'none', acc: acc || 'none', of: of || 'none' }; }
+// survivor outfits (store "skins"): recolour the jacket and pants and add a signature piece
+export const OUTFIT_DEF = {
+  ranger: { top: '#4a5a3a', pants: '#3a3626', x: (P) => { P.add(P.torso, G.box(.05, .06, .01), mat('#d8b040', { m: .8, r: .3 }), [-.08, .36, .13]); } },
+  hazmat: { top: '#e8c820', pants: '#e8c820', x: (P) => { const y = mat('#e8c820', { r: .45 }); P.add(P.head, G.sph(.15, 16, 12), y, [0, .03, -.01], [0, 0, 0], [1, 1.1, 1.05]); P.add(P.head, G.sph(.1, 14, 10, 0, Math.PI * 2, 0, Math.PI * .6), new THREE.MeshPhysicalMaterial({ color: '#203040', roughness: .05, transparent: true, opacity: .6 }), [0, .02, .07], [Math.PI / 2, 0, 0], [1, .7, 1]); } },
+  hunter: { top: '#e8620e', pants: '#4a4a30', x: (P) => { P.add(P.torso, G.box(.34, .3, .29), mat('#ff6a10', { map: 'cloth', r: .8 }), [0, .27, 0]); } },
+  scout: { top: '#6a8a4a', pants: '#3a3a2a', x: (P) => { P.add(P.torso, G.cone(.07, .14, 3), mat('#c02a1a', { map: 'cloth' }), [0, .45, .12], [Math.PI, 0, 0]); } },
+  diver: { top: '#121418', pants: '#121418', x: (P) => { P.add(P.torso, G.box(.36, .03, .27), mat('#1a6ad8', { r: .4 }), [0, .3, 0]); P.add(P.torso, G.cyl(.06, .06, .36, 12), mat('#c8c8c8', { m: .8, r: .3 }), [-.07, .27, -.22]); P.add(P.torso, G.cyl(.06, .06, .36, 12), mat('#c8c8c8', { m: .8, r: .3 }), [.07, .27, -.22]); } },
+  ninja: { top: '#0c0c0e', pants: '#0c0c0e', x: (P) => { const k = mat('#0c0c0e', { map: 'cloth' }); P.add(P.head, G.sph(.112, 16, 12), k, [0, .02, 0], [0, 0, 0], [.95, 1.14, 1.04]); P.add(P.head, G.box(.12, .025, .02), mat('#c01818'), [0, .09, .07]); } },
+  astronaut: { top: '#e8e8ec', pants: '#e8e8ec', x: (P) => { P.add(P.head, G.sph(.17, 18, 14), new THREE.MeshPhysicalMaterial({ color: '#d8e8ff', roughness: .05, transparent: true, opacity: .32 }), [0, .02, 0]); P.add(P.torso, G.box(.34, .42, .16), mat('#d8d8dc', { r: .5 }), [0, .27, -.22]); P.add(P.torso, G.box(.12, .08, .02), mat('#2a5ad8'), [0, .34, .13]); } },
+  knight: { top: '#9aa0a8', pants: '#7a8088', metal: true, x: (P) => { const s = mat('#a8aeb6', { m: .85, r: .3, map: 'metal' }); P.add(P.head, G.cyl(.125, .12, .24, 16), s, [0, .03, 0]); P.add(P.head, G.box(.16, .015, .02), mat('#050505'), [0, .04, .125]); P.add(P.torso, G.sph(.1, 12, 8), s, [-.22, .46, 0]); P.add(P.torso, G.sph(.1, 12, 8), s, [.22, .46, 0]); } },
+  pajamas: { top: '#7a9ad8', pants: '#7a9ad8', x: (P) => { P.add(P.head, G.cone(.11, .28, 12), mat('#7a9ad8', { map: 'cloth' }), [0, .2, -.03], [-.4, 0, 0]); P.add(P.head, G.sph(.03, 8, 6), mat('#ffffff'), [0, .31, -.12]); } },
+  ghostbuster: { top: '#c8b890', pants: '#c8b890', x: (P) => { P.add(P.torso, G.box(.3, .42, .16), mat('#3a3a3a', { m: .5, r: .4 }), [0, .27, -.22]); P.add(P.torso, G.cyl(.03, .03, .4, 8), mat('#d82020', { e: '#ff2020', ei: .8 }), [.14, .2, -.3]); } },
+};
 export function buildSurvivor(color, look) {
   const L = typeof look === 'string' ? parseLook(look) : (look || parseLook('')), h = hashStr(color), root = new THREE.Group();
   if (L.top) color = L.top;
+  const OF = OUTFIT_DEF[L.of]; if (OF) { color = OF.top; L.pants = OF.pants; }
   const skin = mat(SKINS[L.sk % SKINS.length], { r: .62 });
   const jacket = mat(color, { map: 'cloth', bump: 'cloth', bs: .6, r: .88 });
   const jacketDark = mat(new THREE.Color(color).multiplyScalar(.55), { map: 'cloth', r: .9 });
@@ -443,6 +740,12 @@ export function buildSurvivor(color, look) {
     crown: () => { const g = mat('#e8b830', { m: .95, r: .25, e: '#3a2a00', ei: .4 }); add(head, G.cyl(.09, .09, .06, 12, 1, true), g, [0, .16, 0]); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28; add(head, G.cone(.02, .05, 4), g, [Math.cos(a) * .09, .21, Math.sin(a) * .09]); } },
     hardhat: () => { const m = mat('#f0c020', { r: .35, m: .1 }); add(head, G.sph(.125, 16, 10, 0, Math.PI * 2, 0, Math.PI * .5), m, [0, .06, 0]); add(head, G.cyl(.15, .15, .012, 18), m, [0, .065, .01]); },
     bunny: () => { const m = mat('#f4f0f0', { map: 'fur', r: .9 }); for (const sx of [-.05, .05]) add(head, G.cap(.025, .16), m, [sx, .22, -.02], [0, 0, sx * 2]); },
+    tophat: () => { const m = mat('#141414', { map: 'cloth', r: .6 }); add(head, G.cyl(.2, .2, .015, 20), m, [0, .1, 0]); add(head, G.cyl(.1, .1, .22, 18), m, [0, .21, 0]); add(head, G.cyl(.102, .102, .04, 18), mat('#8a1a1a'), [0, .13, 0]); },
+    pirate: () => { const m = mat('#1a1410', { map: 'cloth', r: .7 }); add(head, G.box(.32, .1, .14), m, [0, .14, 0]); add(head, G.sph(.03, 8, 6), mat('#f0f0e8'), [0, .15, .07]); },
+    horns: () => { const m = mat('#a01010', { r: .4, e: '#300000', ei: .5 }); for (const sx of [-1, 1]) add(head, G.cone(.025, .12, 8), m, [sx * .07, .13, .02], [0, 0, sx * -.4]); },
+    halo: () => add(head, G.tor(.09, .012), mat('#ffe680', { e: '#ffd040', ei: 2.5 }), [0, .22, 0], [Math.PI / 2, 0, 0]),
+    viking: () => { const s = mat('#8a8e94', { m: .8, r: .35 }), hn = mat('#e8e0c8', { r: .4 }); add(head, G.sph(.12, 16, 10, 0, Math.PI * 2, 0, Math.PI * .5), s, [0, .06, 0]); for (const sx of [-1, 1]) add(head, G.cone(.03, .16, 8), hn, [sx * .13, .14, 0], [0, 0, sx * -1.0]); },
+    witch: () => { const m = mat('#1a0a24', { map: 'cloth', r: .8 }); add(head, G.cyl(.22, .22, .012, 20), m, [0, .1, 0]); add(head, G.cone(.11, .36, 16), m, [0, .28, -.02], [-.15, 0, 0]); },
   };
   hats[L.hat]?.();
   const accs = {
@@ -450,8 +753,15 @@ export function buildSurvivor(color, look) {
     scarf: () => { add(torso, G.tor(.08, .035), mat('#b02a2a', { map: 'cloth' }), [0, .53, 0], [Math.PI / 2, 0, 0]); add(torso, G.box(.05, .18, .02), mat('#b02a2a', { map: 'cloth' }), [.04, .42, .1]); },
     mask: () => add(head, G.sph(.08, 12, 8, 0, Math.PI * 2, Math.PI * .5, Math.PI * .5), mat('#e8e8e8', { r: .7 }), [0, -.01, .04], [-.3, 0, 0], [1.1, 1, 1]),
     goggles: () => { add(head, G.tor(.11, .01), mat('#222'), [0, .06, 0], [Math.PI / 2, 0, 0]); for (const sx of [-.04, .04]) add(head, G.cyl(.025, .025, .02, 12), mat('#4a8aaa', { r: .1, m: .4 }), [sx, .07, .1], [Math.PI / 2, 0, 0]); },
+    backpack: () => { const m = mat('#3a5a2a', { map: 'cloth', r: .9 }); add(torso, G.box(.36, .5, .2), m, [0, .3, -.24]); add(torso, G.cyl(.06, .06, .38, 10), mat('#5a3a2a', { map: 'cloth' }), [0, .58, -.24], [0, 0, Math.PI / 2]); },
+    cape: () => { const m = mat('#8a0a14', { map: 'cloth', r: .7 }); m.side = THREE.DoubleSide; const c = add(torso, new THREE.CylinderGeometry(.17, .32, .95, 14, 1, true, Math.PI * .2, Math.PI * 1.6), m, [0, .05, -.04]); c.rotation.y = Math.PI; },
+    chain: () => add(torso, G.tor(.1, .012), mat('#e8c040', { m: .95, r: .25 }), [0, .46, .06], [1.2, 0, 0]),
+    bandana: () => add(head, G.sph(.075, 12, 8, 0, Math.PI * 2, Math.PI * .5, Math.PI * .5), mat('#c01818', { map: 'cloth' }), [0, -.02, .045], [-.25, 0, 0], [1.15, 1, 1]),
+    wings: () => { const m = mat('#f4f4f8', { r: .8, e: '#ffffff', ei: .15 }); m.side = THREE.DoubleSide; for (const sx of [-1, 1]) { const w = add(torso, G.sph(.3, 12, 8), m, [sx * .2, .4, -.22], [0, sx * .5, 0], [.9, .6, .08]); w.rotation.z = sx * -.4; } },
   };
   accs[L.acc]?.();
+  if (OF && OF.x) OF.x({ add, head, torso, body });
+  if (OF && OF.metal) { jacket.metalness = .7; jacket.roughness = .35; jeans.metalness = .6; jeans.roughness = .4; }
   const helm = grp(head, [0, .05, 0], 'helmet'); helm.visible = false;
   const helmM = mat('#3f4632', { r: .55, m: .1 });
   add(helm, G.sph(.135, 18, 12), helmM, [0, .02, -.005], [-.1, 0, 0], [1, .82, 1.08]); add(helm, G.cyl(.14, .145, .03, 18), helmM, [0, -.02, 0]);
@@ -597,7 +907,14 @@ export function buildLamp() {
 }
 
 // ---------- furniture & facility props, sized to a footprint (w along X, d along Z, metres) ----------
-export function buildProp(k, w, d) {
+function signTex(text, sub, c1 = '#ff3a3a', bg = '#0a0608') {
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0, 0, 1024, 256); x.strokeStyle = c1; x.lineWidth = 10; x.strokeRect(14, 14, 996, 228);
+  x.shadowColor = c1; x.shadowBlur = 30; x.fillStyle = c1; x.font = 'bold 128px Impact, Arial Black, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 512, sub ? 108 : 128);
+  if (sub) { x.shadowBlur = 12; x.fillStyle = '#ffe8c0'; x.font = 'bold 46px Arial, sans-serif'; x.fillText(sub, 512, 200); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+export function buildProp(k, w, d, o = {}) {
   const g = new THREE.Group(), B3 = (sx, sy, sz, m, p, r) => add(g, G.box(sx, sy, sz), m, p, r);
   const wood = mat('#7a5232', { map: 'wood', r: .7 }), dark = mat('#2a2a2c', { m: .6, r: .45, map: 'metal' }), steel = mat('#8a9096', { m: .8, r: .35, map: 'metal' });
   const fab = c => mat(c, { map: 'cloth', bump: 'cloth', bs: .8, r: .95 });
@@ -624,6 +941,22 @@ export function buildProp(k, w, d) {
     case 'transformer': { B3(w * .8, 1.6, d * .8, mat('#6a7068', { m: .5, r: .5, map: 'metal' }), [0, .8, 0]); for (let i = -1; i <= 1; i++) { add(g, G.cyl(.08, .1, .6, 10), mat('#7a5a3a', { r: .3 }), [i * w * .25, 1.9, 0]); for (let k = 0; k < 4; k++) add(g, G.cyl(.12, .12, .03, 10), mat('#7a5a3a', { r: .3 }), [i * w * .25, 1.7 + k * .12, 0]); } B3(.3, .3, .01, mat('#f0c020', { e: '#3a2a00', ei: .3 }), [0, 1, d * .4 + .01]); break; }
     case 'panel': { B3(w, 1.9, d, mat('#8a9094', { m: .6, r: .4, map: 'metal' }), [0, .95, 0]); for (let i = 0; i < 5; i++) { B3(.02, 1.7, .01, dark, [-w / 2 + (i + 1) * w / 6, .95, d / 2 + .01]); add(g, G.sph(.02, 6, 4), mat('#f00', { e: '#f00', ei: 2 }), [-w / 2 + (i + .5) * w / 6, 1.7, d / 2 + .01]); } break; }
     case 'cable': for (let i = 0; i < 3; i++) add(g, G.tor(w * .3 - i * .1, .04), mat('#111', { r: .6 }), [0, .04 + i * .06, 0], [Math.PI / 2, 0, 0]); break;
+    case 'counter': { const top = mat('#2a2a30', { m: .3, r: .25 }), front = mat('#7a1a1a', { map: 'wood', r: .6 }); B3(w, 1.0, d, front, [0, .5, 0]); B3(w + .1, .06, d + .1, top, [0, 1.03, 0]); B3(w * .9, .5, .04, new THREE.MeshPhysicalMaterial({ color: '#c8e8ff', roughness: .05, transparent: true, opacity: .25 }), [0, 1.3, d * .3]);
+      const items = ['#c81e1e', '#12161a', '#f2c218', '#4a2412', '#d22a2a', '#9fd8ff']; for (let i = 0; i < Math.floor(w / .4); i++) B3(.12, .18, .12, mat(items[i % 6], { r: .4, e: items[i % 6], ei: .15 }), [-w / 2 + .25 + i * .4, 1.15, -d * .1]); break; }
+    case 'register': B3(w, .9, d, mat('#3a3a40', { m: .4, r: .4 }), [0, .45, 0]); B3(w * .6, .25, d * .5, mat('#18181c', { m: .5 }), [0, 1.02, 0]); B3(w * .5, .22, .03, mat('#0a2a1a', { e: '#3aff6a', ei: 1.2 }), [0, 1.25, -d * .1], [-.3, 0, 0]); break;
+    case 'mirror': { const fr = mat('#c8a040', { m: .9, r: .3 }); B3(w, 2.4, .12, fr, [0, 1.4, 0]); const mm = new THREE.MeshStandardMaterial({ color: '#dfe8f0', metalness: 1, roughness: .02, envMapIntensity: 1.5 }); add(g, G.box(w * .9, 2.2, .02), mm, [0, 1.4, .07]);
+      for (let i = 0; i < 8; i++) add(g, G.sph(.05, 8, 6), mat('#fff6d0', { e: '#ffe8a0', ei: 2.5 }), [-w * .48, .5 + i * .28, .08]), add(g, G.sph(.05, 8, 6), mat('#fff6d0', { e: '#ffe8a0', ei: 2.5 }), [w * .48, .5 + i * .28, .08]); g.userData.mirror = true; break; }
+    case 'booth': { const c = mat('#5a1a3a', { map: 'cloth', r: .9 }); c.side = THREE.DoubleSide; for (const sx of [-1, 1]) B3(.06, 2.4, d, mat('#2a2a2e', { m: .5 }), [sx * w / 2, 1.2, 0]); B3(w, .06, d, mat('#2a2a2e', { m: .5 }), [0, 2.4, 0]); add(g, new THREE.PlaneGeometry(w, 2.2), c, [0, 1.25, -d / 2]); break; }
+    case 'pedestal': { B3(w, .9, d, mat('#1a1a1e', { m: .5, r: .3 }), [0, .45, 0]); B3(w + .1, .06, d + .1, mat('#c8a040', { m: .9, r: .3 }), [0, .92, 0]); add(g, G.cyl(w * .35, w * .35, .02, 24), mat('#ff3a3a', { e: '#ff2020', ei: 2 }), [0, .96, 0]); g.userData.statue = o.m; break; }
+    case 'mannequin': { const pl = mat('#d8d4cc', { r: .4 }); add(g, G.cyl(.25, .25, .05, 20), mat('#2a2a2e', { m: .5 }), [0, .03, 0]); add(g, G.cyl(.02, .02, .9, 8), steel, [0, .5, 0]); g.userData.dress = true; break; }
+    case 'storesign': { const sm = new THREE.MeshBasicMaterial({ map: signTex('STORE', 'ITEMS • DRESSING ROOM • SKINS') }); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 3.6, 0]); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 3.6, -.02], [0, Math.PI, 0]); for (const sx of [-1, 1]) add(g, G.cyl(.06, .06, 3.6, 8), dark, [sx * w * .45, 1.8, 0]); g.userData.light = '#ff3a3a'; break; }
+    case 'lobbysign': { const sm = new THREE.MeshBasicMaterial({ map: signTex('STORE →', 'COINS BUY ITEMS & SKINS', '#ffcc3a') }); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, 0]); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, -.02], [0, Math.PI, 0]); add(g, G.cyl(.05, .05, 2, 8), dark, [0, 1, 0]); break; }
+    case 'hay': add(g, G.cyl(Math.min(w, d) / 2, Math.min(w, d) / 2, w, 18), mat('#c8a050', { map: 'hay', bump: 'hay', r: 1 }), [0, Math.min(w, d) / 2, 0], [0, 0, Math.PI / 2]); break;
+    case 'tractor': { const red = mat('#a8261a', { m: .3, r: .5, map: 'metal' }), tire = mat('#141414', { r: .9 }); B3(w * .55, 1.0, d * .6, red, [w * .15, 1.0, 0]); B3(w * .35, 1.2, d * .7, red, [-w * .2, 1.4, 0]); B3(w * .3, .05, d * .7, red, [-w * .2, 2.3, 0]);
+      for (const sz of [-1, 1]) { add(g, G.cyl(.8, .8, .4, 18), tire, [-w * .25, .8, sz * d * .45], [Math.PI / 2, 0, 0]); add(g, G.cyl(.45, .45, .3, 14), tire, [w * .32, .45, sz * d * .4], [Math.PI / 2, 0, 0]); } add(g, G.cyl(.06, .06, 1, 8), dark, [w * .3, 1.9, 0]); break; }
+    case 'stairs': { const st = Math.max(6, Math.round(d / .3)); for (let i = 0; i < st; i++) B3(w, .2 * (i + 1), d / st, wood, [0, .1 * (i + 1), -d / 2 + (i + .5) * d / st]); break; }
+    case 'grave': { const s = mat('#6a6a6e', { map: 'stone', bump: 'stone', r: .95 }); B3(w * .8, .9, .14, s, [0, .45, 0]); add(g, G.cyl(w * .4, w * .4, .14, 16, 1, false, 0, Math.PI), s, [0, .9, 0], [Math.PI / 2, 0, Math.PI / 2]); B3(w * .9, .1, d * .9, mat('#3a3026', { map: 'dirt', r: 1 }), [0, .05, d * .2]); break; }
+    case 'streetlight': { add(g, G.cyl(.07, .1, 5, 8), dark, [0, 2.5, 0]); B3(1.0, .08, .08, dark, [.45, 4.95, 0]); add(g, G.cone(.25, .25, 12), dark, [.9, 4.85, 0]); add(g, G.sph(.1, 8, 6), mat('#ffd9a0', { e: '#ffcc88', ei: 3 }), [.9, 4.72, 0]); g.userData.light = '#ffc070'; g.userData.lightPos = new THREE.Vector3(.9, 4.6, 0); break; }
     default: B3(w, .8, d, wood, [0, .4, 0]);
   }
   return g;

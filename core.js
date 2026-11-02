@@ -55,19 +55,43 @@ const MONSTERS = {
   monochrome: { name: 'Monochrome',     ability: 'Total Blackout',    desc: 'Every survivor\'s screen goes pitch black for 10s', cd: 20, speed: 172, r: 20 },
   sonicexe:   { name: 'Sonic.exe',      ability: "You Can't Run",     desc: 'A distorted laugh… then you run much faster for 10s', cd: 20, speed: 174, r: 18 },
   demogorgon: { name: 'Demogorgon',     ability: 'Upside Down Portal',desc: 'Open a portal and come out near the closest survivor', cd: 20, speed: 174, r: 21 },
+  // ---- phase 2: sea monsters (they hide under the water; survivors only see their telltale signs) ----
+  megalodon:  { name: 'Megalodon',      ability: 'Tidal Surge',       desc: 'A giant wave bursts out around you: survivors are knocked back, stunned and thrown out of their boats. On land you walk as a huge humanoid shark', cd: 20, speed: 182, r: 34, hp: 420, sea: 1, home: ['Stormy Ocean'] },
+  kraken:     { name: 'Kraken',         ability: 'Tentacle Grab',     desc: 'A tentacle shoots out and drags the closest survivor (even out of a boat) to you', cd: 20, speed: 172, r: 30, hp: 380, sea: 1, home: ['Stormy Ocean'] },
+  cthulhu:    { name: 'Cthulhu',        ability: 'Thunderstorm',      desc: 'Summon a thunderstorm: lightning strikes the 3 closest survivors 1s later', cd: 20, speed: 170, r: 30, hp: 400, sea: 1, home: ['Stormy Ocean'] },
+  leviathan:  { name: 'Leviathan',      ability: 'Whirlpool',         desc: 'Coil into a whirlpool for 4s that pulls in and slows every survivor nearby', cd: 20, speed: 178, r: 30, hp: 380, sea: 1, home: ['Stormy Ocean'] },
+  mosasaurus: { name: 'Mosasaurus',     ability: 'Tail Slam',         desc: 'Slam your tail: a crashing wave stuns, hurts and capsizes survivors close by', cd: 20, speed: 184, r: 28, hp: 360, sea: 1, home: ['Stormy Ocean'] },
+  nessie:     { name: 'Nessie',         ability: 'Deep Dive',         desc: 'Dive deep: invisible and faster for 6s while a thick sea fog rolls over survivors near you', cd: 20, speed: 176, r: 26, hp: 340, sea: 1, home: ['Stormy Ocean'] },
+  spinosaurus:{ name: 'Spinosaurus',    ability: 'Swamp Ambush',      desc: 'Sink into the water (invisible 4s) and burst out in a fast charge', cd: 20, speed: 176, r: 28, hp: 380, sea: 1, home: ['Rainforest Swamp', 'Stormy Ocean'] },
+  // ---- phase 2: land monsters with their own maps ----
+  trex:       { name: 'T-Rex',          ability: 'Tyrant Roar',       desc: 'A huge roar stuns survivors close by, reveals everyone within range for 6s and you charge faster', cd: 20, speed: 176, r: 30, hp: 420, home: ['Rainforest Swamp'] },
+  quetzalcoatlus: { name: 'Quetzalcoatlus', ability: 'Sky Dive',      desc: 'Take off over everything and dive onto the closest survivor, stunning them', cd: 20, speed: 172, r: 24, home: ['Rainforest Swamp', 'Snowy Mountain'] },
+  yeti:       { name: 'Yeti',           ability: 'Avalanche Roar',    desc: 'A freezing roar: nearby survivors are stunned, slowed for 5s and caught in a whiteout', cd: 20, speed: 172, r: 26, hp: 360, home: ['Snowy Mountain'] },
+  dragon:     { name: 'Dragon',         ability: 'Fire Breath',       desc: 'Breathe a cone of fire: survivors in front of you take damage and keep burning', cd: 20, speed: 172, r: 30, hp: 420, home: ['Vampire Castle', 'Snowy Mountain'] },
+  chupacabra: { name: 'Chupacabra',     ability: 'Blood Drain',       desc: 'Bite the closest survivor: drain their health to heal yourself and slow them', cd: 20, speed: 182, r: 18, home: ['Haunted Farm'] },
+  vampire:    { name: 'Vampire',        ability: 'Bat Swarm',         desc: 'Burst into bats and re-form beside the closest survivor, blinding them for 3s', cd: 20, speed: 174, r: 18, home: ['Vampire Castle'] },
+  gargoyle:   { name: 'Gargoyle',       ability: 'Stone Skin',        desc: 'Turn to stone for 6s (no damage) and crash down, stunning survivors close by', cd: 20, speed: 170, r: 22, home: ['Vampire Castle'] },
+  bigfoot:    { name: 'Bigfoot',        ability: 'Boulder Throw',     desc: 'Hurl a boulder at the survivor in front of you: big hit + 2s stun', cd: 20, speed: 176, r: 24, hp: 360, home: ['Powerline Forest', 'Foggy Woods'] },
+  fester:     { name: 'Father Fester',  ability: 'Lights Out',        desc: 'Every house light dies near you: survivors black out and are revealed. Passive: each new survivor who sees you makes you stronger (6 stages)', cd: 20, speed: 166, r: 20, home: ['Fester Street'] },
 };
+const CLASSIC = ['Powerline Forest', 'Abandoned Pizzeria Town', 'Foggy Woods', 'Static Fields'];
+for (const k in MONSTERS) if (!MONSTERS[k].home) MONSTERS[k].home = CLASSIC;
+const FESTER_MAX = 6;
 const MKEYS = Object.keys(MONSTERS);
 // cosmetics (bought with in-game coins in the lobby shop; no real money)
-const HATS = ['none', 'cap', 'beanie', 'cowboy', 'headphones', 'crown', 'hardhat', 'bunny'], ACCS = ['none', 'glasses', 'scarf', 'mask', 'goggles'];
-const MSKINS = ['classic', 'shadow', 'golden', 'toxic', 'frost', 'blood'];
+const HATS = ['none', 'cap', 'beanie', 'cowboy', 'headphones', 'crown', 'hardhat', 'bunny', 'tophat', 'pirate', 'horns', 'halo', 'viking', 'witch'], ACCS = ['none', 'glasses', 'scarf', 'mask', 'goggles', 'backpack', 'cape', 'chain', 'bandana', 'wings'];
+const OUTFITS = ['none', 'ranger', 'hazmat', 'hunter', 'scout', 'diver', 'ninja', 'astronaut', 'knight', 'pajamas', 'ghostbuster'];
+const SUPPLIES = ['water', 'soda', 'energy', 'chips', 'choco', 'beans', 'medkit'];
+const MSKINS = ['classic', 'shadow', 'golden', 'toxic', 'frost', 'blood', 'lava', 'neon', 'ghost', 'zombie', 'abyss'];
 const HEX = /^#[0-9a-f]{6}$/i;
-function cleanLook(l) { l = l || {}; const n = (v, m) => Math.max(0, Math.min(m, parseInt(v) || 0)); return { sk: n(l.sk, 5), hc: n(l.hc, 5), hs: n(l.hs, 3), top: HEX.test(l.top) ? l.top : null, pants: HEX.test(l.pants) ? l.pants : null, hat: HATS.includes(l.hat) ? l.hat : 'none', acc: ACCS.includes(l.acc) ? l.acc : 'none' }; }
-const lookStr = l => [l.sk, l.hc, l.hs, l.top || '', l.pants || '', l.hat, l.acc].join(',');
-function botLook() { const r = a => a[Math.floor(Math.random() * a.length)]; return { sk: Math.floor(Math.random() * 6), hc: Math.floor(Math.random() * 6), hs: Math.floor(Math.random() * 4), top: null, pants: r(['#2c3e60', '#3a3a3a', '#4a4030', '#25303f']), hat: r(['none', 'none', 'cap', 'beanie', 'hardhat']), acc: r(['none', 'none', 'glasses', 'scarf']) }; }
+function cleanLook(l) { l = l || {}; const n = (v, m) => Math.max(0, Math.min(m, parseInt(v) || 0)); return { sk: n(l.sk, 5), hc: n(l.hc, 5), hs: n(l.hs, 3), top: HEX.test(l.top) ? l.top : null, pants: HEX.test(l.pants) ? l.pants : null, hat: HATS.includes(l.hat) ? l.hat : 'none', acc: ACCS.includes(l.acc) ? l.acc : 'none', of: OUTFITS.includes(l.of) ? l.of : 'none' }; }
+const lookStr = l => [l.sk, l.hc, l.hs, l.top || '', l.pants || '', l.hat, l.acc, l.of || 'none'].join(',');
+function botLook() { const r = a => a[Math.floor(Math.random() * a.length)]; return { sk: Math.floor(Math.random() * 6), hc: Math.floor(Math.random() * 6), hs: Math.floor(Math.random() * 4), top: null, pants: r(['#2c3e60', '#3a3a3a', '#4a4030', '#25303f']), hat: r(['none', 'none', 'cap', 'beanie', 'hardhat']), acc: r(['none', 'none', 'glasses', 'scarf']), of: r(['none', 'none', 'none', 'ranger', 'hunter', 'scout']) }; }
 const COLORS = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#1abc9c','#e67e22','#ecf0f1','#fd79a8','#00cec9','#a29bfe','#55efc4','#fab1a0','#74b9ff','#ffeaa7'];
-const THEMES = ['Powerline Forest', 'Abandoned Pizzeria Town', 'Foggy Woods', 'Static Fields'];
+const THEMES = [...CLASSIC, 'Stormy Ocean', 'Rainforest Swamp', 'Snowy Mountain', 'Haunted Farm', 'Vampire Castle', 'Fester Street'];
 const ENV = (typeof process !== 'undefined' && process.env) || {};
-const pickTheme = () => THEMES.includes(ENV.THEME) ? ENV.THEME : Math.random() < .5 ? THEMES[0] : pick(THEMES.slice(1)); // the power-line forest is the main map
+// the power-line forest is still the most common map; a monster player's chosen monster pulls the round to that monster's home map
+const pickTheme = pref => THEMES.includes(ENV.THEME) ? ENV.THEME : pref && MONSTERS[pref] ? pick(MONSTERS[pref].home) : Math.random() < .3 ? THEMES[0] : pick(THEMES.slice(1));
 
 const rooms = new Map();
 let nextId = 1;
@@ -80,14 +104,31 @@ function code() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s; do { s = 
 function clean(s, n) { return String(s || '').replace(/[^\w \-!?.']/g, '').trim().slice(0, n); }
 
 // ---------- maps ----------
-const LOBBY = { w: 1400, h: 900, walls: [], trees: [], bushes: [], vents: [], poles: [], lines: [], loot: [], bld: [], props: [], theme: 'Helipad Lobby',
+const LOBBY = { w: 2600, h: 1200, walls: [], trees: [], bushes: [], vents: [], poles: [], lines: [], loot: [], bld: [], props: [], theme: 'Helipad Lobby',
   heli: { x: 700, y: 420, r: 110 } };
-LOBBY.walls = [{ x: 0, y: 0, w: 1400, h: 30 }, { x: 0, y: 870, w: 1400, h: 30 }, { x: 0, y: 0, w: 30, h: 900 }, { x: 1370, y: 0, w: 30, h: 900 }];
-LOBBY.trees = [{ x: 200, y: 200, r: 40 }, { x: 1200, y: 200, r: 40 }, { x: 200, y: 700, r: 40 }, { x: 1200, y: 700, r: 40 }];
+LOBBY.walls = [{ x: 0, y: 0, w: 2600, h: 30 }, { x: 0, y: 1170, w: 2600, h: 30 }, { x: 0, y: 0, w: 30, h: 1200 }, { x: 2570, y: 0, w: 30, h: 1200 }];
+LOBBY.trees = [{ x: 200, y: 200, r: 40 }, { x: 1200, y: 200, r: 40 }, { x: 200, y: 950, r: 40 }, { x: 1200, y: 1000, r: 40 }];
+// v1.4: a walk-in NIGHT HUNT STORE east of the helipad. Walk into a section to open it:
+// item counter (hats, accessories, round supplies), dressing room with a big mirror (customize your survivor), skins gallery (survivor outfits + monster skins)
+{ const X = 1500, Y = 150, Wd = 900, Ht = 900, T = 24, L = LOBBY;
+  L.bld.push({ x: X, y: Y, w: Wd, h: Ht, type: 'store', kind: 'store', floors: 1, light: 'warm' });
+  L.walls.push({ x: X, y: Y, w: Wd, h: T }, { x: X, y: Y + Ht - T, w: Wd, h: T }, { x: X + Wd - T, y: Y, w: T, h: Ht },
+    { x: X, y: Y, w: T, h: 380 }, { x: X, y: Y + 520, w: T, h: 380 },                     // west wall with a wide front door (y 530..670)
+    { x: X + 230, y: Y + 300, w: Wd - 230, h: T }, { x: X + 230, y: Y + 600, w: Wd - 230, h: T }); // section dividers (open toward the entry hall)
+  L.zones = [
+    { k: 'shop', name: 'ITEM COUNTER', x: X + 250, y: Y + T, w: Wd - 250 - T, h: 300 - T },
+    { k: 'mirror', name: 'DRESSING ROOM', x: X + 250, y: Y + 300 + T, w: Wd - 250 - T, h: 300 - T },
+    { k: 'skins', name: 'SKINS GALLERY', x: X + 250, y: Y + 600 + T, w: Wd - 250 - T, h: 300 - 2 * T } ];
+  L.props.push({ k: 'counter', x: X + 420, y: Y + 150, w: 380, h: 50, solid: true }, { k: 'shelf', x: X + 300, y: Y + 30, w: 560, h: 40, solid: true },
+    { k: 'register', x: X + 560, y: Y + 140, w: 40, h: 30, solid: true }, { k: 'mirror', x: X + Wd - 60, y: Y + 360, w: 30, h: 180, a: -Math.PI / 2, solid: true },
+    { k: 'rack', x: X + 330, y: Y + 360, w: 180, h: 40, solid: true }, { k: 'rack', x: X + 330, y: Y + 500, w: 180, h: 40, solid: true }, { k: 'booth', x: X + 600, y: Y + 340, w: 120, h: 110 },
+    { k: 'pedestal', x: X + 320, y: Y + 700, w: 70, h: 70, m: 'trex', solid: true }, { k: 'pedestal', x: X + 450, y: Y + 700, w: 70, h: 70, m: 'kraken', solid: true }, { k: 'pedestal', x: X + 580, y: Y + 700, w: 70, h: 70, m: 'dragon', solid: true },
+    { k: 'pedestal', x: X + 710, y: Y + 700, w: 70, h: 70, m: 'freddy', solid: true }, { k: 'mannequin', x: X + 330, y: Y + 800, w: 60, h: 60 }, { k: 'mannequin', x: X + 480, y: Y + 800, w: 60, h: 60 },
+    { k: 'mannequin', x: X + 630, y: Y + 800, w: 60, h: 60 }, { k: 'storesign', x: X - 10, y: Y + 520, w: 20, h: 160 }, { k: 'lobbysign', x: 1000, y: 560, w: 30, h: 30, a: 0 }); }
 
 // every building is a furnished house (rooms split by an inner wall) or a facility (warehouse/lab/industrial)
 function furnish(m, b) {
-  const { x, y, w, h, t, type } = b; m.bld.push({ x, y, w, h, type, kind: type === 'house' ? pick(['cabin', 'farmhouse', 'bungalow']) : pick(['warehouse', 'lab', 'substation']) });
+  const { x, y, w, h, t, type } = b; m.bld.push({ x, y, w, h, type, kind: b.kind || (type === 'house' ? pick(['cabin', 'farmhouse', 'bungalow']) : pick(['warehouse', 'lab', 'substation'])), floors: b.floors || 1, light: b.light });
   const P = (k, px, py, pw, ph, solid = true, a = 0) => m.props.push({ k, x: Math.round(px), y: Math.round(py), w: Math.round(pw), h: Math.round(ph), solid, a });
   const ix = x + t, iy = y + t, iw = w - 2 * t, ih = h - 2 * t;
   if (type === 'house') {
@@ -97,54 +138,118 @@ function furnish(m, b) {
     P('sofa', ix + 12, iy + ih - 50, 110, 38); P('table', ix + 50, iy + ih * .45 - 25, 60, 50); P('tv', ix + 12, iy + 8, 70, 18); P('rug', ix + 30, iy + ih * .3, 110, 80, false);
     const bwid = ix + iw - sx - 14; P('bed', sx + 14 + (bwid - 60) / 2, iy + 8, 60, 104); P('wardrobe', sx + 14 + (bwid - 50) / 2, iy + ih - 30, 50, 24); P('lamp', ix + iw - 22, iy + 120, 16, 16, false);
     P('fridge', sx - 40, iy + ih - 36, 32, 30); P('shelf', ix + 8, iy + 30, 24, 60); P('chair', ix + 120, iy + ih * .45 - 20, 26, 26, false);
+    if (b.floors === 2) P('stairs', sx - 70, iy + 6, 56, 90, false);
   } else {
     const k = m.bld[m.bld.length - 1].kind;
     if (k === 'warehouse') { const rows = Math.max(1, Math.floor((ih - 80) / 90)); for (let r = 0; r < rows; r++) P('rack', ix + 40, iy + 50 + r * 90, iw * .55, 26); P('pallet', ix + iw - 80, iy + 20, 60, 50); P('barrel', ix + iw - 50, iy + ih - 50, 30, 30); P('forklift', ix + iw - 110, iy + ih * .5, 60, 34); }
     else if (k === 'lab') { P('labbench', ix + 30, iy + 30, iw * .45, 34); P('labbench', ix + 30, iy + ih - 64, iw * .45, 34); P('server', ix + iw - 44, iy + 20, 30, 70); P('tank', ix + iw - 70, iy + ih - 80, 50, 50); P('desk', ix + iw * .55, iy + ih * .4, 60, 36); }
+    else if (k === 'barn') { P('hay', ix + 30, iy + 30, 70, 50); P('hay', ix + 30, iy + 90, 70, 50); P('hay', ix + iw - 100, iy + ih - 70, 70, 50); P('tractor', ix + iw * .45, iy + ih * .35, 90, 56); P('barrel', ix + iw - 50, iy + 30, 30, 30); }
     else { P('generator', ix + 30, iy + 30, 90, 60); P('transformer', ix + iw - 100, iy + 30, 70, 70); P('panel', ix + 30, iy + ih - 40, 120, 22); P('barrel', ix + iw - 60, iy + ih - 60, 30, 30); P('cable', ix + iw * .3, iy + ih * .5, 60, 60, false); }
   }
 }
-function genMap() {
-  const theme = pickTheme(), W = 2600, H = 2600, m = { w: W, h: H, theme, walls: [], trees: [], bushes: [], vents: [], poles: [], lines: [], loot: [], bld: [], props: [] };
+// a building = 4 walls with two doorways (top + left), furnished inside
+function addBuilding(m, x, y, bw, bh, type, extra = {}) {
+  const t = 24, d = 80, dx = x + bw / 2 - d / 2, dy = y + bh / 2 - d / 2;
+  m.walls.push({ x, y, w: dx - x, h: t }, { x: dx + d, y, w: x + bw - dx - d, h: t });          // top w/ door
+  m.walls.push({ x, y: y + bh - t, w: bw, h: t });                                          // bottom
+  m.walls.push({ x, y, w: t, h: dy - y }, { x, y: dy + d, w: t, h: y + bh - dy - d });          // left w/ door
+  m.walls.push({ x: x + bw - t, y, w: t, h: bh });                                          // right
+  furnish(m, { x, y, w: bw, h: bh, t, type, ...extra });
+  return { x, y, w: bw, h: bh, type };
+}
+// water: the whole ocean outside the islands, plus swamp pools
+function onIsland(m, x, y, pad = 0) { return m.islands.some(i => Math.hypot(i.x - x, i.y - y) < i.r - pad); }
+function inWater(m, x, y) { if (m.islands) return !onIsland(m, x, y); return !!(m.pools && m.pools.some(o => Math.hypot(o.x - x, o.y - y) < o.r)); }
+const WINDOW_LIGHTS = ['#ffcf7a', '#ffe9b0', '#9fd0ff', '#ff5a3a', '#7aff9a', 'flicker', 'off', '#ffb35a'];
+function genMap(theme = pickTheme()) {
+  const ocean = theme === 'Stormy Ocean', W = +ENV.MAP_SIZE || (ocean ? 7200 : 5400), H = W, SC = W / (ocean ? 3600 : 2600), A = SC * SC, N = n => Math.round(n * A), m = { w: W, h: H, theme, walls: [], trees: [], bushes: [], vents: [], poles: [], lines: [], loot: [], bld: [], props: [] };
   const B = 40; m.walls.push({ x: 0, y: 0, w: W, h: B }, { x: 0, y: H - B, w: W, h: B }, { x: 0, y: 0, w: B, h: H }, { x: W - B, y: 0, w: B, h: H });
-  const forest = theme === 'Powerline Forest';
+  const forest = theme === 'Powerline Forest', C = { x: W / 2, y: H / 2 };
   if (forest) { // two high-voltage lines cut straight corridors through the forest
     const line = (x0, y0, x1, y1) => { const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / 430)), pts = []; for (let i = 0; i <= n; i++) pts.push({ x: x0 + (x1 - x0) * i / n, y: y0 + (y1 - y0) * i / n }); m.lines.push(pts); };
-    line(140, rand(350, 900), W - 140, rand(1700, 2250)); line(rand(450, 950), 140, rand(1650, 2150), H - 140);
+    line(140, rand(350, 900) * SC, W - 140, rand(1700, 2250) * SC); line(rand(450, 950) * SC, 140, rand(1650, 2150) * SC, H - 140); if (SC > 1.5) line(140, rand(1900, 2300) * SC, W - 140, rand(300, 700) * SC);
     for (const l of m.lines) for (let i = 0; i < l.length; i++) { const a = l[Math.max(0, i - 1)], b = l[Math.min(l.length - 1, i + 1)]; m.poles.push({ x: l[i].x, y: l[i].y, r: 30, a: Math.atan2(b.y - a.y, b.x - a.x) }); }
   }
+  if (ocean) { // a ring of islands inside the calm zone; beyond m.safe the storm rages
+    m.safe = 1450 * SC; m.islands = [{ x: C.x, y: C.y, r: 560 }];
+    for (let k = 0; m.islands.length < 1 + N(7) && k < 6000; k++) { const a = rand(0, 6.283), d = rand(820, 1320 * SC), r = rand(190, 330) * (Math.random() < .3 ? 1.6 : 1), x = C.x + Math.cos(a) * d, y = C.y + Math.sin(a) * d; if (!m.islands.some(i => Math.hypot(i.x - x, i.y - y) < i.r + r + 160)) m.islands.push({ x, y, r }); }
+  }
+  if (theme === 'Rainforest Swamp') { m.pools = []; for (let k = 0; m.pools.length < N(10) && k < 6000; k++) { const r = rand(110, 240), x = rand(200, W - 200), y = rand(200, H - 200); if (Math.hypot(x - C.x, y - C.y) > 330 + r && !m.pools.some(o => Math.hypot(o.x - x, o.y - y) < o.r + r + 60)) m.pools.push({ x, y, r }); } }
   const segD = (x, y, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, k = clamp(((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy), 0, 1); return Math.hypot(x - a.x - dx * k, y - a.y - dy * k); };
   const nearLine = (x, y, d) => m.lines.some(l => l.some((p, i) => i && segD(x, y, l[i - 1], p) < d));
   const free = (x, y, r) => !m.props.some(o => x + r > o.x && x - r < o.x + o.w && y + r > o.y && y - r < o.y + o.h) && x > 80 + r && y > 80 + r && x < W - 80 - r && y < H - 80 - r && Math.hypot(x - W / 2, y - H / 2) > 200 &&
-    !m.walls.some(w => x + r > w.x && x - r < w.x + w.w && y + r > w.y && y - r < w.y + w.h) && !m.trees.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r) && !m.poles.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r + 20);
-  const nB = theme === 'Abandoned Pizzeria Town' ? 16 : theme === 'Static Fields' ? 7 : forest ? 5 : 3;
-  const nT = forest ? 330 : theme === 'Foggy Woods' ? 140 : theme === 'Static Fields' ? 30 : 45;
+    !m.walls.some(w => x + r > w.x && x - r < w.x + w.w && y + r > w.y && y - r < w.y + w.h) && !m.trees.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r) && !m.poles.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r + 20) &&
+    (!m.islands || onIsland(m, x, y, r + 20)) && !(m.pools && m.pools.some(o => Math.hypot(o.x - x, o.y - y) < o.r + r));
   const rooms = [];
-  for (let i = 0, k = 0; i < nB && k < 500; k++) { // buildings = 4 walls with doorways
-    const type = forest ? (rooms.length < 3 ? 'house' : 'facility') : theme === 'Abandoned Pizzeria Town' ? (rooms.length < 2 || Math.random() < .6 ? 'house' : 'facility') : (rooms.length < 2 || Math.random() < .5 ? 'house' : 'facility');
-    const bw = type === 'house' ? rand(340, 440) : rand(260, 440), bh = type === 'house' ? rand(280, 380) : rand(240, 380), x = rand(100, W - 100 - bw), y = rand(100, H - 100 - bh);
-    if (!free(x + bw / 2, y + bh / 2, Math.max(bw, bh) / 2 + 90)) continue;
-    const t = 24, d = 80, dx = x + bw / 2 - d / 2, dy = y + bh / 2 - d / 2;
-    m.walls.push({ x, y, w: dx - x, h: t }, { x: dx + d, y, w: x + bw - dx - d, h: t });          // top w/ door
-    m.walls.push({ x, y: y + bh - t, w: bw, h: t });                                          // bottom
-    m.walls.push({ x, y, w: t, h: dy - y }, { x, y: dy + d, w: t, h: y + bh - dy - d });          // left w/ door
-    m.walls.push({ x: x + bw - t, y, w: t, h: bh });                                          // right
-    furnish(m, { x, y, w: bw, h: bh, t, type, door: { dx, dy, d } });
-    rooms.push({ x, y, w: bw, h: bh, type }); i++;
+  const tryBuild = (n, typeFn, sizeFn, extraFn, area) => { for (let i = 0, k = 0; i < n && k < 600; k++) {
+    const type = typeFn(rooms.length), [bw, bh] = sizeFn(type), c = area ? area() : { x: rand(100 + bw / 2, W - 100 - bw / 2), y: rand(100 + bh / 2, H - 100 - bh / 2) }, x = c.x - bw / 2, y = c.y - bh / 2;
+    if (!free(x + bw / 2, y + bh / 2, Math.max(bw, bh) / 2 + 90) || (m.islands && !onIsland(m, x, y, 30) | !onIsland(m, x + bw, y + bh, 30) | !onIsland(m, x + bw, y, 30) | !onIsland(m, x, y + bh, 30))) continue;
+    rooms.push(addBuilding(m, x, y, bw, bh, type, extraFn ? extraFn(type) : {})); i++; } };
+  const stdSize = type => type === 'house' ? [rand(340, 440), rand(280, 380)] : [rand(260, 440), rand(240, 380)];
+  let nT = forest ? 330 : theme === 'Foggy Woods' ? 140 : theme === 'Static Fields' ? 30 : 45, nBush = 28, treeR = [18, 38];
+  if (CLASSIC.includes(theme)) {
+    const nB = theme === 'Abandoned Pizzeria Town' ? 16 : theme === 'Static Fields' ? 7 : forest ? 5 : 3;
+    tryBuild(N(nB), n => forest ? (n % 5 < 3 ? 'house' : 'facility') : theme === 'Abandoned Pizzeria Town' ? (n < 2 || Math.random() < .6 ? 'house' : 'facility') : (n < 2 || Math.random() < .5 ? 'house' : 'facility'), stdSize);
+  } else if (ocean) {
+    const big = m.islands.filter(i => i.r > 270), isl = () => { const i = rooms.length < 2 ? m.islands[0] : pick(big), a = rand(0, 6.283), d = rand(0, Math.max(0, i.r - 260)); return { x: i.x + Math.cos(a) * d, y: i.y + Math.sin(a) * d }; };
+    tryBuild(N(6), n => n % 3 < 2 ? 'house' : 'facility', t => t === 'house' ? [rand(320, 380), rand(260, 320)] : [rand(240, 300), rand(220, 280)], t => ({ kind: t === 'house' ? 'shack' : 'warehouse' }), isl);
+    nT = 90; nBush = 30; treeR = [16, 26];
+    // sea stacks (rocks in the open water) + boats docked at the shores + 2 big ships
+    for (let i = 0, k = 0; i < N(26) && k < 6000; k++) { const x = rand(200, W - 200), y = rand(200, H - 200), r = rand(30, 70); if (!onIsland(m, x, y, -r - 140) && Math.hypot(x - C.x, y - C.y) > 700 && !m.trees.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r + 200)) { m.trees.push({ x, y, r, rk: 1 }); i++; } }
+    m.boats = []; let bid = 1;
+    m.islands.forEach((is, n) => { const nb = n === 0 ? 4 : 1; for (let j = 0; j < nb; j++) { const a = (j / nb) * 6.283 + rand(-.3, .3) + n, d = is.r + 50; m.boats.push({ id: bid++, x: is.x + Math.cos(a) * d, y: is.y + Math.sin(a) * d, a: a + Math.PI / 2, kind: 'boat', r: 26 }); } });
+    for (const a of [.7, 2.3, 3.9, 5.4]) m.boats.push({ id: bid++, x: C.x + Math.cos(a) * 760, y: C.y + Math.sin(a) * 760, a: a + Math.PI / 2, kind: 'ship', r: 46 });
+    m.boats = m.boats.filter(b => !onIsland(m, b.x, b.y, -b.r) && !m.trees.some(t => Math.hypot(t.x - b.x, t.y - b.y) < t.r + b.r + 10));
+  } else if (theme === 'Rainforest Swamp') {
+    tryBuild(N(4), n => n % 4 < 3 ? 'house' : 'facility', stdSize, t => ({ kind: t === 'house' ? 'hut' : 'lab' })); nT = 260; nBush = 70; treeR = [20, 42];
+  } else if (theme === 'Snowy Mountain') {
+    tryBuild(N(5), n => n % 5 < 4 ? 'house' : 'facility', stdSize, t => ({ kind: t === 'house' ? 'cabin' : 'substation' })); nT = 200; nBush = 20;
+    for (let i = 0, k = 0; i < N(46) && k < 6000; k++) { const r = rand(40, 95), x = rand(0, W), y = rand(0, H); if (free(x, y, r + 30)) { m.trees.push({ x, y, r, rk: 1 }); i++; } }
+  } else if (theme === 'Haunted Farm') {
+    tryBuild(1, () => 'house', () => [rand(400, 440), rand(330, 370)], () => ({ kind: 'farmhouse', floors: 2, light: '#ffcf7a' }), () => ({ x: C.x + rand(-350, 350), y: C.y - 520 }));
+    tryBuild(N(3), () => 'facility', () => [rand(380, 440), rand(300, 360)], () => ({ kind: 'barn' })); tryBuild(N(2), () => 'house', stdSize, () => ({ kind: 'farmhouse' }));
+    for (let i = 0, k = 0; i < N(3) && k < 1500; k++) { const x = rand(200, W - 200), y = rand(200, H - 200); if (free(x, y, 90)) { m.trees.push({ x, y, r: 55, sl: 1 }); i++; } } // grain silos
+    for (let f = 0, k = 0; f < N(4) && k < 1200; k++) { // fenced cornfields with a gap on one side
+      const fw = rand(420, 620), fh = rand(360, 520), x = rand(120, W - 120 - fw), y = rand(120, H - 120 - fh);
+      if (!free(x + fw / 2, y + fh / 2, Math.max(fw, fh) / 2 + 30)) continue; const g = 110, T = 10;
+      m.walls.push({ x, y, w: fw / 2 - g / 2, h: T, f: 1 }, { x: x + fw / 2 + g / 2, y, w: fw / 2 - g / 2, h: T, f: 1 }, { x, y: y + fh - T, w: fw, h: T, f: 1 }, { x, y, w: T, h: fh, f: 1 }, { x: x + fw - T, y, w: T, h: fh, f: 1 });
+      for (let cy = y + 50; cy < y + fh - 40; cy += 70) for (let cx = x + 50; cx < x + fw - 40; cx += 80) if (Math.random() < .8) m.bushes.push({ x: cx + rand(-10, 10), y: cy + rand(-10, 10), r: rand(30, 40), corn: 1 });
+      f++; }
+    nT = 50; nBush = 10;
+  } else if (theme === 'Vampire Castle') {
+    const S2 = 1300, x0 = C.x - S2 / 2, y0 = C.y - S2 / 2, T = 50, g = 160; // outer castle wall with a gate in the middle of each side + 4 round corner towers
+    const side = (x, y, w, h, horiz) => { if (horiz) m.walls.push({ x, y, w: w / 2 - g / 2, h, cs: 1 }, { x: x + w / 2 + g / 2, y, w: w / 2 - g / 2, h, cs: 1 }); else m.walls.push({ x, y, w, h: h / 2 - g / 2, cs: 1 }, { x, y: y + h / 2 + g / 2, w, h: h / 2 - g / 2, cs: 1 }); };
+    side(x0, y0, S2, T, 1); side(x0, y0 + S2 - T, S2, T, 1); side(x0, y0, T, S2, 0); side(x0 + S2 - T, y0, T, S2, 0);
+    for (const [tx, ty] of [[x0, y0], [x0 + S2, y0], [x0, y0 + S2], [x0 + S2, y0 + S2]]) m.trees.push({ x: tx, y: ty, r: 85, tw: 1 });
+    rooms.push(addBuilding(m, C.x - 260, C.y - 520 + T + 40, 520, 400, 'house', { kind: 'keep', floors: 2, light: '#ff6a3a' }));
+    tryBuild(N(2), () => 'facility', stdSize, () => ({ kind: 'crypt' }), () => { const a = rand(0, 6.283), d = rand(1050, W / 2 - 300); return { x: C.x + Math.cos(a) * d, y: C.y + Math.sin(a) * d }; }); tryBuild(N(2), () => 'house', stdSize, () => ({ kind: 'cottage', light: pick(WINDOW_LIGHTS) }));
+    for (let i = 0, k = 0; i < N(40) && k < 6000; k++) { const x = rand(150, W - 150), y = rand(150, H - 150); if ((Math.abs(x - C.x) > S2 / 2 + 120 || Math.abs(y - C.y) > S2 / 2 + 120) && free(x, y, 30)) { m.props.push({ k: 'grave', x: Math.round(x - 14), y: Math.round(y - 8), w: 28, h: 16, solid: true, a: 0 }); i++; } }
+    nT = 70; nBush = 16;
+  } else if (theme === 'Fester Street') { // a quiet suburb: two-storey houses on both sides of three streets, every window lit differently
+    const streets = []; for (let sy = 600; sy < H - 400; sy += 820) streets.push(sy);
+    for (const sy of streets) for (let sx = 260; sx < W - 300; sx += 470) for (const side of [-1, 1]) {
+      if (Math.random() < .4) continue; const bw = rand(330, 400), bh = rand(270, 320), x = sx + rand(-20, 20), y = side < 0 ? sy - 110 - bh : sy + 110;
+      if (!free(x + bw / 2, y + bh / 2, Math.max(bw, bh) / 2 + 20)) continue;
+      rooms.push(addBuilding(m, x, y, bw, bh, 'house', { kind: 'twostory', floors: 2, light: pick(WINDOW_LIGHTS) }));
+    }
+    for (const sy of streets) for (let sx = 200; sx < W - 150; sx += 330) m.props.push({ k: 'streetlight', x: sx, y: sy - 90, w: 10, h: 10, solid: false, a: 0 });
+    m.streets = streets; nT = 70; nBush = 34; treeR = [18, 30];
   }
-  for (let i = 0, k = 0; i < nT && k < 6000; k++) { const r = rand(18, 38), x = rand(0, W), y = rand(0, H); if (free(x, y, r + (forest ? 26 : 40)) && !(forest && nearLine(x, y, 130))) { m.trees.push({ x, y, r }); i++; } }
-  for (let i = 0, k = 0; i < 28 && k < 3000; k++) { const r = rand(30, 46), x = rand(0, W), y = rand(0, H); if (free(x, y, r)) { m.bushes.push({ x, y, r }); i++; } }
-  for (let i = 0, k = 0; i < 10 && k < 3000; k++) { const x = rand(0, W), y = rand(0, H); if (free(x, y, 30)) { m.vents.push({ x, y }); i++; } }
+  if (!rooms.some(b => b.type === 'house')) tryBuild(1, () => 'house', stdSize, () => (m.islands ? { kind: 'shack' } : {}), m.islands ? () => ({ x: C.x + rand(-200, 200), y: C.y + rand(-200, 200) }) : null);
+  nT = N(nT); nBush = N(nBush); for (let i = 0, k = 0; i < nT && k < nT * 20; k++) { const r = rand(treeR[0], treeR[1]), x = rand(0, W), y = rand(0, H); if (free(x, y, r + (forest ? 26 : 40)) && !(forest && nearLine(x, y, 130)) && !(m.streets && m.streets.some(sy => Math.abs(y - sy) < 120))) { m.trees.push({ x, y, r }); i++; } }
+  for (let i = 0, k = 0; i < nBush && k < nBush * 100; k++) { const r = rand(30, 46), x = rand(0, W), y = rand(0, H); if (free(x, y, r)) { m.bushes.push({ x, y, r }); i++; } }
+  for (let i = 0, k = 0; i < N(10) && k < 6000; k++) { const x = rand(0, W), y = rand(0, H); if (free(x, y, 30)) { m.vents.push({ x, y }); i++; } }
   // loot: chests and bags (one chest inside most buildings, the rest scattered)
   let lid = 1; const okLoot = (x, y) => free(x, y, 26) && !m.bushes.some(b => Math.hypot(b.x - x, b.y - y) < b.r + 20) && !m.loot.some(l => Math.hypot(l.x - x, l.y - y) < 160);
   for (const b of rooms) for (let k = 0; k < 30; k++) { const x = b.x + rand(50, b.w - 50), y = b.y + rand(50, b.h - 50); if (okLoot(x, y)) { m.loot.push({ id: lid++, x, y, kind: Math.random() < .7 ? 'chest' : 'bag', a: rand(0, 6.28) }); break; } }
-  for (const [kind, n] of [['chest', 14], ['bag', 22]]) for (let i = 0, k = 0; i < n && k < 4000; k++) { const x = rand(0, W), y = rand(0, H); if (okLoot(x, y)) { m.loot.push({ id: lid++, x, y, kind, a: rand(0, 6.28) }); i++; } }
+  for (const [kind, n] of [['chest', N(14)], ['bag', N(22)]]) for (let i = 0, k = 0; i < n && k < n * 200; k++) { const x = rand(0, W), y = rand(0, H); if (okLoot(x, y)) { m.loot.push({ id: lid++, x, y, kind, a: rand(0, 6.28) }); i++; } }
   return m;
 }
-function freeSpot(m, r, near, spread) {
+function freeSpot(m, r, near, spread, where) { // where: undefined = land on the ocean map, 'water', 'any'
   for (let k = 0; k < 400; k++) {
     const x = near ? near.x + rand(-spread, spread) : rand(80, m.w - 80), y = near ? near.y + rand(-spread, spread) : rand(80, m.h - 80);
     if (x < 60 || y < 60 || x > m.w - 60 || y > m.h - 60) continue;
+    if (m.islands && where !== 'any' && k < 300) { const land = onIsland(m, x, y, r + 10); if (where === 'water' ? land || Math.hypot(x - m.w / 2, y - m.h / 2) > m.safe : !land) continue; }
     if (!collides(m, x, y, r)) return { x, y };
   }
   return { x: m.w / 2, y: m.h / 2 };
@@ -172,11 +277,11 @@ function event(r, msg, kind) { bcast(r, { t: 'event', msg, kind: kind || 'info' 
 function recolor(r) { const used = new Set(); for (const p of r.players.values()) { if (!used.has(p.color) && p.colorSet) { used.add(p.color); continue; } p.color = COLORS.find(c => !used.has(c)) || '#fff'; p.colorSet = true; used.add(p.color); } }
 function toLobby(r) {
   r.state = 'lobby'; r.map = LOBBY; r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set();
-  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100 }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, { x: 700, y: 700 }, 150)); }
+  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100, boat: null, esc: 0 }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, { x: 700, y: 700 }, 150)); }
   sendMap(r);
 }
 function sendMap(r, only) {
-  const m = r.map, o = { t: 'map', map: { w: m.w, h: m.h, theme: m.theme, walls: m.walls, trees: m.trees, bushes: m.bushes, vents: m.vents, heli: m.heli || null, poles: m.poles || [], lines: m.lines || [], loot: m.loot || [], bld: m.bld || [], props: m.props || [] } };
+  const m = r.map, o = { t: 'map', map: { w: m.w, h: m.h, theme: m.theme, walls: m.walls, trees: m.trees, bushes: m.bushes, vents: m.vents, heli: m.heli || null, poles: m.poles || [], lines: m.lines || [], loot: m.loot || [], bld: m.bld || [], props: m.props || [], islands: m.islands || null, safe: m.safe || 0, pools: m.pools || null, streets: m.streets || null, zones: m.zones || null } };
   if (only) send(only, o); else bcast(r, o);
 }
 function addToRoom(r, p) {
@@ -197,7 +302,7 @@ function removeFromRoom(p) {
 function startRound(r) {
   const ps = [...r.players.values()], n = ps.length;
   if (n < MIN_START) return 'Need at least 2 players (add a bot!)';
-  r.state = 'flight'; r.flightEnd = now() + FLIGHT_TIME; r.map = genMap(); r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set(); r.itemId = 1;
+  r.state = 'flight'; r.flightEnd = now() + FLIGHT_TIME; r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set(); r.itemId = 1; r.strikes = []; r.whirls = [];
   // each player has a random chance to be a monster: 1 per ~5 players on average, at least 1, never everyone
   let chance = 0.2, mons = ps.filter(() => Math.random() < chance);
   const maxM = Math.max(1, Math.floor(n / 3));
@@ -205,20 +310,26 @@ function startRound(r) {
   if (!mons.length) mons = [pick(ps)];
   if (ENV.TEST_ROLES === 'humans-survive' && ps.some(p => p.bot)) mons = [pick(ps.filter(p => p.bot))]; // screenshot/test hook only
   if (ENV.TEST_ROLES === 'human-monster' && ps.some(p => !p.bot)) mons = [ps.find(p => !p.bot)]; // screenshot hook only (kill cam)
-  const pool = [...MKEYS].sort(() => Math.random() - .5);
+  // the map: a monster player's chosen monster takes the round to its home map (test hooks can force one)
+  const prefM = (ENV.TEST_MON && MONSTERS[ENV.TEST_MON] && !ENV.THEME && MONSTERS[ENV.TEST_MON].home !== CLASSIC) ? ENV.TEST_MON : (mons.find(p => p.pref && MONSTERS[p.pref]) || {}).pref;
+  r.map = genMap(pickTheme(prefM)); r.boats = (r.map.boats || []).map(b => ({ ...b, by: null }));
+  const homePool = MKEYS.filter(k => MONSTERS[k].home.includes(r.map.theme)), pool = homePool.slice().sort(() => Math.random() - .5);
+  while (pool.length < mons.length) pool.unshift(pick(homePool));
   for (const p of mons) if (p.pref && pool.includes(p.pref)) { pool.splice(pool.indexOf(p.pref), 1); pool.push(p.pref); } // chosen monsters go to the top of the pool
   const center = { x: r.map.w / 2, y: r.map.h / 2 };
   for (const p of ps) {
     Object.assign(p, { alive: true, escaped: false, st: {}, stamina: 100, cdUntil: 0, keys: {}, form: 0, formT: 0 }, freshKit());
     if (ENV.TEST_KIT && !p.bot) { p.inv[0] = { k: 'shotgun', n: 1 }; p.inv[1] = { k: 'bat', n: 1 }; p.inv[2] = { k: 'soda', n: 2 }; p.inv[3] = { k: 'beans', n: 1 }; p.ammo.shells = 24; p.vest = 100; p.helmet = 60; } // screenshot hook only
     p.earn = 0;
-    if (mons.includes(p)) { p.role = 'monster'; p.mt = p.pref && pool.includes(p.pref) ? pool.splice(pool.indexOf(p.pref), 1)[0] : pool.pop(); p.r = MONSTERS[p.mt].r; p.hp = p.maxHp = MONSTERS[p.mt].hp || MON_HP; Object.assign(p, freeSpot(r.map, p.r)); while (dist(p, center) < 900) Object.assign(p, freeSpot(r.map, p.r)); p.cdUntil = now() + FLIGHT_TIME + 6; }
-    else { p.role = 'survivor'; p.mt = null; p.r = 16; Object.assign(p, freeSpot(r.map, 16, center, 160)); }
+    p.kitGiven = null;
+    if (mons.includes(p)) { p.role = 'monster'; p.mt = p.pref && pool.includes(p.pref) ? pool.splice(pool.indexOf(p.pref), 1)[0] : pool.pop(); p.r = MONSTERS[p.mt].r; p.hp = p.maxHp = MONSTERS[p.mt].hp || MON_HP; p.esc = 0; p.boat = null; const wh = r.map.islands ? (MONSTERS[p.mt].sea ? 'water' : 'any') : undefined; Object.assign(p, freeSpot(r.map, p.r, null, 0, wh)); for (let k = 0; k < 50 && dist(p, center) < 900; k++) Object.assign(p, freeSpot(r.map, p.r, null, 0, wh)); p.cdUntil = now() + FLIGHT_TIME + 6; }
+    else { p.role = 'survivor'; p.mt = null; p.r = 16; p.boat = null; Object.assign(p, freeSpot(r.map, 16, center, 160));
+      if (p.kit && p.kit.length && !p.bot) { p.kit.forEach((k, i) => { const sl = p.inv.findIndex(x => !x); if (sl >= 0) p.inv[sl] = { k, n: 1 }; }); p.kitGiven = p.kit.slice(); send(p, { t: 'kitused', k: p.kitGiven }); p.kit = []; } } // supplies bought at the store counter
     if (ENV.TEST_KIT && !p.bot && p.role === 'survivor') { const c = r.map.loot.filter(c => c.kind === 'chest').sort((a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y))[0]; if (c) Object.assign(p, freeSpot(r.map, 16, c, 60)); } // screenshot hook only
   }
   if (ENV.TEST_ROLES === 'human-monster') { const m = ps.find(p => !p.bot), v = ps.find(p => p.bot && p.role === 'survivor'); if (m && v) { ps.forEach(p => { if (p.bot) p.hp = 1; }); m.x = v.x + 90; m.y = v.y; } } // screenshot hook only
 
-  if (ENV.TEST_MON && MONSTERS[ENV.TEST_MON]) for (const p of mons) if (p.bot || ENV.TEST_ROLES === 'human-monster') { p.mt = ENV.TEST_MON; p.r = MONSTERS[p.mt].r; } // screenshot hook only
+  if (ENV.TEST_MON && MONSTERS[ENV.TEST_MON]) for (const p of mons) if (p.bot || ENV.TEST_ROLES === 'human-monster') { p.mt = ENV.TEST_MON; p.r = MONSTERS[p.mt].r; p.hp = p.maxHp = MONSTERS[p.mt].hp || MON_HP; } // screenshot hook only
   sendMap(r);
   bcast(r, { t: 'flight', theme: r.map.theme, secs: FLIGHT_TIME, roles: ps.map(p => ({ id: p.id, role: p.role, mt: p.mt })) });
 }
@@ -244,13 +355,44 @@ function checkEnd(r) {
   bcast(r, { t: 'results', why, winner, saved, caught, players: ps.map(p => ({ id: p.id, name: p.name, role: p.role, mt: p.mt, escaped: p.escaped, alive: p.alive, score: p.score, color: p.color })) });
 }
 function catchP(r, m, s) {
-  s.alive = false; s.role = 'survivor'; s.caughtBy = m.mt; s.hp = 0; m.earn += 40;
+  s.alive = false; s.role = 'survivor'; s.caughtBy = m.mt; s.hp = 0; m.earn += 40; leaveBoat(r, s, true);
   dropAll(r, s);
-  send(s, { t: 'caught', by: m.mt, fm: m.form || 0 });
-  bcast(r, { t: 'scare', id: s.id, mid: m.id, by: m.mt, x: Math.round(s.x), y: Math.round(s.y), mx: Math.round(m.x), my: Math.round(m.y) });
+  send(s, { t: 'caught', by: m.mt, fm: monForm(r, m), water: !!(r.map.islands || inWater(r.map, s.x, s.y)) });
+  bcast(r, { t: 'scare', id: s.id, mid: m.id, by: m.mt, fm: monForm(r, m), x: Math.round(s.x), y: Math.round(s.y), mx: Math.round(m.x), my: Math.round(m.y) });
   event(r, `${s.name} was caught by ${MONSTERS[m.mt].name}!`, 'bad');
   checkEnd(r);
 }
+
+// ---------- boats & ships (ocean map) ----------
+function monForm(r, m) { if (m.mt === 'megalodon') return inWater(r.map, m.x, m.y) ? 0 : 1; if (m.mt === 'fester') return m.esc || 0; return m.form || 0; }
+function boatOf(r, p) { return p.boat && r.boats ? r.boats.find(b => b.id === p.boat) : null; }
+function boatWater(m, x, y, rad) { return x > rad + 40 && y > rad + 40 && x < m.w - rad - 40 && y < m.h - rad - 40 && !m.islands.some(i => Math.hypot(i.x - x, i.y - y) < i.r + rad * .6) && !m.trees.some(t => Math.hypot(t.x - x, t.y - y) < t.r + rad * .8); }
+function board(r, p) {
+  if (!r.boats || p.boat || r.state !== 'playing' || p.role !== 'survivor' || !p.alive || p.escaped || p.role === 'ghost') return false;
+  const b = r.boats.filter(b => dist(b, p) < b.r + p.r + 46).sort((a, c) => dist(a, p) - dist(c, p))[0]; if (!b) return false;
+  const riders = [...r.players.values()].filter(q => q.boat === b.id).length; if (riders >= (b.kind === 'ship' ? 6 : 2)) { send(p, { t: 'event', msg: 'That boat is full.', kind: 'bad' }); return true; }
+  wake(p); p.boat = b.id; if (!b.by) b.by = p.id; p.x = b.x; p.y = b.y;
+  send(p, { t: 'event', msg: b.by === p.id ? `You take the wheel of the ${b.kind}. Drive with WASD / joystick — E to get off. Stay inside the calm zone: the storm is deadly!` : `You climb aboard the ${b.kind}.`, kind: 'good' });
+  bcast(r, { t: 'sfx', kind: 'open', x: b.x, y: b.y }); return true;
+}
+function leaveBoat(r, p, force) {
+  const b = boatOf(r, p); if (!b) { p.boat = null; return false; }
+  p.boat = null; if (b.by === p.id) { const nx = [...r.players.values()].find(q => q.boat === b.id); b.by = nx ? nx.id : null; }
+  // step off onto the closest land if any is near, else into the water beside the boat
+  let spot = null; for (let d = b.r + 20; d < b.r + 160 && !spot; d += 20) for (let k = 0; k < 12 && !spot; k++) { const a = k / 12 * 6.283, x = b.x + Math.cos(a) * d, y = b.y + Math.sin(a) * d; if (onIsland(r.map, x, y, 18) && !collides(r.map, x, y, p.r)) spot = { x, y }; }
+  if (!spot) spot = freeSpot(r.map, p.r, b, b.r + 40, 'any'); Object.assign(p, spot);
+  if (force && p.alive) { p.st.stun = Math.max(p.st.stun || 0, now() + 1); send(p, { t: 'event', msg: 'You were thrown out of the boat!', kind: 'bad' }); }
+  return true;
+}
+function driveBoat(r, p, dx, dy, sp, dt) {
+  const b = boatOf(r, p); if (!b || b.by !== p.id) return;
+  const nx = b.x + dx * sp * dt, ny = b.y + dy * sp * dt;
+  if (boatWater(r.map, nx, ny, b.r)) { b.x = nx; b.y = ny; } else if (boatWater(r.map, nx, b.y, b.r)) b.x = nx; else if (boatWater(r.map, b.x, ny, b.r)) b.y = ny;
+  const ta = Math.atan2(dy, dx), da = ((ta - b.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; b.a += clamp(da, -3 * dt, 3 * dt);
+}
+const capsize = (r, s) => { if (s.boat) leaveBoat(r, s, true); };
+// push a survivor away from (or toward, with negative d) a point, respecting walls
+function shove(r, s, from, d) { const a = Math.atan2(s.y - from.y, s.x - from.x); if (s.boat) { const b = boatOf(r, s); if (b && b.by === s.id) { const n = 8; for (let i = 0; i < n; i++) { const nx = b.x + Math.cos(a) * d / n, ny = b.y + Math.sin(a) * d / n; if (boatWater(r.map, nx, ny, b.r)) { b.x = nx; b.y = ny; } } } return; } for (let i = 0; i < 8; i++) moveEnt(r.map, s, Math.cos(a) * d / 8, Math.sin(a) * d / 8); }
 
 // ---------- loot, items & combat ----------
 function roll(table) { let tot = 0; for (const k in table) tot += table[k]; let x = Math.random() * tot; for (const k in table) { x -= table[k]; if (x <= 0) return k; } return Object.keys(table)[0]; }
@@ -345,7 +487,7 @@ function useAbility(r, p) {
   const M = MONSTERS[p.mt], surv = [...r.players.values()].filter(q => q.role === 'survivor' && q.alive && !q.escaped);
   let cd = M.cd;
   let snd = p.mt;
-  const nearest = () => surv.slice().sort((a, b) => dist(a, p) - dist(b, p))[0];
+  const nearest = () => surv.slice().sort((a, b) => dist(a, p) - dist(b, p))[0], within = d => surv.filter(s => dist(s, p) < d), say = (s, msg) => send(s, { t: 'event', msg, kind: 'bad' });
   const appearNear = (tg, d0, d1) => { for (let k = 0; k < 60; k++) { const a = Math.random() * 6.283, d = d0 + Math.random() * (d1 - d0), x = clamp(tg.x + Math.cos(a) * d, 60, r.map.w - 60), y = clamp(tg.y + Math.sin(a) * d, 60, r.map.h - 60); if (!collides(r.map, x, y, p.r)) { p.x = x; p.y = y; p.a = Math.atan2(tg.y - y, tg.x - x); return true; } } Object.assign(p, freeSpot(r.map, p.r, tg, d1)); return true; };
   switch (p.mt) {
     case 'freddy': case 'bonnie': case 'chica': case 'foxy': case 'springtrap':
@@ -380,6 +522,45 @@ function useAbility(r, p) {
       const gx = p.x + Math.cos(p.a) * (p.r + best.r + 8), gy = p.y + Math.sin(p.a) * (p.r + best.r + 8);
       if (!collides(r.map, gx, gy, best.r)) { best.x = gx; best.y = gy; } else Object.assign(best, freeSpot(r.map, best.r, p, 50));
       wake(best); best.st.stun = t + 1.2; send(best, { t: 'event', msg: 'A rubber arm grabbed you!', kind: 'bad' }); snd = 'stretch'; break; }
+    // ---- phase 2 ----
+    case 'megalodon': case 'mosasaurus': { // a crashing wave around you
+      const R = p.mt === 'megalodon' ? 380 : 280, hit = within(R); bcast(r, { t: 'fx', kind: 'wave', x: p.x, y: p.y, r: R, c: '#bfe8ff' }); p.st.surf = t + 3;
+      for (const s of hit) { wake(s); capsize(r, s); shove(r, s, p, p.mt === 'megalodon' ? 170 : 120); s.st.stun = t + (p.mt === 'megalodon' ? 1.2 : 1.6); s.st.soak = t + 2; hurtSurvivor(r, s, p.mt === 'megalodon' ? 10 : 15, p); say(s, p.mt === 'megalodon' ? 'A wall of water explodes out of the sea — MEGALODON!' : 'A huge tail slams the water — the wave knocks you flat!'); }
+      snd = 'wave'; if (!hit.length) cd = 6; break; }
+    case 'kraken': { const tg = surv.filter(s => dist(s, p) < 480).sort((a, b) => dist(a, p) - dist(b, p))[0]; p.st.surf = t + 3;
+      bcast(r, { t: 'fx', kind: 'tentacle', id: p.id, x: p.x, y: p.y, tx: tg ? tg.x : p.x + Math.cos(p.a) * 400, ty: tg ? tg.y : p.y + Math.sin(p.a) * 400 });
+      if (!tg) { cd = 4; snd = 'tentacle'; break; }
+      wake(tg); capsize(r, tg); const gx = p.x + Math.cos(Math.atan2(tg.y - p.y, tg.x - p.x)) * (p.r + tg.r + 10), gy = p.y + Math.sin(Math.atan2(tg.y - p.y, tg.x - p.x)) * (p.r + tg.r + 10);
+      if (!collides(r.map, gx, gy, tg.r)) { tg.x = gx; tg.y = gy; } else Object.assign(tg, freeSpot(r.map, tg.r, p, 60, 'any')); tg.st.stun = t + 1.5; say(tg, 'A slimy tentacle wraps around you and drags you under…'); snd = 'tentacle'; break; }
+    case 'cthulhu': { const tg = surv.filter(s => dist(s, p) < 1100).sort((a, b) => dist(a, p) - dist(b, p)).slice(0, 3); p.st.surf = t + 2;
+      for (const s of surv) if (dist(s, p) < 1400) { s.st.thunder = t + 6; say(s, 'The sky turns black… red eyes open in the storm clouds. Lightning is coming — MOVE!'); }
+      for (const s of tg) { r.strikes.push({ x: s.x, y: s.y, at: t + 1, by: p.id }); bcast(r, { t: 'fx', kind: 'warn', x: s.x, y: s.y, r: 90, c: '#ff3030' }); }
+      snd = 'thunder'; if (!tg.length) cd = 6; break; }
+    case 'leviathan': { r.whirls.push({ x: p.x, y: p.y, r: 460, until: t + 4, by: p.id }); bcast(r, { t: 'fx', kind: 'whirl', x: p.x, y: p.y, r: 460 }); p.st.surf = t + 4;
+      for (const s of within(460)) { s.st.slow = t + 4; say(s, 'The sea starts spinning — a whirlpool is dragging you in!'); } snd = 'whirl'; break; }
+    case 'nessie': { p.st.invis = t + 6; p.st.fast = t + 6; for (const s of within(900)) { s.st.fog = t + 8; say(s, 'A thick fog rolls in… a long neck slips under the water.'); } bcast(r, { t: 'fx', kind: 'splash', x: p.x, y: p.y, c: '#9fc8d8' }); snd = 'nessie'; break; }
+    case 'spinosaurus': { p.st.invis = t + 4; p.st.dash = t + 1.4; bcast(r, { t: 'fx', kind: 'splash', x: p.x, y: p.y, c: '#7a9a60' }); snd = 'roar'; break; }
+    case 'trex': { const hit = within(320); bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 320, c: '#ffb070' }); p.st.fast = t + 4;
+      for (const s of hit) { wake(s); s.st.stun = t + 1.2; say(s, 'The ground shakes with a deafening ROAR!'); } for (const s of within(1000)) s.st.reveal = t + 6; snd = 'roar'; break; }
+    case 'quetzalcoatlus': { const tg = surv.filter(s => dist(s, p) < 1000).sort((a, b) => dist(a, p) - dist(b, p))[0]; if (!tg) { cd = 3; break; }
+      bcast(r, { t: 'fx', kind: 'dive', x: p.x, y: p.y, tx: tg.x, ty: tg.y }); appearNear(tg, 60, 110); wake(tg); capsize(r, tg); tg.st.stun = t + 1; say(tg, 'A giant shadow drops out of the sky onto you!'); snd = 'screech'; break; }
+    case 'yeti': { const hit = within(420); bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 420, c: '#e8f6ff' });
+      for (const s of hit) { wake(s); s.st.stun = t + .8; s.st.slow = t + 5; s.st.snow = t + 6; say(s, 'A freezing roar — an avalanche of snow buries you!'); } snd = 'roar'; if (!hit.length) cd = 6; break; }
+    case 'dragon': { const hit = surv.filter(s => dist(s, p) < 360 && Math.abs(((Math.atan2(s.y - p.y, s.x - p.x) - p.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < .5 && clearLine(r.map, p, s));
+      bcast(r, { t: 'fx', kind: 'fire', id: p.id, x: p.x, y: p.y, a: +p.a.toFixed(2), r: 360 });
+      for (const s of hit) { wake(s); s.st.burn = t + 3; hurtSurvivor(r, s, 30, p); say(s, 'Dragon fire! You are burning!'); } snd = 'fire'; break; }
+    case 'chupacabra': { const tg = surv.filter(s => dist(s, p) < p.r + s.r + 150).sort((a, b) => dist(a, p) - dist(b, p))[0]; if (!tg) { cd = 3; send(p, { t: 'event', msg: 'Nobody close enough to bite.', kind: 'bad' }); break; }
+      wake(tg); tg.st.slow = t + 3; hurtSurvivor(r, tg, 25, p); p.hp = Math.min(p.maxHp, p.hp + 80); bcast(r, { t: 'fx', kind: 'hit', x: tg.x, y: tg.y, c: '#c00000' }); say(tg, 'Fangs sink into you — the Chupacabra is draining your blood!'); snd = 'drain'; break; }
+    case 'vampire': { const tg = surv.filter(s => dist(s, p) < 1100).sort((a, b) => dist(a, p) - dist(b, p))[0]; if (!tg) { cd = 3; break; }
+      bcast(r, { t: 'fx', kind: 'bats', x: p.x, y: p.y }); appearNear(tg, 110, 180); bcast(r, { t: 'fx', kind: 'bats', x: p.x, y: p.y }); p.st.invis = t + 1.2; tg.st.blind = t + 3; say(tg, 'A swarm of bats engulfs you… you can\'t see!'); snd = 'bats'; break; }
+    case 'gargoyle': { p.st.guard = t + 6; const hit = within(220); bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 220, c: '#9a9a9a' });
+      for (const s of hit) { wake(s); s.st.stun = t + 1; say(s, 'A stone statue crashes down beside you!'); } snd = 'quake'; break; }
+    case 'bigfoot': { let best = null, bd = 1e9;
+      for (const s of surv) { const d = dist(s, p), da = Math.abs(((Math.atan2(s.y - p.y, s.x - p.x) - p.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI); if (d < 650 && da < .45 && clearLine(r.map, p, s) && d < bd) { bd = d; best = s; } }
+      bcast(r, { t: 'fx', kind: 'boulder', id: p.id, x: p.x, y: p.y, tx: best ? best.x : p.x + Math.cos(p.a) * 600, ty: best ? best.y : p.y + Math.sin(p.a) * 600 });
+      if (!best) { cd = 5; snd = 'quake'; break; } wake(best); best.st.stun = t + 2; hurtSurvivor(r, best, 15, p); say(best, 'A boulder smashes into you!'); snd = 'quake'; break; }
+    case 'fester': { const n = within(900); for (const s of n) { s.st.dark = t + 3 + (p.esc || 0) * .5; s.st.reveal = t + 4; say(s, 'Every light on the street dies at once… Father Fester is close.'); }
+      snd = 'dark'; if (!n.length) cd = 6; break; }
   }
   p.cdUntil = t + cd;
   send(p, { t: 'abilityUsed' });
@@ -414,7 +595,10 @@ function botThink(r, p, t) {
       if (gi >= 0 && d < 520) { p.sel = gi; aimAt = th; }
       else if (d < 80) { if (mi >= 0) p.sel = mi; else if (p.inv[p.sel] && ITEMS[p.inv[p.sel].k].type === 'use') p.sel = p.inv.findIndex(s => !s) >= 0 ? p.inv.findIndex(s => !s) : p.sel; aimAt = th; }
     }
-    else if (r.extract) { tx = r.extract.x; ty = r.extract.y; }
+    else if (r.extract) { tx = r.extract.x; ty = r.extract.y;
+      if (r.map.islands) { const isl = q => r.map.islands.find(i => Math.hypot(i.x - q.x, i.y - q.y) < i.r + 30), ei = isl(r.extract), mi = isl(p);
+        if (p.boat) { const b = boatOf(r, p); if (b && b.by === p.id && ei && Math.hypot(b.x - ei.x, b.y - ei.y) < ei.r + b.r + 60) leaveBoat(r, p); else if (b && b.by !== p.id) leaveBoat(r, p); }
+        else if (ei && ei !== mi) { const b = (r.boats || []).filter(b => !b.by).sort((a, c) => dist(a, p) - dist(c, p))[0]; if (b && dist(b, p) < 1400) { tx = b.x; ty = b.y; if (dist(b, p) < b.r + p.r + 40) board(r, p); } } } }
     else if (p.inv.some(s => !s) || p.hp < 90) {
       // scavenge: nearby loose items first, then unopened chests/bags
       const it = r.items.filter(i => dist(i, p) < 380 && !(i.np === p.id)).sort((a, b) => dist(a, p) - dist(b, p))[0];
@@ -425,6 +609,7 @@ function botThink(r, p, t) {
     }
     else { if (!p.botGoal || dist(p, p.botGoal) < 40 || t > p.botT) { const b = Math.random() < .5 && r.map.bushes.length ? pick(r.map.bushes) : freeSpot(r.map, 16); p.botGoal = { x: b.x, y: b.y }; p.botT = t + 10; } tx = p.botGoal.x; ty = p.botGoal.y; if (dist(p, p.botGoal) < 20) tx = null; }
   }
+  if (r.state === 'playing' && r.map.islands && p.role === 'survivor' && Math.hypot(p.x - r.map.w / 2, p.y - r.map.h / 2) > r.map.safe - 120) { tx = r.map.w / 2; ty = r.map.h / 2; } // bots stay out of the storm
   // unstick
   if (p.lastPos && dist(p, p.lastPos) < 1 && tx !== null) { p.stuck = (p.stuck || 0) + 1; } else p.stuck = 0;
   p.lastPos = { x: p.x, y: p.y };
@@ -435,6 +620,34 @@ function botThink(r, p, t) {
   if (aimAt) { p.a = Math.atan2(aimAt.y - p.y, aimAt.x - p.x); useItem(r, p, Math.random() < .5); }
 }
 function hidden(r, s) { return r.map.bushes.some(b => Math.hypot(b.x - s.x, b.y - s.y) < b.r); }
+
+// ---------- phase 2 world effects: storm, lightning, whirlpools, burning, Father Fester's escalation ----------
+function phase2Tick(r, t, dt, surv) {
+  const m = r.map, C = { x: m.w / 2, y: m.h / 2 }, mons = [...r.players.values()].filter(q => q.role === 'monster');
+  for (const s of surv) {
+    if (!s.alive) continue;
+    if (m.islands && dist(s, C) > m.safe) { // the storm: waves push you back, lightning and cold drain your health
+      s.st.storm = t + .6; const b = boatOf(r, s);
+      if (!s.stormMsg || t > s.stormMsg) { s.stormMsg = t + 6; send(s, { t: 'event', msg: '⛈ The storm is too strong out here — turn back to the calm water!', kind: 'bad' }); }
+      shove(r, s, C, -70 * dt); if (b && b.by === s.id) { b.x += (Math.random() - .5) * 4; b.y += (Math.random() - .5) * 4; }
+      s.hp -= 4 * dt; if (s.hp <= 0) { const sea = mons.filter(q => MONSTERS[q.mt].sea).sort((a, c) => dist(a, s) - dist(c, s))[0] || mons[0]; if (sea) { catchP(r, sea, s); continue; } s.hp = 1; }
+    }
+    if (s.st.burn > t) { s.hp -= 6 * dt; if (s.hp <= 0) { const d = mons.find(q => q.mt === 'dragon') || mons[0]; if (d) { catchP(r, d, s); continue; } s.hp = 1; } }
+    for (const w of r.whirls) { const d = dist(s, w); if (d < w.r && d > 30) { shove(r, s, w, -Math.min(d - 20, 110 * dt)); if (d < 160) capsize(r, s); } }
+  }
+  r.whirls = r.whirls.filter(w => t < w.until);
+  for (let i = r.strikes.length - 1; i >= 0; i--) { const k = r.strikes[i]; if (t < k.at) continue; r.strikes.splice(i, 1); const by = r.players.get(k.by);
+    bcast(r, { t: 'fx', kind: 'bolt', x: k.x, y: k.y }); bcast(r, { t: 'sfx', kind: 'thunder', x: k.x, y: k.y });
+    if (by && by.role === 'monster') for (const s of surv) if (s.alive && Math.hypot(s.x - k.x, s.y - k.y) < 90) { wake(s); capsize(r, s); s.st.stun = t + 1; hurtSurvivor(r, s, 25, by); } }
+  // Father Fester grows stronger each time a NEW survivor lays eyes on him (each survivor counts again after 12s)
+  for (const f of mons) if (f.mt === 'fester' && !(f.st.down > t)) for (const s of surv) {
+    if (!s.alive || (f.esc || 0) >= FESTER_MAX || dist(s, f) > 520 || !clearLine(m, s, f) || (s.festerSeen && t < s.festerSeen)) continue;
+    s.festerSeen = t + 12; f.esc = (f.esc || 0) + 1;
+    send(s, { t: 'event', msg: `You saw Father Fester… and he saw you. He grows stronger (stage ${f.esc}/${FESTER_MAX}).`, kind: 'bad' });
+    send(f, { t: 'event', msg: `${s.name} saw you — stage ${f.esc}/${FESTER_MAX}: ${['', 'faster', 'faster', 'faster', 'longer reach', 'longer reach', 'you see every survivor'][f.esc]}`, kind: 'good' });
+    bcast(r, { t: 'sfx', kind: 'fester', x: f.x, y: f.y }); if (f.esc >= FESTER_MAX) f.st.sight = t + 9999;
+  }
+}
 
 // ---------- simulation ----------
 let tickN = 0;
@@ -456,7 +669,9 @@ function step() {
       if (p.sleeping) { if (len || !p.alive || r.state !== 'playing') wake(p); else { p.hp = Math.min(p.maxHp, p.hp + 6 * dt); p.stamina = Math.min(100, p.stamina + 20 * dt); p.st.sleep = t + .5; len = 0; } }
       let sp;
       if (p.role === 'monster') {
-        sp = MONSTERS[p.mt].speed * (p.st.dash > t ? 3 : 1) * (p.st.fast > t ? 1.8 : 1) * (p.st.stag > t ? .5 : 1);
+        const MM = MONSTERS[p.mt], wet = r.state === 'playing' && inWater(r.map, p.x, p.y);
+        sp = MM.speed * (p.st.dash > t ? 3 : 1) * (p.st.fast > t ? 1.8 : 1) * (p.st.stag > t ? .5 : 1) * (MM.sea ? (wet ? 1.2 : .8) : wet ? .75 : 1) * (p.mt === 'fester' ? 1 + .07 * (p.esc || 0) : 1);
+        if (p.mt === 'megalodon' && r.state === 'playing') { const f = wet ? 0 : 1; if (f !== p.form) { p.form = f; bcast(r, { t: 'fx', kind: 'splash', x: p.x, y: p.y, c: '#bfe8ff' }); if (!p.bot) send(p, { t: 'event', msg: f ? 'You haul yourself onto land in your giant humanoid shark form.' : 'You slip back into the sea as a colossal shark.', kind: 'good' }); } }
         if (p.mt === 'drnowhere' && r.state === 'playing') { if (!p.formT) { p.form = 0; p.formT = t + DN_PERIOD; } else if (t > p.formT) { p.form = (p.form + 1) % DN_FORMS.length; p.formT = t + DN_PERIOD; bcast(r, { t: 'fx', kind: 'poof', x: p.x, y: p.y, c: '#111' }); send(p, { t: 'event', msg: `You shapeshift into ${DN_FORMS[p.form].name}: ${DN_FORMS[p.form].ability} — ${DN_FORMS[p.form].desc}`, kind: 'good' }); bcast(r, { t: 'sfx', kind: 'shift', x: p.x, y: p.y }); } }
         if (p.st.down > t) sp = 0; else if (p.hp <= 0) { p.hp = p.maxHp; p.st.guard = t + 2.5; } // gets back up with full health
       }
@@ -466,14 +681,19 @@ function step() {
         const sprinting = k.sprint && len && canSprint;
         p.stamina = clamp(p.stamina + (sprinting ? (p.st.boost > t ? 0 : -32) : 14) * dt, 0, 100);
         sp = (sprinting ? 245 : 150) * (p.st.adren > t ? 1.3 : 1);
+        const wet = r.state === 'playing' && !p.boat && inWater(r.map, p.x, p.y);
+        if (wet) { sp = r.map.islands ? 95 : sp * .6; p.st.swim = t + .3; if (r.map.islands) p.stamina = clamp(p.stamina - 18 * dt, 0, 100); }
+        if (p.boat) { const b = boatOf(r, p); sp = b && b.by === p.id ? (b.kind === 'ship' ? 230 : 300) : 0; }
         if (p.st.slow > t) sp *= .5;
         if (p.st.stun > t || p.st.root > t) sp = 0;
       }
       if (r.state === 'lobby') sp = 200;
       if (len && sp) {
         if ((!p.alive || p.escaped || p.role === 'ghost') && r.state === 'playing') { p.x = clamp(p.x + dx * sp * dt, 20, r.map.w - 20); p.y = clamp(p.y + dy * sp * dt, 20, r.map.h - 20); }
+        else if (p.boat) driveBoat(r, p, dx, dy, sp, dt);
         else moveEnt(r.map, p, dx * sp * dt, dy * sp * dt);
       }
+      if (p.boat) { const b = boatOf(r, p); if (b) { p.x = b.x; p.y = b.y; if (len && b.by === p.id) p.a = b.a; } else p.boat = null; }
       if (r.state === 'playing' && p.role === 'survivor' && p.alive && !p.escaped) {
         if (!p.bot && (p.fire || p.fireEdge)) useItem(r, p, p.fireEdge);
         p.fireEdge = false;
@@ -485,10 +705,11 @@ function step() {
       const surv = [...r.players.values()].filter(p => p.role === 'survivor' && p.alive && !p.escaped);
       for (const m of r.players.values()) if (m.role === 'monster') {
         if (m.st.down > t || t < m.hitUntil) continue;
-        const reach = (m.r + 16 + 8) * (m.st.reach > t ? 3 : 1);
+        const reach = (m.r + 16 + 8) * (m.st.reach > t ? 3 : 1) * (m.mt === 'fester' && m.esc >= 4 ? 1.5 : 1) + (m.st.guard > t && m.mt === 'gargoyle' ? -999 : 0);
         const s = surv.find(s => s.alive && dist(s, m) < reach);
         if (s) { m.hitUntil = t + .85; hurtSurvivor(r, s, MON_DMG, m); }
       }
+      phase2Tick(r, t, dt, surv);
       for (const s of surv) {
         if (!s.alive) continue;
         const ti = r.traps.findIndex(tr => Math.hypot(tr.x - s.x, tr.y - s.y) < 26);
@@ -504,23 +725,27 @@ function snapshot(r, t) {
   for (const me of all) {
     if (!me.ws || me.ws.readyState !== 1) continue;
     const meGhost = !me.alive || me.escaped || me.role === 'ghost';
-    const ps = [];
+    const ps = [], om = [];
     for (const p of all) {
       if (p !== me && r.state === 'playing') {
         const pGhost = !p.alive || p.escaped || p.role === 'ghost';
         if (pGhost && !meGhost) continue;                                       // ghosts invisible to the living
         if (!meGhost && me.role === 'survivor' && p.role === 'monster' && p.st.invis > t) continue;
+        if (!meGhost && me.role === 'survivor' && p.role === 'monster' && MONSTERS[p.mt].sea && !(p.st.surf > t) && inWater(r.map, p.x, p.y) && dist(p, me) > 280) { // submerged: only its telltale sign shows
+          const d = dist(p, me); if (d < (p.mt === 'cthulhu' ? 2600 : 1800)) om.push([Math.round(p.x), Math.round(p.y), p.mt, +p.a.toFixed(2)]); continue; }
         if (!meGhost && me.role === 'monster' && p.role === 'survivor' && hidden(r, p) && dist(p, me) > 90 && !(p.st.reveal > t) && !(me.st.sight > t)) continue;
       }
       const st = {}; for (const k in p.st) if (p.st[k] > t) st[k] = 1;
       if (me.role === 'monster' && me.st.sight > t && p.role === 'survivor') st.reveal = 1;
-      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.mt === 'drnowhere' && p.role === 'monster' ? (p.form || 0) : undefined, pf: r.state === 'lobby' ? p.pref : undefined };
+      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined };
       if (r.state === 'playing') { q.hp = Math.round(p.hp / p.maxHp * 100); if (p.role === 'survivor') { const s = p.inv[p.sel]; q.w = s ? s.k : null; q.ar = (p.vest > 0 ? 1 : 0) | (p.helmet > 0 ? 2 : 0); } }
       ps.push(q);
     }
     const o = { t: 's', state: r.state, ps, ex: r.extract, max: r.max, boarded: r.boarded || [],
       tl: r.state === 'playing' ? Math.max(0, Math.ceil(r.roundEnd - t)) : r.state === 'flight' ? Math.ceil(r.flightEnd - t) : r.state === 'results' ? Math.ceil(r.resultsEnd - t) : 0,
-      me: { fm: me.form || 0, fmT: me.formT ? Math.max(0, Math.ceil(me.formT - t)) : 0, stamina: Math.round(me.stamina), cd: Math.max(0, +(me.cdUntil - t).toFixed(1)), hp: Math.ceil(me.hp), mhp: me.maxHp, inv: me.inv.map(s => s ? [s.k, s.n] : 0), sel: me.sel, ammo: me.ammo, vest: Math.round(me.vest), helmet: Math.round(me.helmet) }, rl: r.roundLen };
+      me: { esc: me.esc || 0, fm: me.form || 0, fmT: me.formT ? Math.max(0, Math.ceil(me.formT - t)) : 0, stamina: Math.round(me.stamina), cd: Math.max(0, +(me.cdUntil - t).toFixed(1)), hp: Math.ceil(me.hp), mhp: me.maxHp, inv: me.inv.map(s => s ? [s.k, s.n] : 0), sel: me.sel, ammo: me.ammo, vest: Math.round(me.vest), helmet: Math.round(me.helmet) }, rl: r.roundLen };
+    if (om.length) o.om = om;
+    if (r.boats && r.state === 'playing') o.bt = r.boats.filter(b => Math.abs(b.x - me.x) < 2400 && Math.abs(b.y - me.y) < 2400).map(b => [b.id, Math.round(b.x), Math.round(b.y), +b.a.toFixed(2), b.kind === 'ship' ? 1 : 0, b.by || 0]);
     if (r.state === 'playing') { o.lo = [...r.opened]; o.it = r.items.filter(i => Math.abs(i.x - me.x) < 1100 && Math.abs(i.y - me.y) < 1100).map(i => [i.id, Math.round(i.x), Math.round(i.y), i.k]); }
     if (me.role === 'monster' || meGhost) { o.traps = r.traps; o.portal = r.portal; }
     if (r.state === 'playing' && me.role === 'survivor' && me.alive) { // heartbeat: nearest monster distance
@@ -554,7 +779,7 @@ function handleConnection(ws) {
           if (m.f && !p.fire) p.fireEdge = true; p.fire = !!m.f;
           p.mv = Array.isArray(m.mv) && m.mv.length === 2 && m.mv.every(v => typeof v === 'number' && isFinite(v)) ? { x: Math.max(-1, Math.min(1, m.mv[0])), y: Math.max(-1, Math.min(1, m.mv[1])) } : null; } break;
         case 'ability': if (r) useAbility(r, p); break;
-        case 'open': if (r) { if (p.sleeping) { wake(p); send(p, { t: 'event', msg: 'You woke up.' }); } else if (!openLoot(r, p)) toggleSleep(r, p); } break;
+        case 'open': if (r) { if (p.boat) leaveBoat(r, p); else if (p.sleeping) { wake(p); send(p, { t: 'event', msg: 'You woke up.' }); } else if (!openLoot(r, p) && !board(r, p)) toggleSleep(r, p); } break;
         case 'sel': if (p && Number.isInteger(m.i) && m.i >= 0 && m.i < SLOTS) p.sel = m.i; break;
         case 'drop': if (r) dropSel(r, p); break;
         case 'start': if (r && r.host === p.id && r.state === 'lobby') {
@@ -574,13 +799,13 @@ function handleConnection(ws) {
           if (ROUND_LENS.includes(+m.roundLen)) r.roundLen = +m.roundLen;
           bcast(r, { t: 'settings', max: r.max, isPublic: r.isPublic, roundLen: r.roundLen });
         } break;
-        case 'profile': if (p) { p.look = cleanLook(m.look); p.pref = MKEYS.includes(m.pref) ? m.pref : null; p.skin = MSKINS.includes(m.skin) ? m.skin : 'classic'; if (r) bcast(r, { t: 'event', msg: p.pref ? `${p.name} wants to play ${MONSTERS[p.pref].name}` : `${p.name} updated their look`, kind: '' }); } break;
+        case 'profile': if (p) { p.look = cleanLook(m.look); p.pref = MKEYS.includes(m.pref) ? m.pref : null; p.skin = MSKINS.includes(m.skin) ? m.skin : 'classic'; p.kit = (Array.isArray(m.kit) ? m.kit : []).filter(k => SUPPLIES.includes(k)).slice(0, 2); if (r) bcast(r, { t: 'event', msg: p.pref ? `${p.name} wants to play ${MONSTERS[p.pref].name}` : `${p.name} updated their look`, kind: '' }); } break;
         case 'leave': if (p) { removeFromRoom(p); p = null; } break;
       }
     },
     close() { if (p) removeFromRoom(p); p = null; }
   };
 }
-const api = { DN_FORMS, useAbility, handleConnection, step, rooms, MONSTERS, ITEMS, TICK, MAX_CAP, roomInfo, ROUND_LENS, HATS, ACCS, MSKINS };
+const api = { genMap, THEMES, inWater, DN_FORMS, useAbility, handleConnection, step, rooms, MONSTERS, ITEMS, TICK, MAX_CAP, roomInfo, ROUND_LENS, HATS, ACCS, MSKINS };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.NightHuntCore = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -152,3 +152,32 @@ body.halluc #c{animation:wobble 2.2s infinite ease-in-out}@keyframes wobble{0%,1
 body.cutscene #topbar,body.cutscene #bleave{visibility:hidden}
 @media (max-height:500px){body.touchmode.ingame #hostbox{transform:scale(.8);transform-origin:top right;padding:6px}}
 body.killcam #ability,body.killcam #topbar,body.killcam #bleave,body.killcam #rolebox{visibility:hidden}
+/* v1.4 lobby store: big, obvious store buttons + larger locker */
+.storebar{display:flex;gap:6px;align-items:stretch}
+.storebar .blocker{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:22px;padding:8px 6px;min-width:64px;background:linear-gradient(#4a2a6a,#2a1640);border:2px solid #d0a8ff;border-radius:12px;color:#fff;box-shadow:0 0 14px #b08aff55}
+.storebar .blocker b{font-size:11px;letter-spacing:.3px;white-space:nowrap}
+.storebar .blocker:hover{filter:brightness(1.25);transform:translateY(-1px)}
+.storebar .coinpill{align-self:center;font-size:16px}
+#blocker2.storebar{display:none;padding:6px 8px;background:#140c1ecc;border:2px solid #d0a8ff;border-radius:14px;top:calc(44px + env(safe-area-inset-top))}
+body.inlobby #blocker2.storebar{display:flex}
+#blocker2 .sbt{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:900;color:#ffd76b;font-size:12px;letter-spacing:2px;text-align:center}
+#locker{width:min(560px,92vw)}
+#locker .lhead b{font-size:20px}
+.ltabs button{font-size:14px;padding:10px 4px}
+.shop{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
+.si{font-size:13px;padding:8px}.si.on{border-color:#ffd76b;box-shadow:0 0 8px #ffd76b66}
+.si button.wear{background:#2a5a3a}
+#locker h4{margin:12px 0 6px;color:#ffd76b;font-size:15px}#locker h4 small{color:#bbb;font-weight:normal;font-size:11px}
+.mgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.mgrid i{color:#8fc8ff;font-size:10px;font-style:normal}
+.opts button{font-size:18px;padding:7px 10px}
+#zoneprompt{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);z-index:7;background:#1a0f26ee;border:2px solid #ffd76b;color:#fff;border-radius:14px;padding:12px 20px;font-size:20px;font-weight:700;text-align:center;cursor:pointer;box-shadow:0 0 20px #ffd76b55}
+#zoneprompt small{display:block;font-size:12px;font-weight:normal;color:#ddd}
+/* v1.4 weather/status overlays */
+#p2over{position:fixed;inset:0;pointer-events:none;z-index:4;transition:background .6s,box-shadow .6s}
+#p2over.storm{background:radial-gradient(ellipse at center,#0000 40%,#0a1a2acc 100%)}
+#p2over.fog{background:#c8d0d4aa;backdrop-filter:blur(2px)}
+#p2over.snow{box-shadow:inset 0 0 140px 40px #e8f4ffcc}
+#p2over.burn{box-shadow:inset 0 0 120px 30px #ff5a00aa;animation:burnp .4s infinite alternate}
+#p2over.soak{box-shadow:inset 0 0 120px 20px #3a8ac0aa}
+@keyframes burnp{to{box-shadow:inset 0 0 160px 50px #ff2a00cc}}
+#p2warn{position:fixed;top:18%;left:50%;transform:translateX(-50%);z-index:7;color:#ffd23a;font:900 22px Georgia,serif;text-shadow:0 0 10px #000,0 0 4px #f00;text-align:center;pointer-events:none}

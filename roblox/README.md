@@ -1,4 +1,4 @@
-# Night Hunt: Roblox version (fan-made, v1.3.0, rated 13+)
+# Night Hunt: Roblox version (fan-made, v1.4.0, rated 13+)
 
 A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out together and land in a generated map; the main one is a dense power-line forest. Every player has a random chance to be a monster. Survivors loot chests and bags, fight back and get to the extraction helicopter.
 
@@ -46,6 +46,14 @@ A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out 
 - The six-armed Doctor: Paranoia makes nearby survivors hallucinate and reveals them to you.
 
 Every jumpscare cuts to black at the moment of impact. With **Blood effects** on (the default), it adds teen-level red splatter and drips; there is no dismemberment and no detailed gore. You can turn this off in the menu (browser) or with the top-left button (Roblox). Players near the catch see the victim lifted, stretched, dissolved or dragged away, and hear the scream.
+
+## New in v1.4 (phase 2)
+- **16 new monsters**, all with 20 s powers and their own jumpscares: Megalodon (a shark in water, a buff humanoid shark on land), Kraken, Cthulhu, Leviathan, Mosasaurus, Nessie, Spinosaurus, T-Rex, Quetzalcoatlus, Yeti, Dragon, Chupacabra, Vampire, Gargoyle, Bigfoot and Father Fester (he grows stronger with every survivor who sees him).
+- **6 new maps:** Stormy Ocean (islands, drivable boats and ships, warning signs, a deadly storm past the buoys), Rainforest Swamp, Snowy Mountain, Haunted Farm, Vampire Castle and Fester Street (two-storey houses with varied, flickering lights).
+- **Sea monster omens:** tentacles, coils, a tail flick, a dorsal fin, a neck rising, a sail, or red eyes in the thunderclouds.
+- **Bigger maps** (900 studs, 1300 for the ocean). Workspace streaming is on.
+- **The lobby store**, east of the helipad: an item counter (hats, accessories, round supplies), a dressing room with a mirror (outfits) and a skins gallery with statues. Press E at a counter.
+- **Boats:** sit at the helm and steer with WASD or the thumbstick.
 
 ## Files
 - `NightHunt.rbxlx`: the place file, built with Rojo 7 from `default.project.json`.

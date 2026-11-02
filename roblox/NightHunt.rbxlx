@@ -115,13 +115,25 @@ C.SLOTS = 6              -- survivor inventory slots (Roblox backpack hotbar)
 C.LOBBY_PAD = Vector3.new(0, 0, 0)
 C.PAD_RADIUS = 16
 C.MAP_ORIGIN = Vector3.new(1200, 0, 0)
-C.MAP_SIZE = 360
+C.MAP_SIZE = 900        -- v1.4: maps are ~6x bigger in area (Workspace streaming keeps it smooth)
+C.OCEAN_SIZE = 1300     -- the ocean map is bigger still
+C.STORM_RADIUS = 520    -- ocean: past this distance from the centre the storm rages
+C.STORE_ORIGIN = Vector3.new(130, 0, 0) -- walk-in store in the lobby, east of the helipad
 
-C.THEMES = { "Powerline Forest", "Abandoned Pizzeria Town", "Foggy Woods", "Static Fields" }
-C.MAIN_THEME = "Powerline Forest" -- picked half of the time
+C.THEMES = { "Powerline Forest", "Abandoned Pizzeria Town", "Foggy Woods", "Static Fields",
+	"Stormy Ocean", "Rainforest Swamp", "Snowy Mountain", "Haunted Farm", "Vampire Castle", "Fester Street" }
+C.MAIN_THEME = "Powerline Forest" -- picked 30% of the time
 
 C.MONSTER_KEYS = { "freddy", "bonnie", "chica", "foxy", "springtrap", "cartooncat",
-	"sirenhead", "drnowhere", "locust", "monochrome", "demogorgon", "sonicexe" }
+	"sirenhead", "drnowhere", "locust", "monochrome", "demogorgon", "sonicexe",
+	"megalodon", "kraken", "cthulhu", "leviathan", "mosasaurus", "nessie", "spinosaurus", "yeti", "chupacabra",
+	"vampire", "bigfoot", "trex", "quetzalcoatlus", "gargoyle", "dragon", "fester" }
+-- sea monsters swim fast in water and slower on land; every phase-2 monster has a home map it prefers
+C.SEA = { megalodon = true, kraken = true, cthulhu = true, leviathan = true, mosasaurus = true, nessie = true }
+C.HOME = { megalodon = "Stormy Ocean", kraken = "Stormy Ocean", cthulhu = "Stormy Ocean", leviathan = "Stormy Ocean", mosasaurus = "Stormy Ocean", nessie = "Stormy Ocean",
+	spinosaurus = "Rainforest Swamp", yeti = "Snowy Mountain", chupacabra = "Haunted Farm", vampire = "Vampire Castle", bigfoot = "Foggy Woods", trex = "Rainforest Swamp",
+	quetzalcoatlus = "Snowy Mountain", gargoyle = "Vampire Castle", dragon = "Vampire Castle", fester = "Fester Street" }
+C.FESTER_MAX = 6
 
 local AFTON = { ability = "Afton Laugh", desc = "A creepy laugh echoes - you see every survivor for 10s", cd = 20 }
 local function afton(name, speed) return { name = name, ability = AFTON.ability, desc = AFTON.desc, cd = AFTON.cd, speed = speed } end
@@ -138,6 +150,23 @@ C.MONSTERS = {
 	monochrome = { name = "Monochrome",     ability = "Total Blackout",     desc = "Every survivor's screen goes pitch black for 10s",     cd = 20, speed = 19 },
 	sonicexe   = { name = "Sonic.exe",      ability = "You Can't Run",      desc = "A scary laugh, then you run much faster for 10s",      cd = 20, speed = 19.5 },
 	demogorgon = { name = "Demogorgon",     ability = "Upside Down Portal", desc = "Open a portal and come out near the nearest survivor", cd = 20, speed = 19.5 },
+	-- v1.4 phase 2
+	megalodon  = { name = "Megalodon",      ability = "Tidal Surge",    desc = "A giant wave knocks survivors back, stuns them and throws them out of boats. On land you walk as a buff humanoid shark", cd = 20, speed = 19 },
+	kraken     = { name = "Kraken",         ability = "Tentacle Grab",  desc = "A tentacle drags the closest survivor (even out of a boat) to you", cd = 20, speed = 18 },
+	cthulhu    = { name = "Cthulhu",        ability = "Thunderstorm",   desc = "Summon a storm: lightning strikes the nearest survivors and every screen flashes", cd = 20, speed = 18 },
+	leviathan  = { name = "Leviathan",      ability = "Whirlpool",      desc = "A whirlpool pulls nearby survivors toward you and slows them", cd = 20, speed = 19 },
+	mosasaurus = { name = "Mosasaurus",     ability = "Tail Slam",      desc = "A huge tail slam sends a wave that stuns survivors close by", cd = 20, speed = 19.5 },
+	nessie     = { name = "Nessie",         ability = "Deep Dive",      desc = "Dive out of sight and surface right next to the nearest survivor", cd = 20, speed = 18.5 },
+	spinosaurus= { name = "Spinosaurus",    ability = "Swamp Ambush",   desc = "Lunge forward out of the water and stun whoever is in the way", cd = 20, speed = 19 },
+	yeti       = { name = "Yeti",           ability = "Avalanche Roar", desc = "A roar brings snow down: nearby survivors are stunned, then slowed", cd = 20, speed = 18.5 },
+	chupacabra = { name = "Chupacabra",     ability = "Blood Drain",    desc = "Drain a close survivor's health to heal yourself", cd = 20, speed = 20 },
+	vampire    = { name = "Vampire",        ability = "Bat Swarm",      desc = "Burst into bats: invisible and fast for 4s, nearby survivors are blinded", cd = 20, speed = 19 },
+	bigfoot    = { name = "Bigfoot",        ability = "Boulder Throw",  desc = "Throw a boulder at the survivor in front of you", cd = 20, speed = 19 },
+	trex       = { name = "T-Rex",          ability = "Tyrant Roar",    desc = "A roar that freezes nearby survivors in terror and reveals them", cd = 20, speed = 19.5 },
+	quetzalcoatlus = { name = "Quetzalcoatlus", ability = "Sky Dive",   desc = "Take off and dive down on the nearest survivor", cd = 20, speed = 19 },
+	gargoyle   = { name = "Gargoyle",       ability = "Stone Skin",     desc = "Turn to stone: weapons can't hurt you for 6s, then a shockwave", cd = 20, speed = 18.5 },
+	dragon     = { name = "Dragon",         ability = "Fire Breath",    desc = "Breathe fire in a cone in front of you: survivors burn", cd = 20, speed = 19 },
+	fester     = { name = "Father Fester",  ability = "Lights Out",     desc = "Every light near you dies and survivors black out. Passive: each new survivor who sees you makes you stronger (6 stages)", cd = 20, speed = 17.5 },
 }
 
 -- Doctor Nowhere (fan horror art by Silas Orion) shapeshifts every DN_PERIOD seconds between these forms
@@ -180,7 +209,16 @@ C.LOOT = {
 C.SHOP = {
 	hat = { cap = 50, beanie = 50, hardhat = 100, cowboy = 120, headphones = 150, bunny = 200, crown = 500 },
 	acc = { glasses = 40, scarf = 60, mask = 80, goggles = 120 },
-	skin = { shadow = 250, toxic = 300, frost = 300, blood = 350, golden = 600 },
+	skin = { shadow = 250, toxic = 300, frost = 300, blood = 350, golden = 600, lava = 400, neon = 400, abyss = 450 },
+	outfit = { scout = 120, pajamas = 100, ranger = 150, hunter = 180, diver = 220, hazmat = 250, ninja = 300, ghostbuster = 350, astronaut = 450, knight = 500 },
+	supply = { water = 15, soda = 15, chips = 20, choco = 20, energy = 30, beans = 35, medkit = 60 }, -- round supplies (max 2, used up when the round starts)
+}
+C.OUTFITS = {
+	scout = { Color3.fromRGB(150, 130, 70), Color3.fromRGB(90, 80, 50) }, pajamas = { Color3.fromRGB(120, 160, 230), Color3.fromRGB(120, 160, 230) },
+	ranger = { Color3.fromRGB(60, 90, 50), Color3.fromRGB(110, 90, 60) }, hunter = { Color3.fromRGB(200, 80, 20), Color3.fromRGB(40, 40, 40) },
+	diver = { Color3.fromRGB(20, 20, 24), Color3.fromRGB(240, 200, 30) }, hazmat = { Color3.fromRGB(240, 210, 30), Color3.fromRGB(240, 210, 30) },
+	ninja = { Color3.fromRGB(16, 16, 18), Color3.fromRGB(16, 16, 18) }, ghostbuster = { Color3.fromRGB(190, 170, 120), Color3.fromRGB(190, 170, 120) },
+	astronaut = { Color3.fromRGB(235, 235, 240), Color3.fromRGB(235, 235, 240) }, knight = { Color3.fromRGB(160, 165, 175), Color3.fromRGB(120, 125, 135) },
 }
 C.EARN = { open = 5, catch = 40, knockdown = 25, escape = 60, survive = 10, monster = 15 }
 C.SKIN_TONES = { Color3.fromRGB(241, 204, 170), Color3.fromRGB(224, 172, 130), Color3.fromRGB(198, 134, 90), Color3.fromRGB(150, 98, 64), Color3.fromRGB(105, 70, 48), Color3.fromRGB(250, 220, 200) }
@@ -244,6 +282,7 @@ local State = make("Folder", "State", Shared)
 local Templates = make("Folder", "Templates", Shared)
 for _, k in ipairs(Config.MONSTER_KEYS) do Models.template(k).Parent = Templates end
 for i = 2, #Config.DN_FORMS do Models.template(Config.DN_FORMS[i].key).Parent = Templates end
+Models.template("megalodon_h").Parent = Templates -- the Megalodon's land form
 
 local IS_STUDIO = RunService:IsStudio()
 local CAN_TELEPORT = game.PlaceId ~= 0 and not IS_STUDIO
@@ -326,6 +365,16 @@ do
 	t.TextColor3 = Color3.fromRGB(220, 40, 40)
 	t.Text = "NIGHT HUNT\nboard the helicopter"
 	t.Parent = gui
+	-- v1.4: the walk-in store east of the helipad (item counter, dressing room, skins gallery)
+	local _, _, prompts = MapGen.store(lobby, Templates)
+	for _, pp in ipairs(prompts) do
+		pp.Triggered:Connect(function(plr) Notify:FireClient(plr, "store", pp:GetAttribute("Tab")) end)
+	end
+	local arrow = part(Vector3.new(14, 0.4, 3), CFrame.new(62, 0.25, 0), Color3.fromRGB(255, 200, 60), Enum.Material.Neon)
+	arrow.CanCollide = false
+	local s2 = part(Vector3.new(1, 5, 18), CFrame.new(70, 5, -14), Color3.fromRGB(20, 10, 10), Enum.Material.Slate)
+	local g2 = Instance.new("SurfaceGui"); g2.Face = Enum.NormalId.Left; g2.CanvasSize = Vector2.new(360, 100); g2.Parent = s2
+	local t2 = t:Clone(); t2.Text = "STORE  >>"; t2.TextColor3 = Color3.fromRGB(255, 200, 60); t2.Parent = g2
 end
 lobby.Parent = workspace
 
@@ -750,6 +799,14 @@ ABILITY.sonicexe = function(p)
 	return true
 end
 
+-- v1.4 phase 2: 16 more monsters, omens, ocean storm, boats, Megalodon land form, Father Fester escalation
+local P2 = require(script:WaitForChild("Phase2"))({
+	ABILITY = ABILITY, F = F, now = now, hrpOf = hrpOf, humOf = humOf, isHunting = isHunting, survivors = survivors, monsters = monsters,
+	nearestSurvivor = nearestSurvivor, appearNear = appearNear, portalFx = portalFx, clearLine = clearLine, flatLook = flatLook,
+	sfxAll = sfxAll, toast = toast, Notify = Notify, Models = Models, spaceFree = spaceFree, hide = _setMorphTransparency,
+	getMap = function() return currentMap end, getFolder = function() return roundFolder end, getProfile = function(p) return profiles[p] end,
+})
+
 local function useAbility(p)
 	if not isHunting(p) or p:GetAttribute("Role") ~= "Monster" or not hrpOf(p) then return end
 	if now() < (cooldowns[p] or 0) then return end
@@ -994,11 +1051,13 @@ local function hurtSurvivor(s, dmg, by)
 	hum.Health = math.max(0, hum.Health - dmg * (1 - red))
 	Notify:FireClient(s, "hurt")
 end
+P2.setHurt(hurtSurvivor)
 
 -- monster health and knockdown
 local function hurtMonster(m, dmg, by, stun)
 	local f = F(m)
 	if f.downUntil and now() < f.downUntil then return end
+	if P2.isStone(m) then toast(by, "It's made of stone - your hit bounced off!"); return end
 	local hp = (m:GetAttribute("MonsterHp") or Config.MON_HP) - dmg
 	if stun then f.stunUntil = math.max(f.stunUntil or 0, now() + stun) end
 	if hp <= 0 then
@@ -1027,7 +1086,8 @@ local function tracer(a, b)
 end
 
 -- a monster's body as a vertical capsule for hit tests (morphs are far taller than a normal avatar)
-local TALL = { sirenhead = 30, locust = 15, cartooncat = 14 }
+local TALL = { sirenhead = 30, locust = 15, cartooncat = 14, megalodon = 8, megalodon_h = 11, kraken = 12, cthulhu = 13, leviathan = 8, mosasaurus = 7, nessie = 18,
+	spinosaurus = 16, trex = 14, yeti = 12, bigfoot = 11, dragon = 14, quetzalcoatlus = 13, fester = 12, gargoyle = 8, vampire = 8, chupacabra = 5 }
 local function rayHitsMonster(origin, dir, range)
 	local best, bestT
 	for _, m in ipairs(monsters()) do
@@ -1163,10 +1223,15 @@ local function cleanProfile(d)
 		look = { sk = n(look.sk, #Config.SKIN_TONES), hc = n(look.hc, #Config.HAIR_COLORS), hs = n(look.hs, 4),
 			top = n(look.top, #Config.CLOTHES), pants = n(look.pants or 8, #Config.CLOTHES),
 			hat = (type(look.hat) == "string" and Config.SHOP.hat[look.hat] and have("hat", look.hat)) and look.hat or "none",
-			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none" },
+			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none",
+			outfit = (type(look.outfit) == "string" and Config.SHOP.outfit[look.outfit] and have("outfit", look.outfit)) and look.outfit or "none" },
+		kit = {},
 		pref = (type(d.pref) == "string" and Config.MONSTERS[d.pref]) and d.pref or "",
 		skin = (type(d.skin) == "string" and Config.SHOP.skin[d.skin] and have("skin", d.skin)) and d.skin or "classic",
 	}
+	if type(d.kit) == "table" then
+		for _, k in ipairs(d.kit) do if type(k) == "string" and Config.SHOP.supply[k] and #out.kit < 2 then table.insert(out.kit, k) end end
+	end
 	return out
 end
 local function publishProfile(p)
@@ -1175,14 +1240,14 @@ local function publishProfile(p)
 	local owned = {}
 	for k in pairs(pr.owned) do table.insert(owned, k) end
 	p:SetAttribute("Coins", pr.coins)
-	p:SetAttribute("Profile", HttpService:JSONEncode({ coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }))
+	p:SetAttribute("Profile", HttpService:JSONEncode({ coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin, kit = pr.kit }))
 end
 local function saveProfile(p)
 	local pr = profiles[p]
 	if not pr or not profileStore then return end
 	local owned = {}
 	for k in pairs(pr.owned) do table.insert(owned, k) end
-	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }) end)
+	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin, kit = pr.kit }) end)
 end
 local function loadProfile(p)
 	local data
@@ -1216,6 +1281,8 @@ local function applyLook(p)
 	if not pr or not c then return end
 	local L = pr.look
 	local skin, top, pants = Config.SKIN_TONES[L.sk], Config.CLOTHES[L.top], Config.CLOTHES[L.pants]
+	local outfit = Config.OUTFITS[L.outfit or "none"]
+	if outfit then top, pants = outfit[1], outfit[2] end
 	for _, d in ipairs(c:GetChildren()) do
 		if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Accessory") then d:Destroy() end
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
@@ -1314,6 +1381,10 @@ local function catchSurvivor(victim, monster)
 				elseif kind == "monochrome" then cf = c0
 					for _, d in ipairs(victim.Character:GetDescendants()) do if d:IsA("BasePart") and d ~= vh then if saved[d] == nil then saved[d] = d.Transparency end; d.Transparency = math.max(d.Transparency, e / 1.8) end end
 				elseif kind == "locust" then cf = c0 * CFrame.new((math.random() - 0.5) * 0.6, 0, (math.random() - 0.5) * 0.6) * CFrame.Angles(0, 0, (math.random() - 0.5) * 0.5)
+				elseif kind == "megalodon" or kind == "mosasaurus" then cf = c0 + Vector3.new(0, e < 0.9 and e * 6 or (5.4 - (e - 0.9) * 14), 0) -- leap, swallow, dive
+				elseif kind == "kraken" or kind == "leviathan" or kind == "nessie" then cf = (c0 + toM * math.min(0.8, e * 0.5)) - Vector3.new(0, math.max(0, e - 0.6) * 6, 0)
+				elseif kind == "dragon" or kind == "quetzalcoatlus" or kind == "gargoyle" then cf = c0 + Vector3.new(0, math.min(18, e * e * 8), 0)
+				elseif kind == "vampire" or kind == "chupacabra" then cf = (c0 + toM * math.min(0.6, e * 0.5)) * CFrame.Angles(math.min(0.9, e), 0, 0)
 				else cf = (c0 + toM * math.min(0.7, e * 0.6)) * CFrame.Angles(-math.min(1.3, e * 1.4), 0, 0) end
 				vh.CFrame = cf
 				task.wait()
@@ -1386,9 +1457,13 @@ local function placeInMap(p)
 	if not c then return end
 	local role = p:GetAttribute("Role")
 	if role == "Monster" then
-		local sp = currentMap.monsterSpawns[math.random(1, #currentMap.monsterSpawns)]
-		c:PivotTo(CFrame.lookAt(sp, Config.MAP_ORIGIN + Vector3.new(0, 4, 0)))
-		Models.morph(c, p:GetAttribute("Monster"), profiles[p] and profiles[p].skin)
+		local kind = p:GetAttribute("Monster")
+		local list = currentMap.monsterSpawns
+		if currentMap.ocean and not Config.SEA[kind] and currentMap.landSpawns and #currentMap.landSpawns > 0 then list = currentMap.landSpawns end
+		local sp = list[math.random(1, #list)]
+		c:PivotTo(CFrame.lookAt(sp, Config.MAP_ORIGIN + Vector3.new(0, sp.Y, 0)))
+		Models.morph(c, kind, profiles[p] and profiles[p].skin)
+		p:SetAttribute("FesterStage", 0)
 		p:SetAttribute("Form", 1)
 		F(p).formAt = now() + Config.DN_PERIOD
 		p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
@@ -1399,6 +1474,14 @@ local function placeInMap(p)
 		c:PivotTo(CFrame.new(sp))
 		giveFlashlight(p)
 		applyLook(p)
+		local pr = profiles[p]
+		if pr and pr.kit and #pr.kit > 0 then -- supplies bought in the store are handed out and used up
+			for _, id in ipairs(pr.kit) do giveItem(p, id) end
+			toast(p, "Your store supplies are in your backpack.")
+			pr.kit = {}
+			publishProfile(p)
+			task.spawn(saveProfile, p)
+		end
 		local hum = humOf(p)
 		if hum then hum.MaxHealth = 100; hum.Health = 100; hum.BreakJointsOnDeath = false end
 	end
@@ -1466,7 +1549,13 @@ local function startRound(starter)
 	roundToken += 1
 	local token = roundToken
 	cleanupRound()
-	local theme = math.random() < 0.5 and Config.MAIN_THEME or Config.THEMES[math.random(1, #Config.THEMES)]
+	local theme = math.random() < 0.3 and Config.MAIN_THEME or Config.THEMES[math.random(1, #Config.THEMES)]
+	-- a monster player's lobby pick pulls the round to that monster's home map half the time
+	for _, p in ipairs(list) do
+		local pref = profiles[p] and profiles[p].pref
+		if pref and Config.HOME[pref] and math.random() < 0.5 then theme = Config.HOME[pref]; break end
+	end
+	P2.reset()
 	setState("Theme", theme)
 	setState("State", "Flight")
 	setState("TimeLeft", Config.FLIGHT_TIME)
@@ -1491,7 +1580,12 @@ local function startRound(starter)
 		if isMonster[p] then
 			-- the monster the player picked in the lobby locker, if nobody else already has it
 			local want = profiles[p] and profiles[p].pref or ""
-			local idx = table.find(kinds, want) or math.random(1, #kinds)
+			local idx = table.find(kinds, want)
+			if not idx then -- prefer a monster that lives on this map (sea monsters on the ocean)
+				local home = {}
+				for i, k in ipairs(kinds) do if Config.HOME[k] == theme then table.insert(home, i) end end
+				idx = (#home > 0 and math.random() < 0.7) and home[math.random(1, #home)] or math.random(1, #kinds)
+			end
 			local k = table.remove(kinds, idx)
 			p:SetAttribute("Role", "Monster")
 			p:SetAttribute("Monster", k)
@@ -1548,6 +1642,7 @@ RunService.Heartbeat:Connect(function(dt)
 				local def = Config.MONSTERS[p:GetAttribute("Monster")]
 				speed = def and def.speed or 19
 				if f.dashUntil and t < f.dashUntil then speed *= (p:GetAttribute("Monster") == "sonicexe") and 1.9 or 2.6 end
+				speed *= P2.speedMult(p, t)
 				canSprint = false
 				if p:GetAttribute("Monster") == "drnowhere" and f.formAt and t >= f.formAt then
 					setDnForm(p, (p:GetAttribute("Form") or 1) % #Config.DN_FORMS + 1)
@@ -1561,6 +1656,7 @@ RunService.Heartbeat:Connect(function(dt)
 				if f.slowUntil and t < f.slowUntil then speed *= 0.5 end
 				if (f.stunUntil and t < f.stunUntil) or (f.rootUntil and t < f.rootUntil) then frozen = true end
 				if f.boostUntil and t < f.boostUntil then speed *= 1.15 end
+				speed *= P2.speedMult(p, t)
 				if sleepers[p] and hum.MoveDirection.Magnitude > 0.1 and t - sleepers[p].t > 1 then wake(p) end
 				if sleepers[p] then
 					hum.Health = math.min(hum.MaxHealth, hum.Health + 6 * step)
@@ -1594,6 +1690,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 
 	if st ~= "Hunt" then return end
+	P2.tick(step)
 	-- monster attacks: hits that deal damage (armor absorbs some); a downed / stunned monster can't attack
 	for _, m in ipairs(monsters()) do
 		local mh = hrpOf(m)
@@ -1755,7 +1852,19 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		local pr = profiles[p]
 		if not pr or type(data) ~= "table" then return end
 		local cat, id = data.cat, data.id
-		if (cat ~= "hat" and cat ~= "acc" and cat ~= "skin") or type(id) ~= "string" then return end
+		if not Config.SHOP[cat] or type(id) ~= "string" then return end
+		if cat == "supply" then -- round supplies: bought for the next round (max 2), not kept
+			local price = Config.SHOP.supply[id]
+			if not price or kind ~= "buy" then return end
+			if #pr.kit >= 2 then toast(p, "Your kit is full (2 supplies max)."); return end
+			if pr.coins < price then toast(p, "Not enough coins."); return end
+			pr.coins -= price
+			table.insert(pr.kit, id)
+			toast(p, "Packed " .. Config.ITEMS[id].name .. " for the next round")
+			publishProfile(p)
+			task.spawn(saveProfile, p)
+			return
+		end
 		local free = id == "none" or id == "classic"
 		local price = Config.SHOP[cat][id]
 		if not free and not price then return end
@@ -1768,6 +1877,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		end
 		if free or pr.owned[key] then
 			if cat == "skin" then pr.skin = id else pr.look[cat] = id end
+			if cat ~= "skin" and p:GetAttribute("Role") ~= "Monster" then applyLook(p) end
 		end
 		publishProfile(p)
 		task.spawn(saveProfile, p)
@@ -1781,6 +1891,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 			end
 		end
 		publishProfile(p)
+		if p:GetAttribute("Role") ~= "Monster" then applyLook(p) end -- see it in the dressing-room mirror
 	elseif kind == "pref" then
 		local pr = profiles[p]
 		if not pr then return end
@@ -1936,6 +2047,7 @@ end)
 local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("NightHunt"):WaitForChild("Config"))
 
 local MapGen = {}
+local MapGen2 = require(script.Parent:WaitForChild("MapGen2"))
 
 local function part(parent, size, cf, color, mat, opts)
 	opts = opts or {}
@@ -1985,6 +2097,7 @@ local THEME = {
 		lamp = Color3.fromRGB(200, 220, 255), fogColor = Color3.fromRGB(30, 30, 34),
 	},
 }
+for k, v in pairs(MapGen2.THEMES) do THEME[k] = v end
 MapGen.THEME = THEME
 
 -- Every building is either a HOUSE (enterable rooms with furniture, a bed to sleep in, a TV) or a
@@ -2268,24 +2381,29 @@ local function tree(parent, pos, theme, rng)
 			part(tm, Vector3.new(0.7, 7, 0.7), CFrame.new(pos + Vector3.new(0, h * 0.7 + i * 2, 0)) * CFrame.Angles(0, math.rad(i * 120), math.rad(40)), Color3.fromRGB(58, 42, 30), Enum.Material.Wood)
 		end
 	end
+	return tm
 end
 
 -- Generate a map. Returns info { model, spawns, vents, extract, theme, half }.
 function MapGen.generate(themeName, seed)
 	local rng = Random.new(seed or os.time())
 	local t = THEME[themeName] or THEME["Foggy Woods"]
+	local H = { part = part, building = building, pine = pine, tree = tree, wallSide = wallSide }
+	if t.ocean then return MapGen2.ocean(themeName, rng, t, H) end
 	local O = Config.MAP_ORIGIN
-	local S = Config.MAP_SIZE
+	local S = t.size or Config.MAP_SIZE
 	local half = S / 2
+	-- v1.4: maps are several times bigger; object counts scale with the area (capped so part counts stay sane)
+	local K = math.min(4, (S / 360) ^ 2)
 	local map = Instance.new("Model")
 	map.Name = "NightHuntMap"
 
 	-- smooth Terrain ground (real grass/asphalt materials) with dirt/mud patches; an invisible slab underneath as a safety floor
-	part(map, Vector3.new(S + 20, 2, S + 20), CFrame.new(O + Vector3.new(0, -1, 0)), t.ground, t.groundMat, { name = "Ground", transp = 1 })
+	part(map, Vector3.new(S + 20, 2, S + 20), CFrame.new(O + Vector3.new(0, t.jungle and -12 or -1, 0)), t.ground, t.groundMat, { name = "Ground", transp = 1 })
 	local terrain = workspace.Terrain
 	pcall(function() terrain:SetMaterialColor(t.terrain, t.ground) end)
-	terrain:FillBlock(CFrame.new(O + Vector3.new(0, -2, 0)), Vector3.new(S + 40, 4, S + 40), t.terrain)
-	for _ = 1, 26 do
+	terrain:FillBlock(CFrame.new(O + Vector3.new(0, t.jungle and -5.5 or -2, 0)), Vector3.new(S + 40, t.jungle and 11 or 4, S + 40), t.terrain)
+	for _ = 1, math.floor(26 * K) do
 		local pp = O + Vector3.new(rng:NextNumber(-half, half), 0, rng:NextNumber(-half, half))
 		terrain:FillCylinder(CFrame.new(pp + Vector3.new(0, -1.9, 0)), 0.3, rng:NextNumber(6, 16), t.patch)
 	end
@@ -2350,8 +2468,11 @@ function MapGen.generate(themeName, seed)
 		end
 		for x = -half, half, 10 do claim(O + Vector3.new(x, 0, z0), 7) end
 	end
+	local ctx = { t = t, H = H, map = map, rng = rng, O = O, S = S, half = half, free = free, claim = claim, randPos = randPos, beds = beds, tvs = tvs, loot = loot }
+	local extra = MapGen2.extras(themeName, ctx)
 	local kinds = { "house", "house", "house", "warehouse", "lab", "industrial" }
-	for i = 1, t.buildings do
+	if t.snow or t.farm then kinds = { "house", "house", "warehouse" } end
+	for i = 1, math.floor(t.buildings * K) do
 		local kind = kinds[(i - 1) % #kinds + 1]
 		for _try = 1, 25 do
 			local w, d
@@ -2369,7 +2490,7 @@ function MapGen.generate(themeName, seed)
 		end
 	end
 	-- chests and bags out in the open
-	for i = 1, (t.pines and 16 or 10) do
+	for i = 1, math.floor((t.pines and 16 or 10) * K) do
 		for _try = 1, 12 do
 			local pos = randPos(12)
 			if free(pos, 4) then
@@ -2380,24 +2501,29 @@ function MapGen.generate(themeName, seed)
 		end
 	end
 
-	for _ = 1, t.trees do
+	for _ = 1, math.min(520, math.floor(t.trees * K)) do
 		for _try = 1, 10 do
 			local pos = randPos(6)
 			if free(pos, 5) then
 				claim(pos, 3)
-				if t.pines then pine(map, pos, rng) else tree(map, pos, themeName, rng) end
+				if t.jungle then
+					local tm = tree(map, pos, "Foggy Woods", rng)
+					if tm then
+						for _, lp in ipairs(tm:GetChildren()) do if lp:IsA("Part") and lp.Shape == Enum.PartType.Ball then lp.Size = Vector3.new(18, 10, 18); lp.Color = Color3.fromRGB(30, 70, 30) end end
+					end
+				elseif t.pines then pine(map, pos, rng) else tree(map, pos, themeName, rng) end
 				break
 			end
 		end
 	end
 
 	-- hiding bushes / crates (walk inside them to hide)
-	for _ = 1, t.hides do
+	for _ = 1, math.floor(t.hides * K) do
 		for _try = 1, 10 do
 			local pos = randPos(8)
 			if free(pos, 5) then
 				claim(pos, 4)
-				if themeName == "Abandoned Pizzeria Town" then
+				if themeName == "Abandoned Pizzeria Town" or themeName == "Fester Street" then
 					local c = part(map, Vector3.new(7, 7, 7), CFrame.new(pos + Vector3.new(0, 3.5, 0)), Color3.fromRGB(120, 90, 50), Enum.Material.WoodPlanks, { collide = false, name = "HideSpot", transp = 0.05 })
 					_ = c
 				else
@@ -2409,7 +2535,7 @@ function MapGen.generate(themeName, seed)
 	end
 
 	-- street lamps / static pylons
-	for _ = 1, 14 do
+	for _ = 1, (t.fester and 0 or math.floor(14 * K)) do
 		local pos = randPos(10)
 		if free(pos, 3) then
 			claim(pos, 2)
@@ -2425,7 +2551,7 @@ function MapGen.generate(themeName, seed)
 
 	-- vents (Springtrap teleports between these)
 	local vents = {}
-	for i = 1, 8 do
+	for i = 1, 12 do
 		for _try = 1, 15 do
 			local pos = randPos(14)
 			if free(pos, 3) then
@@ -2449,7 +2575,7 @@ function MapGen.generate(themeName, seed)
 	end
 
 	-- gentle terrain hills between everything else
-	for _ = 1, (t.hills or 0) do
+	for _ = 1, math.floor((t.hills or 0) * K) do
 		for _try = 1, 8 do
 			local pos = randPos(20)
 			if free(pos, 14) then
@@ -2464,13 +2590,20 @@ function MapGen.generate(themeName, seed)
 		beds = beds, tvs = tvs, loot = loot,
 		model = map, spawns = spawns, monsterSpawns = monsterSpawns, vents = vents,
 		extract = ex, theme = themeName, half = half, fog = t.fog, fogColor = t.fogColor,
+		pools = extra.pools, lights = extra.lights, size = S,
 	}
 end
 
 -- Remove the terrain a map created.
 function MapGen.clearTerrain()
-	local O, S = Config.MAP_ORIGIN, Config.MAP_SIZE
-	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, 3, 0)), Vector3.new(S + 48, 16, S + 48), Enum.Material.Air)
+	local O, S = Config.MAP_ORIGIN, math.max(Config.MAP_SIZE, Config.OCEAN_SIZE)
+	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, 20, 0)), Vector3.new(S + 48, 140, S + 48), Enum.Material.Air)
+	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, -30, 0)), Vector3.new(S + 48, 40, S + 48), Enum.Material.Air)
+end
+
+-- the walk-in store building in the lobby
+function MapGen.store(parent, templates)
+	return MapGen2.store(parent, { part = part, building = building, pine = pine, tree = tree, wallSide = wallSide }, templates)
 end
 
 return MapGen
@@ -2478,6 +2611,660 @@ return MapGen
         </Properties>
       </Item>
       <Item class="ModuleScript" referent="13">
+        <Properties>
+          <string name="Name">MapGen2</string>
+          <string name="Source"><![CDATA[-- v1.4 (phase 2): the six new hunt maps (Stormy Ocean, Rainforest Swamp, Snowy Mountain, Haunted Farm,
+-- Vampire Castle, Fester Street) and the walk-in store building in the lobby.
+-- MapGen.generate calls the hooks here; helpers (part, building, pine, tree, wallSide) are passed in.
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("NightHunt"):WaitForChild("Config"))
+local MapGen2 = {}
+
+local rgb = Color3.fromRGB
+MapGen2.THEMES = {
+	["Stormy Ocean"] = {
+		ground = rgb(194, 178, 128), groundMat = Enum.Material.Sand, terrain = Enum.Material.Sand, patch = Enum.Material.Ground,
+		wall = rgb(120, 96, 66), wallMat = Enum.Material.WoodPlanks, floor = rgb(110, 84, 56), floorMat = Enum.Material.WoodPlanks,
+		buildings = 10, trees = 70, hides = 30, fog = 160, ocean = true, size = Config.OCEAN_SIZE,
+		lamp = rgb(255, 200, 120), fogColor = rgb(20, 28, 36),
+	},
+	["Rainforest Swamp"] = {
+		ground = rgb(40, 52, 26), groundMat = Enum.Material.Mud, terrain = Enum.Material.Mud, patch = Enum.Material.LeafyGrass,
+		wall = rgb(84, 70, 46), wallMat = Enum.Material.WoodPlanks, floor = rgb(70, 52, 36), floorMat = Enum.Material.Wood,
+		buildings = 5, trees = 140, hides = 34, fog = 70, deep = true, jungle = true,
+		lamp = rgb(200, 255, 150), fogColor = rgb(22, 34, 22),
+	},
+	["Snowy Mountain"] = {
+		ground = rgb(230, 236, 242), groundMat = Enum.Material.Snow, terrain = Enum.Material.Snow, patch = Enum.Material.Glacier,
+		wall = rgb(110, 80, 56), wallMat = Enum.Material.WoodPlanks, floor = rgb(90, 66, 44), floorMat = Enum.Material.Wood,
+		buildings = 5, trees = 130, hides = 26, fog = 90, pines = true, snow = true, hills = 30,
+		lamp = rgb(255, 210, 150), fogColor = rgb(160, 170, 185),
+	},
+	["Haunted Farm"] = {
+		ground = rgb(76, 66, 40), groundMat = Enum.Material.Ground, terrain = Enum.Material.Ground, patch = Enum.Material.Grass,
+		wall = rgb(150, 40, 34), wallMat = Enum.Material.WoodPlanks, floor = rgb(90, 66, 44), floorMat = Enum.Material.WoodPlanks,
+		buildings = 4, trees = 30, hides = 20, fog = 110, farm = true,
+		lamp = rgb(255, 180, 90), fogColor = rgb(34, 28, 20),
+	},
+	["Vampire Castle"] = {
+		ground = rgb(40, 42, 36), groundMat = Enum.Material.Grass, terrain = Enum.Material.Grass, patch = Enum.Material.Rock,
+		wall = rgb(90, 88, 92), wallMat = Enum.Material.Cobblestone, floor = rgb(60, 50, 50), floorMat = Enum.Material.Slate,
+		buildings = 3, trees = 50, hides = 24, fog = 90, castle = true, hills = 10,
+		lamp = rgb(255, 80, 60), fogColor = rgb(24, 12, 16),
+	},
+	["Fester Street"] = {
+		ground = rgb(40, 40, 42), groundMat = Enum.Material.Asphalt, terrain = Enum.Material.Grass, patch = Enum.Material.Ground,
+		wall = rgb(140, 120, 100), wallMat = Enum.Material.Brick, floor = rgb(80, 60, 44), floorMat = Enum.Material.Wood,
+		buildings = 0, trees = 40, hides = 20, fog = 100, fester = true,
+		lamp = rgb(255, 190, 110), fogColor = rgb(18, 16, 22),
+	},
+}
+
+local function light(p, range, color, bright)
+	local l = Instance.new("PointLight")
+	l.Range, l.Color, l.Brightness = range, color, bright or 1.2
+	l.Parent = p
+	return l
+end
+local function billboard(p, text, color, size)
+	local g = Instance.new("BillboardGui")
+	g.Size = UDim2.fromOffset(size or 260, 60)
+	g.StudsOffset = Vector3.new(0, 4, 0)
+	g.MaxDistance = 220
+	g.AlwaysOnTop = false
+	g.LightInfluence = 0
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Font = Enum.Font.GothamBlack
+	t.TextScaled = true
+	t.TextColor3 = color
+	t.TextStrokeTransparency = 0.2
+	t.Text = text
+	t.Parent = g
+	g.Parent = p
+	return g
+end
+MapGen2.billboard = billboard
+local function signBoard(H, parent, pos, yaw, text, color)
+	H.part(parent, Vector3.new(0.6, 7, 0.6), CFrame.new(pos + Vector3.new(0, 3.5, 0)), rgb(80, 60, 40), Enum.Material.Wood, { name = "SignPost" })
+	local b = H.part(parent, Vector3.new(7, 3.6, 0.4), CFrame.new(pos + Vector3.new(0, 6.6, 0)) * CFrame.Angles(0, yaw, 0), rgb(230, 190, 30), Enum.Material.SmoothPlastic, { name = "WarningSign" })
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local g = Instance.new("SurfaceGui")
+		g.Face = face
+		g.CanvasSize = Vector2.new(280, 144)
+		g.LightInfluence = 0.3
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.Font = Enum.Font.GothamBlack
+		t.TextScaled = true
+		t.TextColor3 = color or rgb(20, 10, 10)
+		t.Text = text
+		t.Parent = g
+		g.Parent = b
+	end
+	return b
+end
+MapGen2.signBoard = signBoard
+
+-- a palm tree for the islands
+local function palm(H, parent, pos, rng)
+	local m = Instance.new("Model"); m.Name = "Tree"; m.Parent = parent
+	local h = rng:NextNumber(16, 26)
+	local lean = rng:NextNumber(-0.25, 0.25)
+	for i = 0, 3 do
+		H.part(m, Vector3.new(1.6 - i * 0.2, h / 4 + 0.4, 1.6 - i * 0.2), CFrame.new(pos + Vector3.new(lean * i * 3, h / 8 + i * h / 4, 0)) * CFrame.Angles(0, 0, -lean * 0.8), rgb(120, 90, 60), Enum.Material.Wood)
+	end
+	local top = pos + Vector3.new(lean * 12, h, 0)
+	for k = 0, 5 do
+		H.part(m, Vector3.new(1.8, 0.3, 10), CFrame.new(top) * CFrame.Angles(0, k * math.pi / 3, 0) * CFrame.Angles(math.rad(-18), 0, 0) * CFrame.new(0, 0, -4.5), rgb(46, 110, 40), Enum.Material.Grass, { collide = false, name = "Leaves" })
+	end
+end
+
+-- a drivable boat: anchored hull the server moves; the Seat named Helm reads the driver's MoveDirection
+local function boat(H, parent, pos, yaw, big)
+	local m = Instance.new("Model")
+	m.Name = big and "Ship" or "Boat"
+	local L, W = big and 44 or 16, big and 14 or 7
+	local cf = CFrame.new(pos.X, 0, pos.Z) * CFrame.Angles(0, yaw, 0)
+	local hullC = big and rgb(70, 40, 30) or rgb(220, 220, 225)
+	local hull = H.part(m, Vector3.new(W, 3, L), cf * CFrame.new(0, 0.8, 0), hullC, big and Enum.Material.WoodPlanks or Enum.Material.SmoothPlastic, { name = "Hull" })
+	local bow = Instance.new("WedgePart")
+	bow.Anchored = true
+	bow.Size = Vector3.new(W, 3, big and 10 or 5)
+	bow.CFrame = cf * CFrame.new(0, 0.8, -L / 2 - bow.Size.Z / 2)
+	bow.Color, bow.Material, bow.Name = hullC, hull.Material, "Bow"
+	bow.Parent = m
+	H.part(m, Vector3.new(W - 1, 0.3, L - 1), cf * CFrame.new(0, 2.4, 0), rgb(150, 110, 70), Enum.Material.WoodPlanks, { name = "Deck" })
+	H.part(m, Vector3.new(W, 0.6, L), cf * CFrame.new(0, -0.6, 0), rgb(150, 30, 30), Enum.Material.SmoothPlastic, { name = "Stripe" })
+	local seat = Instance.new("Seat")
+	seat.Name = "Helm"
+	seat.Anchored = true
+	seat.Size = Vector3.new(2, 1, 2)
+	seat.CFrame = cf * CFrame.new(0, 3.1, big and 8 or 3)
+	seat.Color = rgb(40, 40, 44)
+	seat.Parent = m
+	if big then
+		H.part(m, Vector3.new(W - 4, 8, 10), cf * CFrame.new(0, 6.5, 12), rgb(230, 230, 220), Enum.Material.WoodPlanks, { name = "Cabin" })
+		H.part(m, Vector3.new(1, 30, 1), cf * CFrame.new(0, 17, -6), rgb(90, 70, 50), Enum.Material.Wood, { name = "Mast" })
+		H.part(m, Vector3.new(0.3, 18, 14), cf * CFrame.new(0, 19, -6) * CFrame.Angles(0, math.rad(90), 0), rgb(230, 225, 210), Enum.Material.Fabric, { name = "Sail", collide = false })
+		local lamp = H.part(m, Vector3.new(1, 1, 1), cf * CFrame.new(0, 11.5, 12), rgb(255, 210, 130), Enum.Material.Neon, { name = "FlickerLight", collide = false })
+		light(lamp, 30, rgb(255, 200, 120))
+		for i = -1, 1, 2 do
+			local s2 = seat:Clone(); s2.Name = "Seat"; s2.CFrame = cf * CFrame.new(i * 3, 3.1, -4); s2.Parent = m
+		end
+	else
+		H.part(m, Vector3.new(W - 1, 2, 0.3), cf * CFrame.new(0, 3.6, 1.6) * CFrame.Angles(math.rad(-25), 0, 0), rgb(160, 210, 240), Enum.Material.Glass, { name = "Windshield", transp = 0.4 })
+		H.part(m, Vector3.new(1.6, 2.4, 1.6), cf * CFrame.new(0, 1.6, L / 2 + 0.8), rgb(30, 30, 34), Enum.Material.Metal, { name = "Motor" })
+	end
+	m.PrimaryPart = hull
+	m:SetAttribute("Speed", big and 34 or 46)
+	m:SetAttribute("Big", big or false)
+	billboard(seat, "SIT TO DRIVE", rgb(120, 220, 255), 160).MaxDistance = 40
+	m.Parent = parent
+	return m
+end
+MapGen2.boat = boat
+
+---------------------------------------------------------------------------
+-- Stormy Ocean: open water, islands with huts, boats and ships, a storm past the safe radius
+---------------------------------------------------------------------------
+function MapGen2.ocean(themeName, rng, t, H)
+	local O = Config.MAP_ORIGIN
+	local S = Config.OCEAN_SIZE
+	local half = S / 2
+	local R = Config.STORM_RADIUS
+	local map = Instance.new("Model")
+	map.Name = "NightHuntMap"
+	local terrain = workspace.Terrain
+	pcall(function() terrain:SetMaterialColor(Enum.Material.Sand, t.ground) end)
+	terrain.WaterColor = rgb(18, 46, 60)
+	terrain.WaterWaveSize, terrain.WaterWaveSpeed, terrain.WaterTransparency = 0.6, 16, 0.6
+	terrain:FillBlock(CFrame.new(O + Vector3.new(0, -46, 0)), Vector3.new(S + 40, 8, S + 40), Enum.Material.Sand)
+	terrain:FillBlock(CFrame.new(O + Vector3.new(0, -21, 0)), Vector3.new(S + 40, 42, S + 40), Enum.Material.Water)
+	for _, w in ipairs({
+		{ Vector3.new(S + 20, 80, 2), Vector3.new(0, 20, -half - 10) }, { Vector3.new(S + 20, 80, 2), Vector3.new(0, 20, half + 10) },
+		{ Vector3.new(2, 80, S + 20), Vector3.new(-half - 10, 20, 0) }, { Vector3.new(2, 80, S + 20), Vector3.new(half + 10, 20, 0) },
+	}) do H.part(map, w[1], CFrame.new(O + w[2]), rgb(10, 10, 12), Enum.Material.Slate, { name = "Boundary", transp = 1 }) end
+
+	local islands = {}
+	local function island(c, r)
+		terrain:FillCylinder(CFrame.new(c + Vector3.new(0, -19, 0)), 42, r, Enum.Material.Sand)
+		terrain:FillCylinder(CFrame.new(c + Vector3.new(0, 2.5, 0)), 3, r * 0.72, Enum.Material.LeafyGrass)
+		terrain:FillBall(c + Vector3.new(0, -r * 0.55, 0), r * 0.62, Enum.Material.Sand)
+		table.insert(islands, { p = c, r = r })
+	end
+	island(O, 95)
+	local n = 12
+	for i = 1, n do
+		for _try = 1, 30 do
+			local a = (i / n) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
+			local d = rng:NextNumber(200, R - 40)
+			local r = rng:NextNumber(28, 62)
+			local c = O + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
+			local ok = true
+			for _, o in ipairs(islands) do if (o.p - c).Magnitude < o.r + r + 50 then ok = false; break end end
+			if ok then island(c, r); break end
+		end
+	end
+	-- two islands out in the storm (risky loot)
+	for i = 1, 2 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		island(O + Vector3.new(math.cos(a) * (R + 70), 0, math.sin(a) * (R + 70)), 34 + i * 4)
+		islands[#islands].storm = true
+	end
+
+	local beds, tvs, loot, vents, hides = {}, {}, {}, {}, 0
+	local occupied = {}
+	local function free(pos, r)
+		for _, o in ipairs(occupied) do if (Vector2.new(o.p.X, o.p.Z) - Vector2.new(pos.X, pos.Z)).Magnitude < r + o.r then return false end end
+		return true
+	end
+	local function claim(pos, r) table.insert(occupied, { p = pos, r = r }) end
+	local function onIsland(isl, margin)
+		local a, d = rng:NextNumber(0, math.pi * 2), rng:NextNumber(0, math.max(1, isl.r * 0.7 - margin))
+		return isl.p + Vector3.new(math.cos(a) * d, 4, math.sin(a) * d)
+	end
+	claim(O, 24)
+	-- extraction on a far island (you'll need a boat or a long swim)
+	local far = islands[2]
+	for _, isl in ipairs(islands) do if not isl.storm and (isl.p - O).Magnitude > (far.p - O).Magnitude then far = isl end end
+	local ex = far.p + Vector3.new(0, 4, 0)
+	claim(ex, 22)
+	H.part(map, Vector3.new(30, 0.4, 30), CFrame.new(ex + Vector3.new(0, 0.2, 0)), rgb(50, 50, 50), Enum.Material.Concrete, { name = "ExtractPad" })
+	H.part(map, Vector3.new(16, 0.45, 2), CFrame.new(ex + Vector3.new(0, 0.25, 0)), rgb(240, 240, 240), Enum.Material.Neon)
+	H.part(map, Vector3.new(2, 0.45, 16), CFrame.new(ex + Vector3.new(-7, 0.25, 0)), rgb(240, 240, 240), Enum.Material.Neon)
+	H.part(map, Vector3.new(2, 0.45, 16), CFrame.new(ex + Vector3.new(7, 0.25, 0)), rgb(240, 240, 240), Enum.Material.Neon)
+
+	local boats = {}
+	for i, isl in ipairs(islands) do
+		-- huts
+		local huts = isl.r > 70 and 3 or (isl.r > 40 and 1 or 0)
+		for _ = 1, huts do
+			for _try = 1, 20 do
+				local pos = onIsland(isl, 20)
+				if free(pos, 20) then
+					claim(pos, 19)
+					local _, info = H.building(map, t, pos, rng:NextInteger(26, 30), rng:NextInteger(22, 26), rng, "house")
+					for _, x in ipairs(info.beds) do table.insert(beds, x) end
+					for _, x in ipairs(info.tvs) do table.insert(tvs, x) end
+					for _, x in ipairs(info.loot) do table.insert(loot, x) end
+					break
+				end
+			end
+		end
+		for _ = 1, math.floor(isl.r / 9) do
+			local pos = onIsland(isl, 4)
+			if free(pos, 4) then claim(pos, 3); palm(H, map, pos, rng) end
+		end
+		for k = 1, (isl.storm and 4 or 2) do
+			local pos = onIsland(isl, 6)
+			if free(pos, 3) then claim(pos, 3); table.insert(loot, { pos = pos, kind = (k % 2 == 0 or isl.storm) and "chest" or "bag" }) end
+		end
+		for _ = 1, 2 do
+			local pos = onIsland(isl, 6)
+			if free(pos, 5) then
+				claim(pos, 4); hides += 1
+				H.part(map, Vector3.new(9, 8, 9), CFrame.new(pos + Vector3.new(0, 2, 0)), rgb(40, 90, 36), Enum.Material.Grass, { shape = Enum.PartType.Ball, collide = false, name = "HideSpot" })
+			end
+		end
+		-- a dock with a boat moored at it, and a water warning sign
+		local a = rng:NextNumber(0, math.pi * 2)
+		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+		local edge = isl.p + dir * (isl.r - 4)
+		H.part(map, Vector3.new(6, 0.6, 22), CFrame.lookAt(edge + dir * 8 + Vector3.new(0, 2.4, 0), edge + dir * 30 + Vector3.new(0, 2.4, 0)), rgb(120, 90, 60), Enum.Material.WoodPlanks, { name = "Dock" })
+		table.insert(vents, edge + Vector3.new(0, 6, 0))
+		local side = Vector3.new(-dir.Z, 0, dir.X)
+		table.insert(boats, boat(H, map, edge + dir * 16 + side * 9, math.atan2(-dir.X, -dir.Z), i % 4 == 0 and not isl.storm))
+		signBoard(H, map, edge - dir * 2 + Vector3.new(0, 2, 0), math.atan2(-dir.X, -dir.Z), isl.storm and "STORM ZONE!\nDO NOT GO OUT" or "DANGER\nDEEP WATER\nSEA MONSTERS")
+		-- a lamp post per island
+		local lp = onIsland(isl, 8)
+		H.part(map, Vector3.new(0.8, 14, 0.8), CFrame.new(lp + Vector3.new(0, 3, 0)), rgb(40, 40, 40), Enum.Material.Metal)
+		light(H.part(map, Vector3.new(1.6, 1, 1.6), CFrame.new(lp + Vector3.new(0, 10.4, 0)), t.lamp, Enum.Material.Neon, { collide = false, name = "FlickerLight" }), 30, t.lamp)
+	end
+	-- extra boats drifting near the main island + two big ships
+	for i = 1, 6 do
+		local a = (i / 6) * math.pi * 2
+		table.insert(boats, boat(H, map, O + Vector3.new(math.cos(a) * 118, 0, math.sin(a) * 118), a, false))
+	end
+	for i = 1, 2 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		table.insert(boats, boat(H, map, O + Vector3.new(math.cos(a) * 160, 0, math.sin(a) * 160), a + math.pi / 2, true))
+	end
+	-- storm wall: buoys with warning lights on the safe radius, dark rain curtain beyond
+	for i = 0, 35 do
+		local a = i / 36 * math.pi * 2
+		local p = O + Vector3.new(math.cos(a) * R, 0, math.sin(a) * R)
+		H.part(map, Vector3.new(3, 4, 3), CFrame.new(p + Vector3.new(0, 0.5, 0)), rgb(220, 60, 30), Enum.Material.SmoothPlastic, { shape = Enum.PartType.Ball, name = "Buoy" })
+		local bl = H.part(map, Vector3.new(1, 1, 1), CFrame.new(p + Vector3.new(0, 3, 0)), rgb(255, 40, 30), Enum.Material.Neon, { collide = false, name = "BuoyLight" })
+		light(bl, 24, rgb(255, 40, 30), 2)
+		if i % 3 == 0 then billboard(bl, "⚠ STORM AHEAD - TURN BACK ⚠", rgb(255, 80, 60), 300) end
+		local q = O + Vector3.new(math.cos(a) * (R + 60), 0, math.sin(a) * (R + 60))
+		H.part(map, Vector3.new(2 * math.pi * (R + 60) / 36 + 2, 260, 4), CFrame.lookAt(q + Vector3.new(0, 120, 0), O + Vector3.new(0, 120, 0)), rgb(30, 34, 44), Enum.Material.ForceField, { collide = false, transp = 0.55, name = "StormWall" })
+	end
+
+	local spawns, monsterSpawns = {}, {}
+	for i = 1, 15 do
+		local a = (i / 15) * math.pi * 2
+		table.insert(spawns, O + Vector3.new(math.cos(a) * 14, 6, math.sin(a) * 14))
+	end
+	for i = 1, 5 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		table.insert(monsterSpawns, O + Vector3.new(math.cos(a) * 300, 2, math.sin(a) * 300))
+	end
+	local landSpawns = {}
+	for _, isl in ipairs(islands) do if not isl.storm and isl.p ~= O then table.insert(landSpawns, isl.p + Vector3.new(0, 7, 0)) end end
+	return {
+		beds = beds, tvs = tvs, loot = loot, model = map, spawns = spawns, monsterSpawns = monsterSpawns, landSpawns = landSpawns,
+		vents = vents, extract = ex, theme = themeName, half = half, fog = t.fog, fogColor = t.fogColor,
+		ocean = true, islands = islands, boats = boats, storm = R, size = S,
+	}
+end
+
+---------------------------------------------------------------------------
+-- per-theme extras on the regular (land) generator
+---------------------------------------------------------------------------
+local function twoStorey(H, map, t, pos, w, d, rng, lights)
+	local b, info = H.building(map, t, pos, w, d, rng, "house")
+	local h = 12
+	for _, p in ipairs(b:GetChildren()) do
+		if p.Name == "Roof" then p.CFrame = p.CFrame + Vector3.new(0, h, 0) end
+	end
+	local wallC = t.wall:Lerp(rgb(rng:NextInteger(90, 200), rng:NextInteger(80, 170), rng:NextInteger(70, 150)), 0.5)
+	local sides = {
+		{ len = w, cf = CFrame.new(pos + Vector3.new(0, h + h / 2, -d / 2)), axis = "x" },
+		{ len = w, cf = CFrame.new(pos + Vector3.new(0, h + h / 2, d / 2)), axis = "x" },
+		{ len = d, cf = CFrame.new(pos + Vector3.new(-w / 2, h + h / 2, 0)), axis = "z" },
+		{ len = d, cf = CFrame.new(pos + Vector3.new(w / 2, h + h / 2, 0)), axis = "z" },
+	}
+	for i, sd in ipairs(sides) do H.wallSide(b, sd, h, 1, wallC, t.wallMat, i == 4 and 5 or nil) end
+	H.part(b, Vector3.new(w, 0.4, d), CFrame.new(pos + Vector3.new(0, 2 * h, 0)), rgb(200, 190, 170), Enum.Material.Plaster, { name = "Ceiling" })
+	-- outside stairs up the east wall to the upstairs door
+	local st = Instance.new("WedgePart")
+	st.Anchored = true
+	st.Size = Vector3.new(5, h, 18)
+	st.CFrame = CFrame.new(pos + Vector3.new(w / 2 + 2.6, h / 2, -13)) -- tall end (+Z) meets the landing
+	st.Color, st.Material, st.Name = rgb(90, 70, 50), Enum.Material.WoodPlanks, "Stairs"
+	st.Parent = b
+	H.part(b, Vector3.new(5, 0.6, 8), CFrame.new(pos + Vector3.new(w / 2 + 2.6, h - 0.3, 0)), rgb(90, 70, 50), Enum.Material.WoodPlanks, { name = "Landing" })
+	-- upstairs bedroom + varied window lighting (warm, cold TV-blue, flickering red, dark)
+	local palette = { rgb(255, 190, 110), rgb(140, 180, 255), rgb(255, 60, 50), rgb(120, 255, 160), rgb(255, 230, 200) }
+	for f = 0, 1 do
+		for _, sd in ipairs({ { 0, -d / 2 - 0.6, "x" }, { 0, d / 2 + 0.6, "x" }, { -w / 2 - 0.6, 0, "z" } }) do
+			for k = -1, 1, 2 do
+				local col = palette[rng:NextInteger(1, #palette)]
+				local dark = rng:NextNumber() < 0.3
+				local off = sd[3] == "x" and Vector3.new(k * w / 4, 0, 0) or Vector3.new(0, 0, k * d / 4)
+				local wp = H.part(b, sd[3] == "x" and Vector3.new(4, 4, 0.3) or Vector3.new(0.3, 4, 4), CFrame.new(pos + Vector3.new(sd[1], f * h + 6.5, sd[2]) + off),
+					dark and rgb(20, 22, 26) or col, dark and Enum.Material.Glass or Enum.Material.Neon, { collide = false, name = dark and "Window" or "WindowLight" })
+				if not dark then
+					wp.Transparency = 0.25
+					light(wp, 16, col, 0.9)
+					if rng:NextNumber() < 0.35 then wp:SetAttribute("Flicker", true); wp.Name = "FlickerLight" end
+					table.insert(lights, wp)
+				end
+			end
+		end
+	end
+	local bedPos = pos + Vector3.new(-w / 4, h, 0)
+	local mattress = H.part(b, Vector3.new(4.6, 0.8, 7.6), CFrame.new(bedPos + Vector3.new(0, 2.4, 0)), rgb(200, 195, 210), Enum.Material.Fabric, { name = "Bed" })
+	H.part(b, Vector3.new(5, 1.6, 8), CFrame.new(bedPos + Vector3.new(0, 1.2, 0)), rgb(90, 60, 40), Enum.Material.Wood, { name = "Furniture" })
+	table.insert(info.beds, mattress)
+	table.insert(info.loot, { pos = pos + Vector3.new(w / 4, h + 0.4, 0), kind = "chest" })
+	return b, info
+end
+
+function MapGen2.extras(name, C)
+	local t, H, map, rng, O, half = C.t, C.H, C.map, C.rng, C.O, C.half
+	local function add(info)
+		for _, x in ipairs(info.beds) do table.insert(C.beds, x) end
+		for _, x in ipairs(info.tvs) do table.insert(C.tvs, x) end
+		for _, x in ipairs(info.loot) do table.insert(C.loot, x) end
+	end
+	local out = { pools = {}, lights = {} }
+	if t.jungle then -- murky pools the Spinosaurus hides in; mangrove roots and reeds
+		for _ = 1, 22 do
+			for _try = 1, 10 do
+				local pos = C.randPos(30)
+				local r = rng:NextNumber(12, 26)
+				if C.free(pos, r + 4) then
+					C.claim(pos, r + 2)
+					workspace.Terrain:FillCylinder(CFrame.new(pos + Vector3.new(0, -3, 0)), 6, r, Enum.Material.Water)
+					workspace.Terrain:FillCylinder(CFrame.new(pos + Vector3.new(0, -7, 0)), 2, r + 1, Enum.Material.Mud)
+					table.insert(out.pools, { p = pos, r = r })
+					for k = 1, 6 do
+						local a = k / 6 * math.pi * 2
+						H.part(map, Vector3.new(0.4, 6, 0.4), CFrame.new(pos + Vector3.new(math.cos(a) * (r + 1), 2, math.sin(a) * (r + 1))) * CFrame.Angles(0.2, a, 0.15), rgb(90, 110, 50), Enum.Material.Grass, { collide = false, name = "Reed" })
+					end
+					if rng:NextNumber() < 0.5 then signBoard(H, map, pos + Vector3.new(r + 3, 0, 0), math.pi / 2, "KEEP OUT\nOF THE WATER") end
+					break
+				end
+			end
+		end
+	end
+	if t.snow then -- snow caps on everything, rocks, a huge peak, frozen lake, ski lodge
+		pcall(function() workspace.Terrain:SetMaterialColor(Enum.Material.Snow, t.ground) end)
+		local peak = O + Vector3.new(rng:NextNumber(-150, 150), 0, rng:NextNumber(-250, -150))
+		C.claim(peak, 110)
+		workspace.Terrain:FillBall(peak + Vector3.new(0, -40, 0), 120, Enum.Material.Snow)
+		workspace.Terrain:FillBall(peak + Vector3.new(30, 10, 20), 50, Enum.Material.Rock)
+		local lake = C.randPos(80)
+		if C.free(lake, 60) then
+			C.claim(lake, 55)
+			workspace.Terrain:FillCylinder(CFrame.new(lake + Vector3.new(0, -0.4, 0)), 1.2, 50, Enum.Material.Glacier)
+		end
+		for _ = 1, 40 do
+			local pos = C.randPos(10)
+			if C.free(pos, 6) then C.claim(pos, 5); workspace.Terrain:FillBall(pos, rng:NextNumber(3, 7), Enum.Material.Rock) end
+		end
+		for _, d in ipairs(map:GetDescendants()) do
+			if d:IsA("BasePart") and d.Name == "Leaves" then d.Color = d.Color:Lerp(rgb(235, 240, 245), 0.55); d.Material = Enum.Material.Snow end
+			if d:IsA("BasePart") and d.Name == "Roof" then d.Color = rgb(235, 240, 245); d.Material = Enum.Material.Snow end
+		end
+	end
+	if t.farm then -- barn, silos, corn mazes (hide in the corn), scarecrows, fences, a tractor
+		for i = 1, 3 do
+			for _try = 1, 25 do
+				local pos = C.randPos(50)
+				if C.free(pos, 40) then
+					C.claim(pos, 38)
+					local b, info = H.building(map, t, pos, 56, 40, rng, "warehouse")
+					b.Name = "Barn"
+					for _, p in ipairs(b:GetChildren()) do
+						if p.Name == "Wall" then p.Color = rgb(150, 36, 30); p.Material = Enum.Material.WoodPlanks end
+						if p.Name == "Roof" then p.Color = rgb(70, 60, 56) end
+					end
+					add(info)
+					for k = 0, 1 do
+						local sp = pos + Vector3.new(34 + k * 13, 0, -10)
+						H.part(map, Vector3.new(36, 12, 12), CFrame.new(sp + Vector3.new(0, 18, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(170, 175, 180), Enum.Material.CorrodedMetal, { shape = Enum.PartType.Cylinder, name = "Silo" })
+						H.part(map, Vector3.new(12, 12, 12), CFrame.new(sp + Vector3.new(0, 36, 0)), rgb(150, 155, 160), Enum.Material.Metal, { shape = Enum.PartType.Ball, name = "Silo" })
+					end
+					_ = i
+					break
+				end
+			end
+		end
+		for _ = 1, 16 do
+			for _try = 1, 12 do
+				local pos = C.randPos(30)
+				if C.free(pos, 22) then
+					C.claim(pos, 20)
+					local field = Instance.new("Model"); field.Name = "CornField"; field.Parent = map
+					for x = -3, 3 do
+						for z = -3, 3 do
+							if (x + z) % 2 == 0 then
+								H.part(field, Vector3.new(0.5, rng:NextNumber(8, 10), 0.5), CFrame.new(pos + Vector3.new(x * 5 + rng:NextNumber(-1, 1), 4.5, z * 5)), rgb(170, 160, 70), Enum.Material.Grass, { collide = false, name = "Corn" })
+							end
+						end
+					end
+					H.part(field, Vector3.new(34, 8, 34), CFrame.new(pos + Vector3.new(0, 4, 0)), rgb(120, 130, 50), Enum.Material.Grass, { collide = false, transp = 0.55, name = "HideSpot" })
+					local sc = pos + Vector3.new(0, 0, 0)
+					H.part(field, Vector3.new(0.5, 9, 0.5), CFrame.new(sc + Vector3.new(0, 4.5, 0)), rgb(100, 70, 40), Enum.Material.Wood)
+					H.part(field, Vector3.new(6, 0.5, 0.5), CFrame.new(sc + Vector3.new(0, 7, 0)), rgb(100, 70, 40), Enum.Material.Wood)
+					H.part(field, Vector3.new(2, 2, 2), CFrame.new(sc + Vector3.new(0, 9.2, 0)), rgb(200, 160, 90), Enum.Material.Fabric, { shape = Enum.PartType.Ball, name = "Scarecrow" })
+					break
+				end
+			end
+		end
+		for _ = 1, 14 do -- fence runs
+			local pos = C.randPos(20)
+			local yaw = rng:NextNumber(0, math.pi)
+			if C.free(pos, 14) then
+				for k = -3, 3 do
+					local p = pos + Vector3.new(math.cos(yaw) * k * 4, 0, math.sin(yaw) * k * 4)
+					H.part(map, Vector3.new(0.4, 4, 0.4), CFrame.new(p + Vector3.new(0, 2, 0)), rgb(110, 80, 50), Enum.Material.Wood)
+				end
+				H.part(map, Vector3.new(24, 0.4, 0.3), CFrame.new(pos + Vector3.new(0, 3, 0)) * CFrame.Angles(0, -yaw, 0), rgb(110, 80, 50), Enum.Material.Wood)
+				H.part(map, Vector3.new(24, 0.4, 0.3), CFrame.new(pos + Vector3.new(0, 1.8, 0)) * CFrame.Angles(0, -yaw, 0), rgb(110, 80, 50), Enum.Material.Wood)
+			end
+		end
+	end
+	if t.castle then -- curtain wall with towers and a gate around a keep; graveyard outside
+		local c = O + Vector3.new(0, 0, -220)
+		local Wd = 170
+		C.claim(c, Wd * 0.75)
+		local stone = rgb(88, 86, 90)
+		for i, sd in ipairs({
+			{ len = Wd, cf = CFrame.new(c + Vector3.new(0, 14, -Wd / 2)), axis = "x" }, { len = Wd, cf = CFrame.new(c + Vector3.new(0, 14, Wd / 2)), axis = "x" },
+			{ len = Wd, cf = CFrame.new(c + Vector3.new(-Wd / 2, 14, 0)), axis = "z" }, { len = Wd, cf = CFrame.new(c + Vector3.new(Wd / 2, 14, 0)), axis = "z" },
+		}) do
+			H.wallSide(map, sd, 28, 4, stone, Enum.Material.Cobblestone, i == 2 and 16 or nil)
+			for k = -2, 2 do -- crenellations
+				local off = sd.axis == "x" and Vector3.new(k * Wd / 5, 15.5, 0) or Vector3.new(0, 15.5, k * Wd / 5)
+				H.part(map, Vector3.new(5, 3, 5), sd.cf + off, stone, Enum.Material.Cobblestone, { name = "Merlon" })
+			end
+		end
+		for _, q in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
+			local tp = c + Vector3.new(q[1] * Wd / 2, 0, q[2] * Wd / 2)
+			H.part(map, Vector3.new(40, 18, 18), CFrame.new(tp + Vector3.new(0, 20, 0)) * CFrame.Angles(0, 0, math.rad(90)), stone, Enum.Material.Cobblestone, { shape = Enum.PartType.Cylinder, name = "Tower" })
+			local roof = Instance.new("Part")
+			roof.Anchored, roof.Size, roof.Color, roof.Material, roof.Name = true, Vector3.new(20, 20, 20), rgb(60, 30, 40), Enum.Material.Slate, "Roof"
+			roof.Shape = Enum.PartType.Ball
+			roof.CFrame = CFrame.new(tp + Vector3.new(0, 42, 0))
+			roof.Parent = map
+			local win = H.part(map, Vector3.new(2, 4, 19), CFrame.new(tp + Vector3.new(0, 30, 0)), rgb(255, 60, 40), Enum.Material.Neon, { collide = false, name = "FlickerLight" })
+			light(win, 40, rgb(255, 60, 40), 1.5)
+			table.insert(out.lights, win)
+		end
+		local keep, info = H.building(map, t, c, 60, 50, rng, "warehouse")
+		keep.Name = "Keep"
+		for _, p in ipairs(keep:GetChildren()) do if p.Name == "Wall" then p.Color = stone; p.Material = Enum.Material.Cobblestone end end
+		add(info)
+		-- coffin in the keep (vampire's bed) + candles
+		H.part(map, Vector3.new(4, 2.4, 8), CFrame.new(c + Vector3.new(-10, 1.4, 0)), rgb(30, 14, 14), Enum.Material.Wood, { name = "Coffin" })
+		for k = 1, 6 do
+			local cp = c + Vector3.new(math.cos(k) * 18, 0, math.sin(k) * 14)
+			H.part(map, Vector3.new(0.6, 3, 0.6), CFrame.new(cp + Vector3.new(0, 1.5, 0)), rgb(230, 220, 200), Enum.Material.SmoothPlastic)
+			light(H.part(map, Vector3.new(0.4, 0.6, 0.4), CFrame.new(cp + Vector3.new(0, 3.3, 0)), rgb(255, 170, 60), Enum.Material.Neon, { collide = false, name = "FlickerLight" }), 12, rgb(255, 160, 60))
+		end
+		local g = O + Vector3.new(rng:NextNumber(-200, 200), 0, rng:NextNumber(80, 250))
+		C.claim(g, 40)
+		for x = -4, 4 do
+			for z = -3, 3 do
+				if rng:NextNumber() < 0.7 then
+					H.part(map, Vector3.new(3, rng:NextNumber(3, 5), 0.8), CFrame.new(g + Vector3.new(x * 8, 2, z * 9)) * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, rng:NextNumber(-0.1, 0.1)), rgb(110, 110, 115), Enum.Material.Granite, { name = "Tombstone" })
+				end
+			end
+		end
+	end
+	if t.fester then -- residential grid: streets, sidewalks, two-storey houses, mismatched street lights
+		local block = 150
+		for k = -3, 3 do
+			H.part(map, Vector3.new(C.S, 0.2, 22), CFrame.new(O + Vector3.new(0, 0.1, k * block)), rgb(32, 32, 34), Enum.Material.Asphalt, { name = "Street" })
+			H.part(map, Vector3.new(22, 0.22, C.S), CFrame.new(O + Vector3.new(k * block, 0.11, 0)), rgb(32, 32, 34), Enum.Material.Asphalt, { name = "Street" })
+			for x = -half, half, 22 do
+				H.part(map, Vector3.new(8, 0.25, 0.6), CFrame.new(O + Vector3.new(x, 0.15, k * block)), rgb(230, 200, 60), Enum.Material.Neon, { collide = false, name = "Stripe" })
+			end
+		end
+		local lampCols = { rgb(255, 190, 110), rgb(200, 220, 255), rgb(255, 120, 60), rgb(160, 255, 200) }
+		for bx = -3, 2 do
+			for bz = -3, 2 do
+				local cc = O + Vector3.new((bx + 0.5) * block, 0, (bz + 0.5) * block)
+				if (cc - O).Magnitude > 40 then
+					for _, q in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+						local pos = cc + Vector3.new(q[1] * 34, 0, q[2] * 34)
+						if C.free(pos, 22) and rng:NextNumber() < 0.8 then
+							C.claim(pos, 22)
+							local _, info = twoStorey(H, map, t, pos, rng:NextInteger(28, 34), rng:NextInteger(26, 30), rng, out.lights)
+							add(info)
+						end
+					end
+				end
+				local lp = cc + Vector3.new(-block / 2 + 14, 0, -block / 2 + 14)
+				local col = lampCols[rng:NextInteger(1, #lampCols)]
+				H.part(map, Vector3.new(0.8, 16, 0.8), CFrame.new(lp + Vector3.new(0, 8, 0)), rgb(40, 40, 40), Enum.Material.Metal)
+				local bulb = H.part(map, Vector3.new(1.6, 1, 1.6), CFrame.new(lp + Vector3.new(0, 16.4, 0)), col, Enum.Material.Neon, { collide = false, name = "FlickerLight" })
+				light(bulb, 34, col, 1.4)
+				table.insert(out.lights, bulb)
+			end
+		end
+	end
+	return out
+end
+
+---------------------------------------------------------------------------
+-- Lobby store: a building players walk into. Item counter, dressing room (mirror), skins gallery.
+---------------------------------------------------------------------------
+function MapGen2.store(parent, H, templates)
+	local O = Config.STORE_ORIGIN
+	local W, D, h = 70, 96, 16
+	local m = Instance.new("Model"); m.Name = "Store"; m.Parent = parent
+	H.part(m, Vector3.new(W + 30, 2, D + 10), CFrame.new(O + Vector3.new(0, -1, 0)), rgb(40, 44, 48), Enum.Material.Concrete, { name = "StoreLot" })
+	H.part(m, Vector3.new(W, 0.3, D), CFrame.new(O + Vector3.new(0, 0.15, 0)), rgb(210, 200, 180), Enum.Material.Marble, { name = "Floor" })
+	H.part(m, Vector3.new(W + 2, 1, D + 2), CFrame.new(O + Vector3.new(0, h + 0.5, 0)), rgb(50, 40, 40), Enum.Material.Slate, { name = "Roof" })
+	local wc, wm = rgb(120, 34, 34), Enum.Material.Brick
+	H.wallSide(m, { len = D, cf = CFrame.new(O + Vector3.new(-W / 2, h / 2, 0)), axis = "z" }, h, 1, wc, wm, 12) -- door faces the helipad
+	H.wallSide(m, { len = D, cf = CFrame.new(O + Vector3.new(W / 2, h / 2, 0)), axis = "z" }, h, 1, wc, wm, nil)
+	H.wallSide(m, { len = W, cf = CFrame.new(O + Vector3.new(0, h / 2, -D / 2)), axis = "x" }, h, 1, wc, wm, nil)
+	H.wallSide(m, { len = W, cf = CFrame.new(O + Vector3.new(0, h / 2, D / 2)), axis = "x" }, h, 1, wc, wm, nil)
+	-- interior: a corridor along the door wall, three sections separated by half walls
+	for _, z in ipairs({ -D / 6, D / 6 }) do
+		H.part(m, Vector3.new(W - 20, h, 0.6), CFrame.new(O + Vector3.new(10, h / 2, z)), rgb(200, 190, 170), Enum.Material.Plaster, { name = "Divider" })
+	end
+	local sign = H.part(m, Vector3.new(1, 6, 40), CFrame.new(O + Vector3.new(-W / 2 - 0.8, h + 4, 0)), rgb(20, 10, 10), Enum.Material.Slate, { name = "StoreSign" })
+	local g = Instance.new("SurfaceGui"); g.Face = Enum.NormalId.Left; g.CanvasSize = Vector2.new(800, 120); g.LightInfluence = 0; g.Parent = sign
+	local tl = Instance.new("TextLabel"); tl.Size = UDim2.fromScale(1, 1); tl.BackgroundTransparency = 1; tl.Font = Enum.Font.Creepster; tl.TextScaled = true
+	tl.TextColor3 = rgb(255, 200, 60); tl.Text = "NIGHT HUNT STORE"; tl.Parent = g
+	for _, z in ipairs({ -D / 3, 0, D / 3 }) do
+		light(H.part(m, Vector3.new(4, 0.4, 4), CFrame.new(O + Vector3.new(4, h - 0.4, z)), rgb(255, 240, 210), Enum.Material.Neon, { collide = false, name = "StoreLight" }), 40, rgb(255, 235, 200), 1.6)
+	end
+	local zones = {}
+	local function zone(tab, title, z)
+		local c = O + Vector3.new(10, 0, z)
+		local zp = H.part(m, Vector3.new(W - 20, h, D / 3 - 2), CFrame.new(c + Vector3.new(0, h / 2, 0)), rgb(255, 255, 255), Enum.Material.SmoothPlastic, { collide = false, transp = 1, name = "StoreZone" })
+		zp.CanQuery, zp.CanTouch = false, false
+		zp:SetAttribute("Tab", tab)
+		local banner = H.part(m, Vector3.new(0.4, 3, 18), CFrame.new(O + Vector3.new(-W / 2 + 20, h - 3, z)), rgb(30, 24, 20), Enum.Material.Wood, { name = "Banner" })
+		local bg = Instance.new("SurfaceGui"); bg.Face = Enum.NormalId.Left; bg.CanvasSize = Vector2.new(360, 60); bg.LightInfluence = 0; bg.Parent = banner
+		local bt = tl:Clone(); bt.Text = title; bt.Font = Enum.Font.GothamBlack; bt.TextColor3 = rgb(255, 220, 120); bt.Parent = bg
+		table.insert(zones, zp)
+		return c
+	end
+	-- item counter (hats, accessories, round supplies)
+	local c1 = zone("shop", "ITEM COUNTER", -D / 3)
+	H.part(m, Vector3.new(4, 4, 24), CFrame.new(c1 + Vector3.new(14, 2, 0)), rgb(110, 70, 40), Enum.Material.Wood, { name = "Counter" })
+	H.part(m, Vector3.new(4.2, 0.3, 24.2), CFrame.new(c1 + Vector3.new(14, 4.1, 0)), rgb(30, 30, 30), Enum.Material.Granite, { name = "CounterTop" })
+	H.part(m, Vector3.new(1.4, 1.2, 1.2), CFrame.new(c1 + Vector3.new(14, 4.9, -8)), rgb(40, 40, 44), Enum.Material.Metal, { name = "Register" })
+	for k = -1, 1 do
+		H.part(m, Vector3.new(3, 10, 8), CFrame.new(c1 + Vector3.new(23, 5, k * 9)), rgb(90, 60, 40), Enum.Material.Wood, { name = "Shelf" })
+		for y = 1, 3 do
+			H.part(m, Vector3.new(1, 1, 1.2), CFrame.new(c1 + Vector3.new(21.4, y * 3, k * 9 + (y - 2) * 2)), Color3.fromHSV((k + y * 0.3) % 1, 0.7, 0.9), Enum.Material.SmoothPlastic, { name = "Goods" })
+		end
+	end
+	local p1 = H.part(m, Vector3.new(3, 4, 6), CFrame.new(c1 + Vector3.new(10, 2, 0)), rgb(255, 255, 255), Enum.Material.SmoothPlastic, { transp = 1, collide = false, name = "PromptAnchor" })
+	-- dressing room with a big mirror and curtained booths
+	local c2 = zone("look", "DRESSING ROOM", 0)
+	local mirror = H.part(m, Vector3.new(0.4, 12, 18), CFrame.new(c2 + Vector3.new(24.5, 6.5, 0)), rgb(200, 220, 230), Enum.Material.Glass, { name = "Mirror" })
+	mirror.Reflectance = 0.9
+	H.part(m, Vector3.new(0.8, 13, 19), CFrame.new(c2 + Vector3.new(24.9, 6.5, 0)), rgb(200, 160, 60), Enum.Material.Metal, { name = "MirrorFrame" })
+	for k = -1, 1, 2 do
+		H.part(m, Vector3.new(8, 9, 0.3), CFrame.new(c2 + Vector3.new(0, 4.5, k * 12)), rgb(140, 30, 60), Enum.Material.Fabric, { name = "Curtain", collide = false })
+	end
+	H.part(m, Vector3.new(3, 1.6, 6), CFrame.new(c2 + Vector3.new(16, 0.8, 0)), rgb(60, 40, 30), Enum.Material.Fabric, { name = "Bench" })
+	local p2 = H.part(m, Vector3.new(3, 4, 6), CFrame.new(c2 + Vector3.new(14, 2, 0)), rgb(255, 255, 255), Enum.Material.SmoothPlastic, { transp = 1, collide = false, name = "PromptAnchor" })
+	-- skins gallery: monster statues on pedestals
+	local c3 = zone("skins", "SKINS GALLERY", D / 3)
+	local shown = { "megalodon", "kraken", "dragon", "trex", "vampire", "yeti" }
+	for i, k in ipairs(shown) do
+		local px = c3 + Vector3.new(-12 + ((i - 1) % 3) * 16, 0, (i <= 3) and -8 or 8)
+		H.part(m, Vector3.new(6, 2, 6), CFrame.new(px + Vector3.new(0, 1, 0)), rgb(30, 30, 34), Enum.Material.Marble, { name = "Pedestal" })
+		local tpl = templates and templates:FindFirstChild(k)
+		if tpl then
+			local st = tpl:Clone()
+			for _, d in ipairs(st:GetDescendants()) do
+				if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false end
+				if d:IsA("Script") or d:IsA("LocalScript") then d:Destroy() end
+			end
+			local ok = pcall(function() st:ScaleTo(0.32) end)
+			_ = ok
+			local _, size = st:GetBoundingBox()
+			st:PivotTo(CFrame.new(px + Vector3.new(0, 2 + size.Y / 2 + 0.2, 0)) * CFrame.Angles(0, math.rad(-90), 0))
+			st.Name = "Statue_" .. k
+			st.Parent = m
+		end
+	end
+	local p3 = H.part(m, Vector3.new(3, 4, 6), CFrame.new(c3 + Vector3.new(-20, 2, 0)), rgb(255, 255, 255), Enum.Material.SmoothPlastic, { transp = 1, collide = false, name = "PromptAnchor" })
+	local prompts = {}
+	for i, a in ipairs({ { p1, "shop", "Browse items" }, { p2, "look", "Try on outfits" }, { p3, "skins", "Browse skins" } }) do
+		local pp = Instance.new("ProximityPrompt")
+		pp.ActionText = a[3]
+		pp.ObjectText = ({ "Item Counter", "Dressing Room", "Skins Gallery" })[i]
+		pp.KeyboardKeyCode = Enum.KeyCode.E
+		pp.MaxActivationDistance = 16
+		pp.RequiresLineOfSight = false
+		pp:SetAttribute("Tab", a[2])
+		pp.Parent = a[1]
+		table.insert(prompts, pp)
+	end
+	return m, zones, prompts
+end
+
+return MapGen2
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">Models</string>
           <string name="Source"><![CDATA[-- Part-built models: the 11 monsters (welded onto a player's character) and helicopters.
@@ -2495,6 +3282,10 @@ local SKIN = {
 	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
 	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
 	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Pebble,
+	megalodon = Enum.Material.SmoothPlastic, megalodon_h = Enum.Material.SmoothPlastic, kraken = Enum.Material.Rubber, cthulhu = Enum.Material.Rubber,
+	leviathan = Enum.Material.Pebble, mosasaurus = Enum.Material.Pebble, nessie = Enum.Material.Pebble, spinosaurus = Enum.Material.Pebble,
+	trex = Enum.Material.Pebble, yeti = FABRIC, bigfoot = FABRIC, chupacabra = Enum.Material.Pebble, vampire = FABRIC,
+	quetzalcoatlus = Enum.Material.Pebble, gargoyle = SLATE, dragon = Enum.Material.Pebble, fester = FABRIC,
 }
 local defaultMat = PLASTIC
 
@@ -2827,13 +3618,35 @@ end
 
 -- Weld a monster model onto a character. Returns the model.
 -- lobby-shop monster skins (cosmetic colour grades, bought with in-game coins)
+do -- v1.4 phase-2 monsters
+	local more = require(script.Parent:WaitForChild("ModelsP2"))({ rgb = rgb, at = at, BALL = BALL, CYL = CYL, NEON = NEON, humanoidBody = humanoidBody })
+	for k, f in pairs(more) do BUILD[k] = f end
+end
 local SKINS = {
 	shadow = { tint = Color3.fromRGB(10, 10, 14), k = 0.65 },
 	toxic = { tint = Color3.fromRGB(90, 220, 60), k = 0.45 },
 	frost = { tint = Color3.fromRGB(150, 210, 255), k = 0.5 },
 	blood = { tint = Color3.fromRGB(150, 10, 10), k = 0.5 },
 	golden = { tint = Color3.fromRGB(255, 200, 60), k = 0.6, mat = Enum.Material.Foil },
+	lava = { tint = Color3.fromRGB(255, 90, 20), k = 0.55, mat = Enum.Material.CrackedLava },
+	neon = { tint = Color3.fromRGB(255, 40, 220), k = 0.5, mat = Enum.Material.Neon },
+	abyss = { tint = Color3.fromRGB(10, 30, 80), k = 0.6, mat = Enum.Material.Glass },
 }
+-- Father Fester grows stronger as more survivors see him: stage parts appear, his eyes burn red
+function Models.festerStage(model, stage)
+	if not model then return end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if d.Name == "Stage3" then d.Transparency = stage >= 3 and 0 or 1 end
+			if d.Name == "Stage5" then d.Transparency = stage >= 5 and 0 or 1 end
+			if d.Name == "Stage6" then d.Transparency = stage >= 6 and 0.6 or 1 end
+			if d.Name == "Pupil" then d.Color = Color3.fromRGB(255, 255 - stage * 40, 255 - stage * 42) end
+		end
+	end
+	local root = model.PrimaryPart
+	local glow = root and root:FindFirstChildOfClass("PointLight")
+	if glow then glow.Range = 14 + stage * 4; glow.Brightness = 0.7 + stage * 0.25 end
+end
 function Models.applySkin(model, skin)
 	local s = SKINS[skin]
 	if not s or not model then return end
@@ -2876,6 +3689,7 @@ function Models.morph(character, kind, skin)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
 	Models.applySkin(model, skin)
+	if kind == "fester" then Models.festerStage(model, 0) end
 	-- hide the player's own avatar
 	for _, d in ipairs(character:GetDescendants()) do
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and not d:IsDescendantOf(model) then
@@ -2909,6 +3723,7 @@ function Models.template(kind)
 	(BUILD[kind] or BUILD.freddy)(P)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
+	if kind == "fester" then Models.festerStage(model, 6) end
 	return model
 end
 
@@ -2951,9 +3766,1016 @@ return Models
 ]]></string>
         </Properties>
       </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">ModelsP2</string>
+          <string name="Source"><![CDATA[-- v1.4 (phase 2) monster builders: sea monsters, cryptids, dinosaurs, castle creatures and Father Fester.
+-- Same convention as Models.luau: the monster faces -Z, feet at y = -3, P(size, offsetCFrame, color, opts).
+return function(L)
+	local rgb, at, BALL, NEON = L.rgb, L.at, L.BALL, L.NEON
+	local SLATE, FABRIC = Enum.Material.Slate, Enum.Material.Fabric
+	local B = {}
+	-- a limb/segment between two points
+	local function seg(P, a, b, th, color, opts)
+		local mid, len = (a + b) / 2, (b - a).Magnitude
+		return P(Vector3.new(th, th, len), CFrame.lookAt(mid, b), color, opts)
+	end
+	local function teeth(P, cf, n, w, color)
+		for i = 0, n - 1 do
+			local x = -w / 2 + (i + 0.5) * (w / n)
+			P(Vector3.new(0.25, 0.6, 0.25), cf * CFrame.new(x, 0, 0) * CFrame.Angles(0, 0, math.rad(45)), color or rgb(245, 240, 225), { mat = Enum.Material.SmoothPlastic })
+		end
+	end
+	local function glowEyes(P, y, z, sp, size, color)
+		P(Vector3.new(size, size, size), at(-sp, y, z), color, { shape = BALL, mat = NEON })
+		P(Vector3.new(size, size, size), at(sp, y, z), color, { shape = BALL, mat = NEON })
+	end
+	-- a chain of balls following a function f(t) -> position, radius r(t)
+	local function chain(P, n, f, r, color, opts)
+		for i = 0, n do
+			local t = i / n
+			local d = r(t)
+			P(Vector3.new(d, d, d), CFrame.new(f(t)), color, opts or { shape = BALL })
+		end
+	end
+	local function wing(P, root, side, span, color)
+		for i = 0, 3 do
+			local a = math.rad(15 + i * 14)
+			local tip = root + Vector3.new(side * math.cos(a) * span, math.sin(a) * span * 0.7, 1 + i * 0.6)
+			seg(P, root, tip, 0.25, rgb(40, 30, 30))
+			P(Vector3.new(0.12, span * 0.45, span * 0.6), CFrame.lookAt((root + tip) / 2 + Vector3.new(0, -span * 0.12, 0.6), tip) * CFrame.Angles(0, math.rad(90), 0), color, { mat = FABRIC })
+		end
+	end
+
+	B.megalodon = function(P) -- giant shark (in the water)
+		local top, belly = rgb(78, 92, 104), rgb(225, 225, 220)
+		P(Vector3.new(7, 6.4, 26), at(0, -1, 0), top, { shape = BALL })
+		P(Vector3.new(6, 4, 22), at(0, -2.4, -1), belly, { shape = BALL })
+		P(Vector3.new(0.8, 6.5, 6), at(0, 3.6, 1.5, -25, 0, 0), top, { name = "DorsalFin" })
+		P(Vector3.new(0.6, 7, 3), at(0, 2.6, 13.5, -40, 0, 0), top)
+		P(Vector3.new(0.6, 5, 2.6), at(0, -3.6, 13, 40, 0, 0), top)
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(6, 0.5, 3), at(x * 5, -2.4, -2, 0, x * -20, x * -20), top)
+			P(Vector3.new(1.2, 1.2, 1.2), at(x * 2.9, 0.4, -9.6), rgb(10, 10, 10), { shape = BALL, mat = Enum.Material.Glass })
+			for g = 0, 3 do P(Vector3.new(0.12, 2, 0.12), at(x * 3.25, -0.6, -6 + g * 0.8, 0, 0, x * 8), rgb(50, 60, 70)) end
+		end
+		P(Vector3.new(4.6, 3, 2.5), at(0, -1.8, -11.6), rgb(90, 16, 20), { shape = BALL }) -- open mouth
+		teeth(P, at(0, -0.6, -12.4), 8, 4, nil)
+		teeth(P, at(0, -3, -12.2, 180, 0, 0), 7, 3.6, nil)
+	end
+	B.megalodon_h = function(P) -- buff humanoid shark on land
+		local top, belly = rgb(78, 92, 104), rgb(225, 225, 220)
+		P(Vector3.new(1.4, 3.6, 1.4), at(-0.9, -1.4, 0), top)
+		P(Vector3.new(1.4, 3.6, 1.4), at(0.9, -1.4, 0), top)
+		P(Vector3.new(5, 5, 3.2), at(0, 2.8, 0), top)
+		P(Vector3.new(3.8, 4, 0.6), at(0, 2.6, -1.5), belly)
+		for i = 0, 2 do P(Vector3.new(1.6, 0.9, 0.3), at(-0.9, 1.2 + i * 1.1, -1.85), belly); P(Vector3.new(1.6, 0.9, 0.3), at(0.9, 1.2 + i * 1.1, -1.85), belly) end
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(2.4, 2.2, 2.4), at(x * 3.3, 4.6, 0), top, { shape = BALL })
+			P(Vector3.new(1.6, 3.4, 1.6), at(x * 3.6, 2.4, 0, 0, 0, x * 10), top)
+			P(Vector3.new(1.4, 3, 1.4), at(x * 3.9, -0.2, -0.6, 25, 0, 0), top)
+			P(Vector3.new(1.6, 0.8, 2), at(x * 3.9, -1.6, -1.4), belly)
+			P(Vector3.new(0.5, 2.6, 2), at(x * 2.8, 2.6, 1.6, 0, 0, x * 40), top) -- fin elbows
+		end
+		P(Vector3.new(3.4, 3, 5.6), at(0, 6.4, -0.8), top, { shape = BALL })
+		P(Vector3.new(2.8, 1.6, 3.6), at(0, 5.5, -1.4), belly, { shape = BALL })
+		P(Vector3.new(2.8, 1.4, 1), at(0, 5.6, -3.4), rgb(90, 16, 20))
+		teeth(P, at(0, 6.2, -3.6), 6, 2.6, nil)
+		teeth(P, at(0, 5, -3.5, 180, 0, 0), 5, 2.4, nil)
+		P(Vector3.new(0.6, 0.6, 0.6), at(-1.5, 6.8, -2.2), rgb(10, 10, 10), { shape = BALL, mat = Enum.Material.Glass })
+		P(Vector3.new(0.6, 0.6, 0.6), at(1.5, 6.8, -2.2), rgb(10, 10, 10), { shape = BALL, mat = Enum.Material.Glass })
+		P(Vector3.new(0.6, 4.5, 3.6), at(0, 5.4, 2, -25, 0, 0), top, { name = "DorsalFin" })
+		P(Vector3.new(1, 1, 5), at(0, -0.4, 3.2, 30, 0, 0), top)
+		P(Vector3.new(0.5, 3.6, 2), at(0, 0.2, 5.6, -30, 0, 0), top)
+	end
+	B.kraken = function(P)
+		local s = rgb(150, 50, 60)
+		P(Vector3.new(8, 11, 8), at(0, 4.5, 2, -15, 0, 0), s, { shape = BALL })
+		P(Vector3.new(6, 5, 6), at(0, -0.4, -0.5), rgb(130, 40, 50), { shape = BALL })
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(1.9, 1.9, 1.9), at(x * 2.2, 0.6, -2.8), rgb(240, 200, 40), { shape = BALL, mat = NEON })
+			P(Vector3.new(0.5, 1.5, 0.5), at(x * 2.2, 0.6, -3.65), rgb(5, 5, 5))
+		end
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+			chain(P, 9, function(t) return dir * (2 + t * 11) + Vector3.new(0, -2 + math.sin(t * math.pi) * 3.5 - t * 0.6, 0) end, function(t) return 1.6 - t * 1.1 end, s)
+			for k = 1, 4 do P(Vector3.new(0.35, 0.35, 0.35), CFrame.new(dir * (3 + k * 2) + Vector3.new(0, -2.4 + math.sin(k / 5 * math.pi) * 3.5, 0)), rgb(240, 200, 200), { shape = BALL }) end
+		end
+	end
+	B.cthulhu = function(P)
+		local s, d = rgb(60, 100, 70), rgb(40, 70, 50)
+		P(Vector3.new(1.6, 4, 1.6), at(-1, -1, 0), d); P(Vector3.new(1.6, 4, 1.6), at(1, -1, 0), d)
+		P(Vector3.new(5, 6, 3.4), at(0, 4, 0), s)
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(1.3, 5, 1.3), at(x * 3.2, 3.6, -0.4, 20, 0, x * 12), s)
+			for f = -1, 1 do P(Vector3.new(0.25, 1.8, 0.25), at(x * 3.6 + f * 0.3, 0.6, -1.6, 30, 0, 0), rgb(20, 30, 20)) end
+			wing(P, Vector3.new(x * 1.5, 6.4, 1.6), x, 9, rgb(30, 50, 36))
+		end
+		P(Vector3.new(4.4, 5, 4.4), at(0, 9.4, 0), s, { shape = BALL })
+		glowEyes(P, 9.8, -2, 1, 0.9, rgb(255, 30, 20))
+		for i = 0, 7 do
+			local x = -1.6 + i * 0.46
+			chain(P, 5, function(t) return Vector3.new(x * (1 - t * 0.3), 8.2 - t * 4.2, -1.8 - math.sin(t * 3 + i) * 0.5) end, function(t) return 0.7 - t * 0.4 end, d)
+		end
+	end
+	B.leviathan = function(P)
+		local s, belly = rgb(30, 90, 100), rgb(160, 190, 150)
+		chain(P, 22, function(t) return Vector3.new(math.sin(t * 9) * 4, -1 + math.sin(t * 4.5) * 2.2, -6 + t * 32) end, function(t) return 4.6 - t * 3.4 end, s)
+		for i = 0, 8 do
+			local t = i / 9
+			P(Vector3.new(0.4, 2.4 - t, 2), CFrame.new(Vector3.new(math.sin(t * 9) * 4, 1.6 + math.sin(t * 4.5) * 2.2 - t * 1.6, -6 + t * 32)) * CFrame.Angles(math.rad(-30), 0, 0), rgb(200, 80, 60))
+		end
+		P(Vector3.new(4.4, 3.6, 7), at(0, 0.4, -9), s, { shape = BALL })
+		P(Vector3.new(3.6, 1.6, 5), at(0, -1, -9.6), belly, { shape = BALL })
+		teeth(P, at(0, -0.3, -12.3), 7, 3, nil)
+		glowEyes(P, 1.6, -10.8, 1.4, 0.8, rgb(255, 220, 60))
+		for _, x in ipairs({ -1, 1 }) do seg(P, Vector3.new(x * 1.4, 2, -8), Vector3.new(x * 2.4, 5, -5), 0.6, rgb(220, 210, 180)) end
+	end
+	B.mosasaurus = function(P)
+		local s, belly = rgb(60, 80, 70), rgb(200, 200, 180)
+		P(Vector3.new(6, 5, 18), at(0, -0.6, 0), s, { shape = BALL })
+		P(Vector3.new(5, 3, 15), at(0, -2, 0), belly, { shape = BALL })
+		chain(P, 8, function(t) return Vector3.new(math.sin(t * 3) * 1.2, -0.4, 8 + t * 12) end, function(t) return 3.6 - t * 2.6 end, s)
+		P(Vector3.new(0.5, 6, 3), at(0, 0.6, 20.5, -20, 0, 0), s, { name = "TailFin" })
+		P(Vector3.new(3.4, 2.6, 8), at(0, 0.2, -11), s)
+		P(Vector3.new(3.2, 1.2, 7.6), at(0, -1.2, -11), belly)
+		teeth(P, at(0, -0.9, -14.6), 7, 3, nil)
+		for z = 0, 5 do P(Vector3.new(0.25, 0.7, 0.25), at(-1.6, -0.9, -14 + z * 1.1), rgb(245, 240, 225)); P(Vector3.new(0.25, 0.7, 0.25), at(1.6, -0.9, -14 + z * 1.1), rgb(245, 240, 225)) end
+		glowEyes(P, 1, -12, 1.5, 0.7, rgb(250, 180, 40))
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(5, 0.5, 2.4), at(x * 4.6, -2, -4, 0, x * 20, x * -15), s)
+			P(Vector3.new(4, 0.5, 2), at(x * 4, -2, 6, 0, x * -25, x * -15), s)
+		end
+	end
+	B.nessie = function(P)
+		local s = rgb(50, 70, 60)
+		P(Vector3.new(9, 6, 14), at(0, -1, 2), s, { shape = BALL })
+		P(Vector3.new(5, 4, 7), at(0, 0, 11), s, { shape = BALL })
+		chain(P, 14, function(t) return Vector3.new(0, 1 + t * 13, -4 - math.sin(t * 2.2) * 5) end, function(t) return 2.6 - t * 1.2 end, s)
+		P(Vector3.new(2.4, 2, 4), at(0, 14.6, -4.6), s, { shape = BALL, name = "Head" })
+		glowEyes(P, 15.2, -6, 0.8, 0.5, rgb(240, 240, 120))
+		P(Vector3.new(1.6, 0.3, 0.6), at(0, 14, -6.6), rgb(30, 10, 10))
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(5, 0.5, 2.6), at(x * 5.4, -2.6, -2, 0, x * 25, x * -10), s)
+			P(Vector3.new(4.2, 0.5, 2.4), at(x * 5, -2.6, 6, 0, x * -25, x * -10), s)
+		end
+	end
+	local function dino(P, s, belly, opts) -- generic theropod (T-Rex / Spinosaurus)
+		local k = opts.k or 1
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(2.6 * k, 5 * k, 3.4 * k), at(x * 2 * k, 1 * k, 1 * k, -15, 0, 0), s)
+			P(Vector3.new(1.4 * k, 4 * k, 1.4 * k), at(x * 2 * k, -1.2, 2 * k, 20, 0, 0), s)
+			P(Vector3.new(2 * k, 0.8, 3 * k), at(x * 2 * k, -2.6, 1 * k), s)
+			for f = -1, 1 do P(Vector3.new(0.3, 0.3, 1), at(x * 2 * k + f * 0.6, -2.7, -0.2 * k), rgb(30, 30, 30)) end
+			seg(P, Vector3.new(x * 1.6, 5.4 * k, -3.2 * k), Vector3.new(x * 1.8, 4 * k, -4.6 * k), (opts.arm or 0.7) * k, s)
+		end
+		P(Vector3.new(5 * k, 5.4 * k, 10 * k), at(0, 5 * k, 0, -10, 0, 0), s, { shape = BALL })
+		P(Vector3.new(3.8 * k, 3.4 * k, 8 * k), at(0, 4 * k, -0.6 * k, -10, 0, 0), belly, { shape = BALL })
+		chain(P, 9, function(t) return Vector3.new(math.sin(t * 2.4) * 1.5, (5 - t * 2.6) * k, (4 + t * 13) * k) end, function(t) return (3.8 - t * 3.2) * k end, s)
+		seg(P, Vector3.new(0, 6.6 * k, -3.6 * k), Vector3.new(0, 8.4 * k, -5.4 * k), 2.6 * k, s)
+		local hz = -5.4 * k - (opts.snout or 3) * k / 2
+		P(Vector3.new(3.2 * k, 2.6 * k, (opts.snout or 3) * k + 2), at(0, 8.8 * k, hz), s, { name = "Head" })
+		P(Vector3.new(2.8 * k, 1 * k, (opts.snout or 3) * k + 1.6), at(0, 7.2 * k, hz - 0.2, 12, 0, 0), s, { name = "Jaw" })
+		P(Vector3.new(2.6 * k, 1, (opts.snout or 3) * k + 1), at(0, 7.9 * k, hz), rgb(110, 20, 24))
+		teeth(P, at(0, 7.9 * k, hz - ((opts.snout or 3) * k) / 2 - 0.4), 6, 2.6 * k, nil)
+		glowEyes(P, 9.6 * k, hz + 0.8, 1.4 * k, 0.6 * k, opts.eye or rgb(255, 170, 30))
+	end
+	B.trex = function(P) dino(P, rgb(90, 80, 60), rgb(170, 150, 110), { k = 1.1, snout = 3.6, arm = 0.5 }) end
+	B.spinosaurus = function(P)
+		local s = rgb(70, 86, 60)
+		dino(P, s, rgb(160, 150, 110), { k = 1, snout = 6, arm = 0.8, eye = rgb(255, 220, 60) })
+		for i = -4, 5 do -- the sail
+			local h = 7 - math.abs(i - 0.5) * 1.1
+			P(Vector3.new(0.35, h, 1.6), at(0, 8 + h / 2, i * 1.4, -4, 0, 0), i % 2 == 0 and rgb(170, 80, 50) or rgb(150, 70, 44), { name = "Sail" })
+		end
+	end
+	local function furry(P, fur, face, opts) -- big ape-like body (Yeti / Bigfoot)
+		local k = opts.k or 1
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(1.8 * k, 3.6, 1.8 * k), at(x * 1.1 * k, -1.2, 0), fur, { mat = FABRIC })
+			P(Vector3.new(2 * k, 0.8, 2.6 * k), at(x * 1.1 * k, -2.8, -0.4), face)
+			P(Vector3.new(1.7 * k, 6 * k, 1.7 * k), at(x * 3.5 * k, 2 * k, -0.6, 15, 0, x * 12), fur, { mat = FABRIC })
+			P(Vector3.new(1.4 * k, 1.2, 1.6 * k), at(x * 4 * k, -1.2 + k, -1.6), face)
+		end
+		P(Vector3.new(5.4 * k, 6.2 * k, 3.8 * k), at(0, 3.4 * k, 0.4, 12, 0, 0), fur, { mat = FABRIC })
+		P(Vector3.new(3.4 * k, 3.4 * k, 3.4 * k), at(0, 7.4 * k, -0.6), fur, { shape = BALL, mat = FABRIC })
+		P(Vector3.new(2.4 * k, 2.2 * k, 0.8), at(0, 7.2 * k, -2.1 * k), face)
+		glowEyes(P, 7.8 * k, -2.5 * k, 0.55 * k, 0.45 * k, opts.eye)
+		P(Vector3.new(1.4 * k, 0.6, 0.4), at(0, 6.6 * k, -2.5 * k), rgb(60, 10, 10))
+		teeth(P, at(0, 6.9 * k, -2.65 * k), 4, 1.2 * k, nil)
+	end
+	B.yeti = function(P) furry(P, rgb(235, 240, 245), rgb(130, 160, 190), { k = 1.25, eye = rgb(90, 200, 255) }) end
+	B.bigfoot = function(P) furry(P, rgb(92, 64, 40), rgb(60, 44, 34), { k = 1.15, eye = rgb(255, 180, 60) }) end
+	B.chupacabra = function(P)
+		local s = rgb(80, 90, 76)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.8, 0.6, 1.4), Vector3.new(x * 0.9, -3, 2), 0.7, s)
+			seg(P, Vector3.new(x * 1.2, 1.4, -1.6), Vector3.new(x * 1.6, -3, -2.6), 0.6, s)
+			for f = -1, 1 do P(Vector3.new(0.15, 0.15, 0.8), at(x * 1.6 + f * 0.2, -2.9, -3.2), rgb(220, 210, 190)) end
+		end
+		P(Vector3.new(2.6, 2.4, 5.4), at(0, 1.2, 0, 15, 0, 0), s, { shape = BALL })
+		for i = 0, 6 do P(Vector3.new(0.3, 1.6 - i * 0.12, 0.4), at(0, 2.6 - i * 0.1, -1.6 + i * 0.7, -20, 0, 0), rgb(40, 50, 40), { name = "Spine" }) end
+		P(Vector3.new(1.8, 1.6, 2.4), at(0, 2.2, -3.2), s, { shape = BALL })
+		glowEyes(P, 2.6, -4.2, 0.45, 0.6, rgb(255, 20, 20))
+		P(Vector3.new(1, 0.4, 0.3), at(0, 1.6, -4.4), rgb(50, 10, 10))
+		for _, x in ipairs({ -0.3, 0.3 }) do P(Vector3.new(0.16, 0.6, 0.16), at(x, 1.4, -4.45), rgb(245, 240, 225)) end
+		chain(P, 6, function(t) return Vector3.new(0, 1 - t * 1.4, 2.6 + t * 3) end, function(t) return 0.6 - t * 0.4 end, s)
+	end
+	B.vampire = function(P)
+		local pale, cape = rgb(220, 215, 220), rgb(16, 10, 14)
+		L.humanoidBody(P, rgb(24, 18, 22), { height = 1.1, legs = rgb(20, 16, 18) })
+		P(Vector3.new(4.4, 7.6, 0.3), at(0, -0.2, 1.1, 6, 0, 0), cape, { mat = FABRIC, name = "Cape" })
+		P(Vector3.new(4.4, 7.6, 0.25), at(0, -0.2, 1.18, 6, 0, 0), rgb(140, 10, 20), { mat = FABRIC })
+		P(Vector3.new(3.6, 1.8, 0.3), at(0, 2.8, 0.7, -20, 0, 0), cape, { mat = FABRIC, name = "Collar" })
+		P(Vector3.new(1.8, 2.1, 1.8), at(0, 3, -0.1), pale, { name = "Head" })
+		P(Vector3.new(1.9, 0.6, 1.9), at(0, 4.1, 0.1), rgb(10, 10, 12))
+		P(Vector3.new(0.8, 0.8, 0.3), at(0, 4, -0.85, 0, 0, 45), rgb(10, 10, 12))
+		glowEyes(P, 3.3, -0.85, 0.42, 0.3, rgb(255, 20, 30))
+		for _, x in ipairs({ -0.25, 0.25 }) do P(Vector3.new(0.14, 0.4, 0.14), at(x, 2.4, -0.92), rgb(250, 250, 250)) end
+		P(Vector3.new(0.8, 0.4, 0.2), at(0, 1.6, -0.82), rgb(160, 10, 20), { mat = NEON })
+	end
+	B.quetzalcoatlus = function(P)
+		local s = rgb(130, 110, 100)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 1.2, 2, 1), Vector3.new(x * 1.6, -3, 2), 0.6, s)
+			seg(P, Vector3.new(x * 1.6, 4, -1.4), Vector3.new(x * 6, -3, -3), 0.7, s) -- wing-arms walking
+			P(Vector3.new(0.2, 6, 7), CFrame.lookAt(Vector3.new(x * 4, 1.6, -0.6), Vector3.new(x * 9, 1.6, 2)), rgb(150, 90, 70), { mat = FABRIC, name = "Wing" })
+		end
+		P(Vector3.new(3.6, 3.4, 5), at(0, 3, 0, -30, 0, 0), s, { shape = BALL })
+		seg(P, Vector3.new(0, 4.6, -1.6), Vector3.new(0, 9, -3.4), 1.1, s)
+		P(Vector3.new(2, 2, 3.4), at(0, 9.6, -4.2), s, { shape = BALL, name = "Head" })
+		P(Vector3.new(0.3, 3.2, 3.2), at(0, 11.2, -2.4, 40, 0, 0), rgb(200, 60, 40), { name = "Crest" })
+		seg(P, Vector3.new(0, 9.4, -5.4), Vector3.new(0, 8, -12), 0.8, rgb(220, 200, 140))
+		glowEyes(P, 10, -5, 0.8, 0.45, rgb(255, 190, 40))
+	end
+	B.gargoyle = function(P)
+		local s = rgb(110, 110, 115)
+		local o = { mat = SLATE }
+		for _, x in ipairs({ -1, 1 }) do
+			P(Vector3.new(1.3, 2.6, 1.6), at(x * 1.1, -1.6, -0.2, -20, 0, 0), s, o)
+			P(Vector3.new(1, 3.4, 1), at(x * 2.4, 0.6, -1, 25, 0, x * 10), s, o)
+			for f = -1, 1 do P(Vector3.new(0.2, 1, 0.2), at(x * 2.6 + f * 0.25, -1.4, -1.8, 30, 0, 0), rgb(60, 60, 64), o) end
+			wing(P, Vector3.new(x * 1, 3, 1.2), x, 7, rgb(90, 90, 96))
+			seg(P, Vector3.new(x * 0.6, 4.6, -0.2), Vector3.new(x * 1.2, 6.2, 0.8), 0.4, rgb(60, 60, 64))
+		end
+		P(Vector3.new(3.4, 4, 2.6), at(0, 1.6, 0, 25, 0, 0), s, o)
+		P(Vector3.new(2.4, 2.4, 2.4), at(0, 3.8, -1.2), s, { shape = BALL, mat = SLATE })
+		glowEyes(P, 4, -2.3, 0.5, 0.45, rgb(255, 140, 30))
+		teeth(P, at(0, 3.2, -2.35), 4, 1.2, nil)
+	end
+	B.dragon = function(P)
+		local s, belly = rgb(150, 30, 26), rgb(220, 160, 70)
+		for _, x in ipairs({ -1, 1 }) do
+			for _, z in ipairs({ -3, 4 }) do
+				seg(P, Vector3.new(x * 2.2, 1.6, z), Vector3.new(x * 2.6, -3, z - 0.6), 1.4, s)
+				for f = -1, 1 do P(Vector3.new(0.25, 0.25, 1), at(x * 2.6 + f * 0.4, -2.9, z - 1.4), rgb(30, 20, 20)) end
+			end
+			wing(P, Vector3.new(x * 2, 4.4, -1), x, 12, rgb(110, 20, 20))
+		end
+		P(Vector3.new(6, 5, 12), at(0, 2.4, 0), s, { shape = BALL })
+		P(Vector3.new(4.6, 3, 10), at(0, 1, -0.4), belly, { shape = BALL })
+		chain(P, 8, function(t) return Vector3.new(0, 3.4 + t * 5, -5 - t * 3) end, function(t) return 2.8 - t * 1 end, s)
+		P(Vector3.new(3, 2.6, 5), at(0, 9.2, -9.6), s, { name = "Head" })
+		P(Vector3.new(2.6, 0.9, 4.4), at(0, 7.8, -9.8, 10, 0, 0), s, { name = "Jaw" })
+		P(Vector3.new(2.4, 0.8, 3.6), at(0, 8.4, -10), rgb(255, 120, 20), { mat = NEON, name = "Fire" })
+		teeth(P, at(0, 8.5, -12.1), 6, 2.4, nil)
+		glowEyes(P, 10, -11, 1.1, 0.6, rgb(255, 220, 40))
+		for _, x in ipairs({ -1, 1 }) do seg(P, Vector3.new(x * 1, 10.4, -8.4), Vector3.new(x * 1.6, 12.6, -6.4), 0.5, rgb(40, 30, 30)) end
+		chain(P, 12, function(t) return Vector3.new(math.sin(t * 4) * 2, 2.4 - t * 2.4, 6 + t * 14) end, function(t) return 3 - t * 2.4 end, s)
+		for i = 0, 7 do P(Vector3.new(0.3, 1.4, 1.2), at(0, 5.2 - i * 0.2, -3 + i * 2.6, -20, 0, 0), rgb(40, 20, 20)) end
+	end
+	B.fester = function(P) -- Father Fester: a gaunt, too-tall priest with a wide grin
+		local robe, pale = rgb(18, 16, 20), rgb(215, 205, 195)
+		P(Vector3.new(2.6, 9, 2), at(0, 1.6, 0), robe, { mat = FABRIC, name = "Robe" })
+		P(Vector3.new(3.4, 2, 2.6), at(0, -2.2, 0), robe, { mat = FABRIC })
+		P(Vector3.new(1, 0.5, 0.3), at(0, 5.8, -1.05), rgb(240, 240, 240), { name = "Collar" })
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 1.5, 5.6, 0), Vector3.new(x * 2.4, 1, -1.2), 0.6, robe, { mat = FABRIC })
+			for f = -2, 2 do seg(P, Vector3.new(x * 2.4, 1, -1.2), Vector3.new(x * 2.5 + f * 0.18, -1.4, -1.9), 0.14, pale) end
+		end
+		seg(P, Vector3.new(0, 6, 0), Vector3.new(0, 7.2, -0.2), 0.7, pale)
+		P(Vector3.new(1.8, 2.6, 1.8), at(0, 8.4, -0.2), pale, { name = "Head" })
+		P(Vector3.new(0.55, 0.7, 0.2), at(-0.42, 8.8, -1.1), rgb(5, 5, 5)); P(Vector3.new(0.55, 0.7, 0.2), at(0.42, 8.8, -1.1), rgb(5, 5, 5))
+		P(Vector3.new(0.16, 0.16, 0.1), at(-0.42, 8.8, -1.22), rgb(255, 255, 255), { mat = NEON, name = "Pupil" }); P(Vector3.new(0.16, 0.16, 0.1), at(0.42, 8.8, -1.22), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
+		P(Vector3.new(1.5, 0.35, 0.15), at(0, 7.7, -1.12), rgb(60, 8, 10))
+		teeth(P, at(0, 7.75, -1.18), 7, 1.4, nil)
+		P(Vector3.new(2.4, 0.3, 2.4), at(0, 9.8, -0.2), robe, { name = "Hat" })
+		P(Vector3.new(1.6, 1.4, 1.6), at(0, 10.6, -0.2), robe, { name = "Hat" })
+		-- escalation stage parts (hidden until he grows stronger)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 1.2, 4.4, 0.2), Vector3.new(x * 3.6, 3, -1.6), 0.4, robe, { name = "Stage3" })
+			seg(P, Vector3.new(x * 1, 3.2, 0.6), Vector3.new(x * 3.4, 6.6, 1.4), 0.4, robe, { name = "Stage5" })
+		end
+		P(Vector3.new(4.6, 11, 4.6), at(0, 2.4, 0.4), rgb(120, 0, 0), { mat = Enum.Material.ForceField, name = "Stage6", transp = 1 })
+	end
+	return B
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="16">
+        <Properties>
+          <string name="Name">Phase2</string>
+          <string name="Source"><![CDATA[-- v1.4 (phase 2) server gameplay: the 16 new monster abilities (all 20s cooldowns), telltale omens,
+-- the ocean storm, drivable boats and ships, the Megalodon's land form, and Father Fester's escalation.
+-- init.server.luau passes its helpers in (they are locals there).
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("NightHunt"):WaitForChild("Config"))
+
+return function(X)
+	local ABILITY, F, now, hrpOf, humOf, survivors, toast, Notify, Models = X.ABILITY, X.F, X.now, X.hrpOf, X.humOf, X.survivors, X.toast, X.Notify, X.Models
+	local sfxAll, flatLook, clearLine, appearNear, spaceFree = X.sfxAll, X.flatLook, X.clearLine, X.appearNear, X.spaceFree
+	local P2 = {}
+	local hurt = function(_s, _d, _by) end
+	function P2.setHurt(fn) hurt = fn end
+	local function map() return X.getMap() end
+	local function folder() return X.getFolder() or workspace end
+	local rgb = Color3.fromRGB
+
+	local function fxPart(size, cf, color, mat, shape, life, transp)
+		local p = Instance.new("Part")
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+		p.Size, p.CFrame, p.Color = size, cf, color
+		p.Material = mat or Enum.Material.SmoothPlastic
+		if shape then p.Shape = shape end
+		p.Transparency = transp or 0
+		p.Parent = folder()
+		if life then Debris:AddItem(p, life) end
+		return p
+	end
+	-- animate a group of parts: f(t 0..1) -> offset CFrame applied to each part's base CFrame
+	local function animate(parts, dur, f)
+		local base = {}
+		for i, p in ipairs(parts) do base[i] = p.CFrame end
+		task.spawn(function()
+			local t0 = os.clock()
+			while os.clock() - t0 < dur do
+				local t = (os.clock() - t0) / dur
+				for i, p in ipairs(parts) do if p.Parent then p.CFrame = f(t, base[i], i) end end
+				task.wait(0.05)
+			end
+			for _, p in ipairs(parts) do p:Destroy() end
+		end)
+	end
+	local function survivorsNear(pos, r)
+		local out = {}
+		for _, s in ipairs(survivors(true)) do
+			local h = hrpOf(s)
+			if h and (h.Position - pos).Magnitude <= r then table.insert(out, s) end
+		end
+		return out
+	end
+	local function flat(v) return Vector3.new(v.X, 0, v.Z) end
+	local function reveal(s, secs)
+		if not s.Character then return end
+		local hl = Instance.new("Highlight")
+		hl.Name = "NH_Reveal"
+		hl.FillColor = rgb(255, 40, 40)
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.Parent = s.Character
+		Debris:AddItem(hl, secs)
+	end
+	-- throw a survivor out of whatever boat seat they are in
+	local function eject(s)
+		local hum = humOf(s)
+		if hum and hum.SeatPart then
+			local w = hum.SeatPart:FindFirstChild("SeatWeld")
+			if w then w:Destroy() end
+			hum.Sit = false
+			hum.Jump = true
+			return true
+		end
+		return false
+	end
+	local function push(s, dir, dist)
+		local h = hrpOf(s)
+		if not h or not s.Character then return end
+		eject(s)
+		local d = flat(dir)
+		if d.Magnitude < 0.01 then return end
+		local q = h.Position + d.Unit * dist + Vector3.new(0, 2, 0)
+		for k = dist, 2, -2 do
+			q = h.Position + d.Unit * k + Vector3.new(0, 2, 0)
+			if spaceFree(q) then break end
+		end
+		s.Character:PivotTo(CFrame.lookAt(q, q + d.Unit))
+	end
+	local function ring(pos, color, r0, r1, dur)
+		local p = fxPart(Vector3.new(0.6, r0 * 2, r0 * 2), CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder, nil, 0.3)
+		animate({ p }, dur, function(t, b)
+			local r = r0 + (r1 - r0) * t
+			p.Size = Vector3.new(0.6, r * 2, r * 2)
+			p.Transparency = 0.3 + 0.7 * t
+			return b
+		end)
+	end
+	local function inWater(p)
+		local hum, h = humOf(p), hrpOf(p)
+		if not hum or not h then return false end
+		if hum:GetState() == Enum.HumanoidStateType.Swimming then return true end
+		local m = map()
+		if m and m.ocean then
+			for _, isl in ipairs(m.islands) do if (flat(h.Position - isl.p)).Magnitude < isl.r - 4 then return false end end
+			return h.Position.Y < 4
+		end
+		if m and m.pools then
+			for _, pl in ipairs(m.pools) do if (flat(h.Position - pl.p)).Magnitude < pl.r then return true end end
+		end
+		return false
+	end
+	P2.inWater = inWater
+
+	---------------------------------------------------------------------------
+	-- abilities
+	---------------------------------------------------------------------------
+	ABILITY.megalodon = function(p) -- Tidal Surge
+		local h = hrpOf(p)
+		ring(h.Position + Vector3.new(0, -1.5, 0), rgb(120, 200, 255), 6, 70, 1.2)
+		local wall = fxPart(Vector3.new(40, 10, 4), CFrame.new(h.Position + flatLook(h) * 8 + Vector3.new(0, 2, 0), h.Position + flatLook(h) * 30), rgb(90, 170, 220), Enum.Material.Glass, nil, nil, 0.25)
+		animate({ wall }, 1.2, function(t, b) return b * CFrame.new(0, math.sin(t * math.pi) * 4, -t * 50) end)
+		sfxAll("wave", h.Position)
+		local hit = 0
+		for _, s in ipairs(survivorsNear(h.Position, 60)) do
+			local sh = hrpOf(s)
+			hit += 1
+			if eject(s) then toast(s, "A giant wave flipped your boat!") else toast(s, "A giant wave knocked you down!") end
+			push(s, sh.Position - h.Position, 14)
+			F(s).stunUntil = now() + 1.6
+			Notify:FireClient(s, "effect", "wave", 1.4)
+		end
+		local m = map()
+		for _, b in ipairs(m and m.boats or {}) do
+			if b.Parent and b.PrimaryPart and (flat(b.PrimaryPart.Position - h.Position)).Magnitude < 75 then
+				b:SetAttribute("Rock", now() + 1.6)
+				local helm = b:FindFirstChild("Helm")
+				if helm and helm.Occupant then
+					local pl = Players:GetPlayerFromCharacter(helm.Occupant.Parent)
+					if pl then eject(pl) end
+				end
+			end
+		end
+		if hit == 0 then toast(p, "The wave hit nobody"); return 8 end
+		return true
+	end
+	ABILITY.kraken = function(p) -- Tentacle Grab
+		local h = hrpOf(p)
+		local best, bestD
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			local d = sh and (sh.Position - h.Position).Magnitude
+			if d and d < 90 and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+		if not best then toast(p, "No one in reach of your tentacles"); return 4 end
+		local sh = hrpOf(best)
+		local parts = {}
+		for i = 0, 7 do
+			local a = h.Position:Lerp(sh.Position, i / 7) + Vector3.new(0, math.sin(i / 7 * math.pi) * 8, 0)
+			table.insert(parts, fxPart(Vector3.new(2.4 - i * 0.2, 2.4 - i * 0.2, 2.4 - i * 0.2), CFrame.new(a), rgb(150, 50, 60), Enum.Material.Rubber, Enum.PartType.Ball))
+		end
+		animate(parts, 0.7, function(t, b) return b + Vector3.new(0, -t * 3, 0) end)
+		eject(best)
+		local dest = h.Position + flatLook(h) * 7
+		best.Character:PivotTo(CFrame.lookAt(dest + Vector3.new(0, 2, 0), h.Position))
+		F(best).stunUntil = now() + 1.5
+		toast(best, "A tentacle dragged you to the Kraken!")
+		sfxAll("tentacle", h.Position)
+		return true
+	end
+	local function bolt(pos)
+		local top = pos + Vector3.new(math.random(-6, 6), 120, math.random(-6, 6))
+		local prev = top
+		for i = 1, 6 do
+			local nxt = top:Lerp(pos, i / 6) + (i < 6 and Vector3.new(math.random(-5, 5), 0, math.random(-5, 5)) or Vector3.zero)
+			fxPart(Vector3.new(0.6, 0.6, (nxt - prev).Magnitude), CFrame.lookAt((prev + nxt) / 2, nxt), rgb(230, 230, 255), Enum.Material.Neon, nil, 0.35)
+			prev = nxt
+		end
+		local l = Instance.new("PointLight"); l.Range = 60; l.Brightness = 6; l.Color = rgb(200, 210, 255)
+		l.Parent = fxPart(Vector3.new(1, 1, 1), CFrame.new(pos + Vector3.new(0, 4, 0)), rgb(255, 255, 255), Enum.Material.Neon, nil, 0.35, 1)
+	end
+	ABILITY.cthulhu = function(p) -- Thunderstorm
+		local h = hrpOf(p)
+		local near = survivorsNear(h.Position, 170)
+		for _, s in ipairs(survivors(true)) do Notify:FireClient(s, "effect", "thunder", 3) end
+		sfxAll("thunder", h.Position)
+		table.sort(near, function(a, b) return (hrpOf(a).Position - h.Position).Magnitude < (hrpOf(b).Position - h.Position).Magnitude end)
+		for i = 1, math.min(3, #near) do
+			local s = near[i]
+			local sp = hrpOf(s).Position
+			bolt(sp - Vector3.new(0, 3, 0))
+			hurt(s, 15, p)
+			F(s).stunUntil = now() + 1
+			toast(s, "Lightning struck you!")
+		end
+		if #near == 0 then toast(p, "The storm rolls in... but nobody is close"); return 6 end
+		return true
+	end
+	ABILITY.leviathan = function(p) -- Whirlpool
+		local h = hrpOf(p)
+		ring(h.Position + Vector3.new(0, -1.5, 0), rgb(40, 140, 170), 70, 4, 1.5)
+		sfxAll("whirl", h.Position)
+		local hit = 0
+		for _, s in ipairs(survivorsNear(h.Position, 75)) do
+			local sh = hrpOf(s)
+			hit += 1
+			local d = (flat(h.Position - sh.Position)).Magnitude
+			push(s, h.Position - sh.Position, math.max(4, d * 0.55))
+			F(s).slowUntil = now() + 4
+			Notify:FireClient(s, "effect", "whirl", 2)
+			toast(s, "A whirlpool is dragging you in!")
+		end
+		if hit == 0 then toast(p, "The whirlpool caught nobody"); return 6 end
+		return true
+	end
+	ABILITY.mosasaurus = function(p) -- Tail Slam
+		local h = hrpOf(p)
+		local tail = fxPart(Vector3.new(1, 12, 6), CFrame.new(h.Position + Vector3.new(0, 2, 6)), rgb(60, 80, 70), Enum.Material.Pebble)
+		animate({ tail }, 0.8, function(t, b) return b * CFrame.Angles(math.rad(-120 * t), 0, 0) end)
+		ring(h.Position + Vector3.new(0, -1.5, 0), rgb(200, 230, 255), 4, 45, 0.9)
+		sfxAll("slam", h.Position)
+		local hit = 0
+		for _, s in ipairs(survivorsNear(h.Position, 42)) do
+			hit += 1
+			eject(s)
+			hurt(s, 10, p)
+			F(s).stunUntil = now() + 2
+			Notify:FireClient(s, "effect", "wave", 1)
+			toast(s, "The Mosasaurus' tail slam stunned you!")
+		end
+		if hit == 0 then toast(p, "The slam hit nobody"); return 6 end
+		return true
+	end
+	ABILITY.nessie = function(p) -- Deep Dive
+		local h = hrpOf(p)
+		local target = X.nearestSurvivor(h.Position)
+		if not target then toast(p, "Nobody to surface near"); return 3 end
+		ring(h.Position + Vector3.new(0, -1.5, 0), rgb(220, 240, 255), 4, 18, 0.8)
+		sfxAll("splash", h.Position)
+		X.hide(p, true)
+		task.delay(1.2, function()
+			if not hrpOf(p) or not hrpOf(target) then X.hide(p, false); return end
+			appearNear(p, hrpOf(target).Position, 18, 28)
+			X.hide(p, false)
+			ring(hrpOf(p).Position + Vector3.new(0, -1.5, 0), rgb(220, 240, 255), 4, 18, 0.8)
+			sfxAll("splash", hrpOf(p).Position)
+			toast(target, "Something huge just surfaced next to you...")
+		end)
+		return true
+	end
+	ABILITY.spinosaurus = function(p) -- Swamp Ambush
+		local h = hrpOf(p)
+		local look = flatLook(h)
+		local dest
+		for d = 45, 10, -5 do
+			local q = h.Position + look * d
+			if spaceFree(q) and clearLine(h.Position, q) then dest = q; break end
+		end
+		if not dest then toast(p, "No room to lunge"); return 3 end
+		ring(h.Position + Vector3.new(0, -2.5, 0), rgb(120, 140, 80), 4, 16, 0.6)
+		p.Character:PivotTo(CFrame.lookAt(dest, dest + look))
+		sfxAll("roar", dest)
+		local hit = 0
+		for _, s in ipairs(survivorsNear(dest, 14)) do
+			hit += 1
+			hurt(s, 12, p)
+			F(s).stunUntil = now() + 1.5
+			toast(s, "The Spinosaurus burst out of the swamp!")
+		end
+		if hit == 0 then return 8 end
+		return true
+	end
+	ABILITY.yeti = function(p) -- Avalanche Roar
+		local h = hrpOf(p)
+		sfxAll("roar", h.Position)
+		local hit = 0
+		for _, s in ipairs(survivorsNear(h.Position, 65)) do
+			hit += 1
+			local sp = hrpOf(s).Position
+			for _ = 1, 6 do
+				local sn = fxPart(Vector3.new(4, 4, 4), CFrame.new(sp + Vector3.new(math.random(-6, 6), 30, math.random(-6, 6))), rgb(240, 245, 250), Enum.Material.Snow, Enum.PartType.Ball)
+				animate({ sn }, 0.9, function(t, b) return b + Vector3.new(0, -t * 30, 0) end)
+			end
+			F(s).stunUntil = now() + 1.2
+			F(s).slowUntil = now() + 5
+			Notify:FireClient(s, "effect", "snow", 4)
+			toast(s, "An avalanche of snow buried you!")
+		end
+		if hit == 0 then toast(p, "Your roar echoes off the mountain"); return 6 end
+		return true
+	end
+	ABILITY.chupacabra = function(p) -- Blood Drain
+		local h = hrpOf(p)
+		local best, bestD
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			local d = sh and (sh.Position - h.Position).Magnitude
+			if d and d < 16 and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+		if not best then toast(p, "Get closer to drain someone"); return 3 end
+		hurt(best, 25, p)
+		F(best).slowUntil = now() + 3
+		local hp = math.min(p:GetAttribute("MonsterMaxHp") or Config.MON_HP, (p:GetAttribute("MonsterHp") or Config.MON_HP) + 25)
+		p:SetAttribute("MonsterHp", hp)
+		sfxAll("drain", h.Position)
+		toast(best, "The Chupacabra drained your blood!")
+		toast(p, "You drained " .. best.DisplayName .. " and healed")
+		return true
+	end
+	ABILITY.vampire = function(p) -- Bat Swarm
+		local h = hrpOf(p)
+		local f = F(p)
+		f.batUntil = now() + 4
+		X.hide(p, true)
+		local bats = {}
+		for _ = 1, 14 do table.insert(bats, fxPart(Vector3.new(1.4, 0.3, 0.8), CFrame.new(h.Position + Vector3.new(math.random(-4, 4), math.random(0, 6), math.random(-4, 4))), rgb(14, 10, 14), Enum.Material.Fabric)) end
+		animate(bats, 1.5, function(t, b, i) return b + Vector3.new(math.sin(t * 9 + i) * 3, t * 10, math.cos(t * 7 + i) * 3) end)
+		task.delay(4, function() if p.Parent then X.hide(p, false) end end)
+		sfxAll("bats", h.Position)
+		for _, s in ipairs(survivorsNear(h.Position, 55)) do
+			Notify:FireClient(s, "effect", "dark", 3)
+			toast(s, "A swarm of bats blinds you!")
+		end
+		return true
+	end
+	ABILITY.bigfoot = function(p) -- Boulder Throw
+		local h = hrpOf(p)
+		local look = flatLook(h)
+		local best, bestD
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh then
+				local v = flat(sh.Position - h.Position)
+				local d = v.Magnitude
+				if d > 0.1 and d < 95 and look:Dot(v.Unit) > 0.75 and clearLine(h.Position, sh.Position) and (not bestD or d < bestD) then best, bestD = s, d end
+			end
+		end
+		local target = best and hrpOf(best).Position or (h.Position + look * 60)
+		local rock = fxPart(Vector3.new(5, 5, 5), CFrame.new(h.Position + Vector3.new(0, 6, 0)), rgb(110, 100, 90), Enum.Material.Rock, Enum.PartType.Ball)
+		local from = rock.Position
+		animate({ rock }, 0.6, function(t) return CFrame.new(from:Lerp(target, t) + Vector3.new(0, math.sin(t * math.pi) * 12, 0)) * CFrame.Angles(t * 8, t * 5, 0) end)
+		sfxAll("throw", h.Position)
+		if not best then toast(p, "The boulder missed"); return 5 end
+		task.delay(0.6, function()
+			if best.Parent and hrpOf(best) then
+				hurt(best, 15, p)
+				F(best).stunUntil = now() + 2
+				toast(best, "Bigfoot hit you with a boulder!")
+				sfxAll("hit", hrpOf(best).Position)
+			end
+		end)
+		return true
+	end
+	ABILITY.trex = function(p) -- Tyrant Roar
+		local h = hrpOf(p)
+		sfxAll("roar", h.Position)
+		ring(h.Position + Vector3.new(0, -2.5, 0), rgb(255, 200, 120), 4, 70, 0.9)
+		local hit = 0
+		for _, s in ipairs(survivorsNear(h.Position, 75)) do
+			hit += 1
+			F(s).rootUntil = now() + 2.5
+			reveal(s, 6)
+			Notify:FireClient(s, "effect", "shake", 1.5)
+			toast(s, "The T-Rex's roar froze you in terror!")
+		end
+		if hit == 0 then toast(p, "Your roar shook the trees"); return 6 end
+		return true
+	end
+	ABILITY.quetzalcoatlus = function(p) -- Sky Dive
+		local h = hrpOf(p)
+		local target = X.nearestSurvivor(h.Position)
+		if not target then toast(p, "Nothing to dive on"); return 3 end
+		local d = (hrpOf(target).Position - h.Position).Magnitude
+		if d > 260 then toast(p, "Too far to dive"); return 3 end
+		X.hide(p, true)
+		sfxAll("screech", h.Position)
+		task.delay(1, function()
+			if not hrpOf(p) or not hrpOf(target) then X.hide(p, false); return end
+			appearNear(p, hrpOf(target).Position, 6, 10)
+			X.hide(p, false)
+			if hrpOf(target) and (hrpOf(target).Position - hrpOf(p).Position).Magnitude < 14 then
+				F(target).stunUntil = now() + 1.2
+				eject(target)
+			end
+			sfxAll("screech", hrpOf(p).Position)
+			toast(target, "Something dove out of the sky at you!")
+		end)
+		return true
+	end
+	ABILITY.gargoyle = function(p) -- Stone Skin
+		local f = F(p)
+		f.stoneUntil = now() + 6
+		local morph = p.Character and p.Character:FindFirstChild("NH_Morph")
+		if morph then for _, d in ipairs(morph:GetDescendants()) do if d:IsA("BasePart") and d.Material ~= Enum.Material.Neon then d:SetAttribute("Mat0", d.Material.Name); d.Material = Enum.Material.Granite end end end
+		sfxAll("stone", hrpOf(p).Position)
+		toast(p, "Stone skin: weapons can't hurt you for 6s")
+		task.delay(6, function()
+			if not p.Parent or not hrpOf(p) then return end
+			if morph and morph.Parent then for _, d in ipairs(morph:GetDescendants()) do if d:IsA("BasePart") and d:GetAttribute("Mat0") then pcall(function() d.Material = Enum.Material[d:GetAttribute("Mat0")] end) end end end
+			ring(hrpOf(p).Position + Vector3.new(0, -2.5, 0), rgb(170, 170, 175), 4, 32, 0.7)
+			sfxAll("quake", hrpOf(p).Position)
+			for _, s in ipairs(survivorsNear(hrpOf(p).Position, 32)) do F(s).stunUntil = now() + 1.4; toast(s, "The Gargoyle's shockwave stunned you!") end
+		end)
+		return true
+	end
+	ABILITY.dragon = function(p) -- Fire Breath
+		local h = hrpOf(p)
+		local look = flatLook(h)
+		local flames = {}
+		for i = 1, 10 do
+			table.insert(flames, fxPart(Vector3.new(2 + i * 0.7, 2 + i * 0.7, 2 + i * 0.7), CFrame.new(h.Position + Vector3.new(0, 6, 0) + look * (6 + i * 4)), i % 2 == 0 and rgb(255, 120, 20) or rgb(255, 200, 40), Enum.Material.Neon, Enum.PartType.Ball, nil, 0.25))
+		end
+		animate(flames, 1.2, function(t, b) return b + Vector3.new(0, t * 3 - 2, 0) end)
+		sfxAll("fire", h.Position)
+		local hit = 0
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh then
+				local v = flat(sh.Position - h.Position)
+				if v.Magnitude < 48 and v.Magnitude > 0.1 and look:Dot(v.Unit) > 0.72 then
+					hit += 1
+					hurt(s, 18, p)
+					F(s).burnUntil = now() + 3
+					F(s).burnBy = p
+					Notify:FireClient(s, "effect", "burn", 3)
+					toast(s, "You're on fire!")
+				end
+			end
+		end
+		if hit == 0 then return 8 end
+		return true
+	end
+	ABILITY.fester = function(p) -- Lights Out
+		local h = hrpOf(p)
+		local m = map()
+		local off = {}
+		local f0 = X.getFolder()
+		if f0 then
+			for _, d in ipairs(f0:GetDescendants()) do
+				if d:IsA("PointLight") and d.Enabled and d.Parent:IsA("BasePart") and (d.Parent.Position - h.Position).Magnitude < 220 then
+					d.Enabled = false
+					table.insert(off, d)
+				end
+			end
+		end
+		_ = m
+		task.delay(7, function() for _, l in ipairs(off) do if l.Parent then l.Enabled = true end end end)
+		sfxAll("dark", h.Position)
+		for _, s in ipairs(survivorsNear(h.Position, 160)) do
+			Notify:FireClient(s, "effect", "dark", 4)
+			Notify:FireClient(s, "effect", "lightsout", 1)
+			toast(s, "Every light went out... Father Fester is close.")
+		end
+		return true
+	end
+
+	---------------------------------------------------------------------------
+	-- telltale signs: each sea monster (and the Spinosaurus) gives itself away near survivors
+	---------------------------------------------------------------------------
+	local OMEN = {}
+	local function waterY(pos) local m = map(); return (m and m.ocean) and 0 or pos.Y - 3 end
+	OMEN.kraken = function(pos)
+		local parts = {}
+		for k = 1, 3 do
+			local base = pos + Vector3.new(math.cos(k * 2.1) * 8, 0, math.sin(k * 2.1) * 8)
+			for i = 0, 6 do
+				table.insert(parts, fxPart(Vector3.one * (2.2 - i * 0.25), CFrame.new(base + Vector3.new(math.sin(i * 0.5) * i * 0.6, i * 1.6 - 12, 0)), rgb(150, 50, 60), Enum.Material.Rubber, Enum.PartType.Ball))
+			end
+		end
+		animate(parts, 3, function(t, b, i) return b + Vector3.new(math.sin(t * 6 + i) * 0.4, math.sin(t * math.pi) * 12, 0) end)
+	end
+	OMEN.leviathan = function(pos)
+		local parts = {}
+		for k = 0, 2 do
+			for i = 0, 8 do
+				local a = i / 8 * math.pi
+				table.insert(parts, fxPart(Vector3.one * 3.4, CFrame.new(pos + Vector3.new(k * 12 - 12 + math.cos(a) * 5, math.sin(a) * 5 - 8, k * 3)), rgb(30, 90, 100), Enum.Material.Pebble, Enum.PartType.Ball))
+			end
+		end
+		animate(parts, 3.2, function(t, b) return b + Vector3.new(t * 6, math.sin(t * math.pi) * 8, 0) end)
+	end
+	OMEN.mosasaurus = function(pos)
+		local tail = fxPart(Vector3.new(0.8, 10, 5), CFrame.new(pos + Vector3.new(0, -8, 0)), rgb(60, 80, 70), Enum.Material.Pebble)
+		animate({ tail }, 2.2, function(t, b) return b * CFrame.new(0, math.sin(t * math.pi) * 12, 0) * CFrame.Angles(math.sin(t * 9) * 0.7, 0, 0) end)
+		ring(pos + Vector3.new(0, 0.2, 0), rgb(220, 240, 255), 2, 14, 1.2)
+	end
+	OMEN.megalodon = function(pos, toward)
+		local dir = flat(toward - pos)
+		dir = dir.Magnitude > 0.1 and dir.Unit or Vector3.new(0, 0, -1)
+		local fin = Instance.new("WedgePart")
+		fin.Anchored, fin.CanCollide, fin.CanQuery = true, false, false
+		fin.Size = Vector3.new(0.8, 6, 6)
+		fin.Color, fin.Material = rgb(78, 92, 104), Enum.Material.SmoothPlastic
+		fin.CFrame = CFrame.lookAt(pos + Vector3.new(0, 1.5, 0), pos + Vector3.new(0, 1.5, 0) - dir)
+		fin.Parent = folder()
+		animate({ fin }, 3.2, function(t, b) return b * CFrame.new(0, (t < 0.15 and t / 0.15 or (t > 0.85 and (1 - t) / 0.15 or 1)) * 1 - 1, t * 24) end)
+	end
+	OMEN.nessie = function(pos)
+		local parts = {}
+		for i = 0, 10 do table.insert(parts, fxPart(Vector3.one * (2.6 - i * 0.12), CFrame.new(pos + Vector3.new(0, i * 1.4 - 16, -math.sin(i / 10 * 2) * 4)), rgb(50, 70, 60), Enum.Material.Pebble, Enum.PartType.Ball)) end
+		table.insert(parts, fxPart(Vector3.new(2.4, 2, 4), CFrame.new(pos + Vector3.new(0, 15 - 16, -4.6)), rgb(50, 70, 60), Enum.Material.Pebble, Enum.PartType.Ball))
+		animate(parts, 3.4, function(t, b) return b + Vector3.new(0, math.sin(t * math.pi) * 16, 0) end)
+	end
+	OMEN.spinosaurus = function(pos)
+		local parts = {}
+		for i = -3, 3 do table.insert(parts, fxPart(Vector3.new(0.4, 6 - math.abs(i), 1.6), CFrame.new(pos + Vector3.new(0, -6, i * 1.5)), i % 2 == 0 and rgb(170, 80, 50) or rgb(150, 70, 44), Enum.Material.SmoothPlastic)) end
+		animate(parts, 3, function(t, b) return b + Vector3.new(t * 14, math.sin(t * math.pi) * 6.5, 0) end)
+	end
+	OMEN.cthulhu = function(_pos, _toward, s)
+		-- the storm: red eyes and huge wings in the clouds above the survivor
+		local sp = hrpOf(s) and hrpOf(s).Position
+		if not sp then return end
+		Notify:FireClient(s, "effect", "thunder", 2.5)
+		local c = sp + Vector3.new(0, 110, -60)
+		local parts = {
+			fxPart(Vector3.one * 6, CFrame.new(c + Vector3.new(-7, 0, 0)), rgb(255, 20, 20), Enum.Material.Neon, Enum.PartType.Ball),
+			fxPart(Vector3.one * 6, CFrame.new(c + Vector3.new(7, 0, 0)), rgb(255, 20, 20), Enum.Material.Neon, Enum.PartType.Ball),
+			fxPart(Vector3.new(80, 30, 2), CFrame.new(c + Vector3.new(-50, 10, 8)) * CFrame.Angles(0, 0, math.rad(20)), rgb(14, 16, 20), Enum.Material.SmoothPlastic, nil, nil, 0.2),
+			fxPart(Vector3.new(80, 30, 2), CFrame.new(c + Vector3.new(50, 10, 8)) * CFrame.Angles(0, 0, math.rad(-20)), rgb(14, 16, 20), Enum.Material.SmoothPlastic, nil, nil, 0.2),
+		}
+		animate(parts, 2.6, function(t, b) return b + Vector3.new(0, math.sin(t * math.pi) * 6, 0) end)
+	end
+	local omenAt = {}
+	local function omens()
+		for _, m in ipairs(X.monsters()) do
+			local kind = m:GetAttribute("Monster")
+			local h = hrpOf(m)
+			if OMEN[kind] and h and X.isHunting(m) and now() >= (omenAt[m] or 0) then
+				local s, d = X.nearestSurvivor(h.Position)
+				if s and d < 150 and d > 20 then
+					omenAt[m] = now() + 9
+					local sp = hrpOf(s).Position
+					-- the sign shows between the monster and the survivor, at the water line
+					local q = h.Position:Lerp(sp, 0.35)
+					q = Vector3.new(q.X, waterY(q), q.Z)
+					OMEN[kind](q, sp, s)
+					Notify:FireClient(s, "omen", kind)
+				end
+			end
+		end
+	end
+
+	---------------------------------------------------------------------------
+	-- per-tick systems
+	---------------------------------------------------------------------------
+	local stormFx = {}
+	local seen = {} -- [fester][survivor] = time
+	local formWant = {}
+	function P2.speedMult(p, t)
+		local f = F(p)
+		local kind = p:GetAttribute("Monster")
+		local mult = 1
+		if p:GetAttribute("Role") == "Monster" then
+			if Config.SEA[kind] then
+				if inWater(p) then mult *= 1.3 elseif kind ~= "megalodon" then mult *= 0.85 end
+			end
+			if f.batUntil and t < f.batUntil then mult *= 1.6 end
+			if f.stoneUntil and t < f.stoneUntil then mult *= 0.5 end
+			if kind == "fester" then mult *= 1 + 0.06 * (p:GetAttribute("FesterStage") or 0) end
+		else
+			local m = map()
+			if m and m.pools and inWater(p) then mult *= 0.7 end
+		end
+		return mult
+	end
+	function P2.isStone(p) local f = F(p); return f.stoneUntil ~= nil and now() < f.stoneUntil end
+	function P2.reset()
+		table.clear(stormFx); table.clear(seen); table.clear(formWant); table.clear(omenAt)
+	end
+	function P2.tick(step)
+		local m = map()
+		local t = now()
+		omens()
+		for _, s in ipairs(survivors(true)) do
+			local f = F(s)
+			local h = hrpOf(s)
+			if f.burnUntil and t < f.burnUntil then hurt(s, 4 * step, f.burnBy) end
+			-- the storm past the safe radius on the ocean: damage, a push back toward the islands, lightning
+			if m and m.ocean and h then
+				local v = flat(h.Position - Config.MAP_ORIGIN)
+				local r = v.Magnitude
+				if r > m.storm then
+					hurt(s, 5 * step, nil)
+					local hum = humOf(s)
+					if hum and hum.SeatPart then
+						local b = hum.SeatPart.Parent
+						if b and b:IsA("Model") then b:PivotTo(b:GetPivot() - v.Unit * 1.4) end
+					else
+						s.Character:PivotTo(s.Character:GetPivot() - v.Unit * 1.2)
+					end
+					if t >= (stormFx[s] or 0) then
+						stormFx[s] = t + 0.9
+						Notify:FireClient(s, "effect", "storm", 1.2)
+						if math.random() < 0.25 then bolt(h.Position + Vector3.new(math.random(-30, 30), -3, math.random(-30, 30))) end
+					end
+				elseif r > m.storm - 70 and t >= (stormFx[s] or 0) then
+					stormFx[s] = t + 4
+					Notify:FireClient(s, "effect", "stormwarn", 2)
+				end
+			end
+		end
+		for _, mp in ipairs(X.monsters()) do
+			local kind = mp:GetAttribute("Monster")
+			local h = hrpOf(mp)
+			if h and X.isHunting(mp) then
+				-- Megalodon: a giant shark in the water, a buff humanoid shark on land
+				if kind == "megalodon" then
+					local want = inWater(mp) and 1 or 2
+					if want ~= (mp:GetAttribute("Form") or 1) then
+						formWant[mp] = formWant[mp] or t
+						if t - formWant[mp] > 0.6 then
+							formWant[mp] = nil
+							mp:SetAttribute("Form", want)
+							Models.morph(mp.Character, want == 1 and "megalodon" or "megalodon_h", X.getProfile(mp) and X.getProfile(mp).skin)
+							toast(mp, want == 1 and "Back in the water: full shark form" or "On land: you walk as a giant humanoid shark")
+						end
+					else
+						formWant[mp] = nil
+					end
+				end
+				-- Father Fester: every survivor who sees him makes him stronger (once per survivor per 12s, 6 stages)
+				if kind == "fester" then
+					seen[mp] = seen[mp] or {}
+					for _, s in ipairs(survivors(true)) do
+						local sh = hrpOf(s)
+						if sh then
+							local v = h.Position - sh.Position
+							if v.Magnitude < 110 and sh.CFrame.LookVector:Dot(v.Unit) > 0.6 and clearLine(sh.Position + Vector3.new(0, 1.5, 0), h.Position + Vector3.new(0, 3, 0)) and t >= (seen[mp][s] or 0) then
+								seen[mp][s] = t + 12
+								local stg = math.min(Config.FESTER_MAX, (mp:GetAttribute("FesterStage") or 0) + 1)
+								if stg ~= (mp:GetAttribute("FesterStage") or 0) then
+									mp:SetAttribute("FesterStage", stg)
+									Models.festerStage(mp.Character and mp.Character:FindFirstChild("NH_Morph"), stg)
+									toast(mp, ("%s saw you. You grow stronger (stage %d/%d)"):format(s.DisplayName, stg, Config.FESTER_MAX))
+									if stg == Config.FESTER_MAX then Notify:FireClient(mp, "sight", 8); toast(nil, "Father Fester has reached full strength...") end
+								end
+								toast(s, "You saw Father Fester... and he saw you.")
+								Notify:FireClient(s, "effect", "fester", 1.2)
+								sfxAll("fester", h.Position)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- boats: the driver's MoveDirection steers; frame-rate movement on the server
+	RunService.Heartbeat:Connect(function(dt)
+		local m = map()
+		if not m or not m.boats then return end
+		local t = now()
+		local O = Config.MAP_ORIGIN
+		for _, b in ipairs(m.boats) do
+			local hull = b.Parent and b.PrimaryPart
+			local helm = b:FindFirstChild("Helm")
+			if hull and helm then
+				local v = b:GetAttribute("V") or 0
+				local occ = helm.Occupant
+				local cf = b:GetPivot()
+				local yaw = math.atan2(-cf.LookVector.X, -cf.LookVector.Z)
+				if occ then
+					local md = occ.MoveDirection
+					local maxV = b:GetAttribute("Speed") or 40
+					if md.Magnitude > 0.1 then
+						local want = math.atan2(-md.X, -md.Z)
+						local diff = (want - yaw + math.pi) % (2 * math.pi) - math.pi
+						yaw += math.clamp(diff, -1.4 * dt, 1.4 * dt)
+						local fwd = Vector3.new(-math.sin(yaw), 0, -math.cos(yaw))
+						v = math.min(maxV, v + maxV * 0.7 * dt * math.max(0.2, fwd:Dot(md.Unit)))
+					else
+						v = math.max(0, v - maxV * 0.5 * dt)
+					end
+				else
+					v = math.max(0, v - 20 * dt)
+				end
+				local fwd = Vector3.new(-math.sin(yaw), 0, -math.cos(yaw))
+				local pos = cf.Position + fwd * v * dt
+				-- islands and the map edge stop the boat
+				local blocked = math.abs(pos.X - O.X) > m.half - 12 or math.abs(pos.Z - O.Z) > m.half - 12
+				for _, isl in ipairs(m.islands or {}) do
+					if (flat(pos - isl.p)).Magnitude < isl.r + (b:GetAttribute("Big") and 14 or 6) then blocked = true; break end
+				end
+				if blocked then pos = cf.Position; v = 0 end
+				local rock = (b:GetAttribute("Rock") or 0) > t and math.sin(t * 14) * 0.25 or 0
+				local bob = math.sin(t * 1.6 + hull.Position.X * 0.05) * 0.25
+				b:SetAttribute("V", v)
+				if occ or v > 0 or rock ~= 0 or (b:GetAttribute("BobAt") or 0) < t then
+					b:SetAttribute("BobAt", t + 0.25)
+					b:PivotTo(CFrame.new(pos.X, bob, pos.Z) * CFrame.Angles(0, yaw, rock))
+				end
+			end
+		end
+	end)
+	return P2
+end
+]]></string>
+        </Properties>
+      </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="14">
+  <Item class="StarterPlayer" referent="17">
     <Properties>
       <string name="Name">StarterPlayer</string>
       <float name="CameraMaxZoomDistance">40</float>
@@ -2961,11 +4783,11 @@ return Models
       <token name="DevTouchCameraMovementMode">1</token>
       <token name="DevTouchMovementMode">1</token>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="15">
+    <Item class="StarterPlayerScripts" referent="18">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="16">
+      <Item class="LocalScript" referent="19">
         <Properties>
           <string name="Name">NightHuntClient</string>
           <string name="Source"><![CDATA[--[[ Night Hunt (fan-made) - client: UI, lighting, input, effects ]]
@@ -3239,7 +5061,10 @@ local scareFx = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScal
 local scareBlack = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 33, Visible = false }, scareFx)
 local scareText = label(scareFx, "CAUGHT", 70, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.42, 0), Size = UDim2.new(1, 0, 0, 80), ZIndex = 36, Visible = false })
 local bloodOn = true -- settings toggle (default on). Teen-level only: red splatter / drips, no gore.
-local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, monochrome = 2.0, locust = 1.9 }
+local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, monochrome = 2.0, locust = 1.9,
+	-- v1.4 phase 2 (keyed by template: the Megalodon has a water and a land form)
+	megalodon = 1.95, megalodon_h = 1.45, kraken = 1.7, cthulhu = 1.8, leviathan = 1.7, mosasaurus = 1.25, nessie = 1.55, spinosaurus = 1.6,
+	yeti = 1.6, chupacabra = 1.05, vampire = 1.45, bigfoot = 1.5, trex = 1.6, quetzalcoatlus = 1.35, gargoyle = 1.35, dragon = 1.5, fester = 1.75 }
 local SCARE_LEN = 2.6
 local scareRun = 0
 
@@ -3274,6 +5099,7 @@ local function jumpscare(kind, form)
 	for _, c in ipairs(scareFx:GetChildren()) do if c ~= scareBlack and c ~= scareText then c:Destroy() end end
 	local key = kind
 	if kind == "drnowhere" and Config.DN_FORMS[form or 1] then key = Config.DN_FORMS[form or 1].key end
+	if kind == "megalodon" and form == 2 then key = "megalodon_h" end
 	local t = Templates:FindFirstChild(key) or Templates:FindFirstChild("freddy")
 	local m = t:Clone()
 	m.Parent = scare
@@ -3285,7 +5111,39 @@ local function jumpscare(kind, form)
 	scareText.Visible, scareBlack.Visible = false, false
 	scare.Visible = true
 	local fnaf = table.find({ "freddy", "bonnie", "chica", "foxy", "springtrap" }, kind) ~= nil
-	local impact = IMPACT[kind] or 1.55
+	local impact = IMPACT[key] or IMPACT[kind] or 1.55
+	-- extra props for the phase-2 scares (water surface, circling fins, tentacles, flashes)
+	local extras = Instance.new("Model")
+	extras.Name = "ScareExtras"
+	extras.Parent = scare
+	local function xp(size, cf, color, mat, shape, transp)
+		local q = Instance.new("Part")
+		q.Anchored, q.Size, q.CFrame, q.Color = true, size, cf, color
+		q.Material = mat or Enum.Material.SmoothPlastic
+		if shape then q.Shape = shape end
+		q.Transparency = transp or 0
+		q.Parent = extras
+		return q
+	end
+	local water, fins, tents = nil, {}, {}
+	if key == "megalodon" or key == "nessie" or key == "spinosaurus" or key == "mosasaurus" or key == "kraken" or key == "leviathan" then
+		water = xp(Vector3.new(300, 0.2, 300), CFrame.new(0, 0, 0), key == "spinosaurus" and Color3.fromRGB(50, 70, 40) or Color3.fromRGB(30, 80, 110), Enum.Material.Glass, nil, 0.35)
+	end
+	if key == "megalodon" then
+		for i = 1, 5 do
+			local w = Instance.new("WedgePart")
+			w.Anchored, w.Size, w.Color = true, Vector3.new(0.3, 1.6, 1.6), Color3.fromRGB(70, 84, 96)
+			w.Parent = extras
+			fins[i] = w
+		end
+	end
+	if key == "kraken" then
+		for j = 1, 6 do
+			tents[j] = {}
+			for i = 1, 7 do tents[j][i] = xp(Vector3.one * (1.3 - i * 0.12), CFrame.new(), Color3.fromRGB(150, 50, 60), Enum.Material.Rubber, Enum.PartType.Ball) end
+		end
+	end
+	local flash = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 33 }, scareFx)
 	local start = os.clock()
 	local hit = false
 	local squares = {}
@@ -3325,6 +5183,110 @@ local function jumpscare(kind, form)
 			if form == 2 then camPos = Vector3.new(0, 2 + ease(e / 1.2) * (headY - 2), -6 + l * 3); shake = 0.1 + l * 0.4
 			elseif form == 3 then m:PivotTo(base * CFrame.new(0, 0, -l * 2)); camPos = Vector3.new(0, headY, -7 + l * 3)
 			else camPos = Vector3.new(0, headY, -7.5 + l * 4.4); shake = 0.05 + l * 0.35 end
+		elseif key == "megalodon" then -- swarmed by fins, a shadow rises, it leaps, swallows you and dives
+			camPos, look = Vector3.new(0, 1.3, -9), Vector3.new(0, -0.6, 0)
+			for i, w in ipairs(fins) do
+				local a = e * 2.2 + i * math.pi * 0.4
+				local r = math.max(2.5, 7 - e * 3)
+				w.CFrame = CFrame.lookAt(Vector3.new(math.cos(a) * r, 0.6, -9 + math.sin(a) * r), Vector3.new(math.cos(a + 0.3) * r, 0.6, -9 + math.sin(a + 0.3) * r))
+			end
+			if e < 1.0 then -- the shadow rises under the water
+				local r = ease(e / 1.0)
+				m:PivotTo(CFrame.new(0, -26 + r * 14, -2) * CFrame.Angles(math.rad(90), 0, 0)); shake = 0.03 + r * 0.1
+			elseif e < 1.5 then -- the leap
+				local l = ease((e - 1.0) / 0.5)
+				m:PivotTo(CFrame.new(0, -12 + l * 14, -2 - l * 4) * CFrame.Angles(math.rad(90 - l * 30), 0, 0))
+				look = Vector3.new(0, 1.5 + l, -5); shake = 0.2 + l * 0.4
+			else -- swallowed: inside the jaws, then the dive
+				local d = ease((e - 1.5) / 0.45)
+				local mcf = CFrame.new(0, 2 - d * 10, -6 + d * 3) * CFrame.Angles(math.rad(60 - d * 140), 0, 0)
+				m:PivotTo(mcf)
+				local mouth = (mcf * CFrame.new(0, -1.6, -10.5)).Position
+				camPos = mouth + mcf.LookVector * 1.2 + Vector3.new(0, 0.3, 0); look = (mcf * CFrame.new(0, -1.6, -2)).Position; shake = 0.35; fov = 70
+				if water then water.Transparency = 0.1 end
+			end
+		elseif key == "megalodon_h" then -- a buff shark-man grabs you and bites down
+			local l = ease((e - 0.5) / 0.8)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 2) * CFrame.Angles(math.rad(-25 * l), 0, 0))
+			camPos = Vector3.new(0, headY - 1, -6.5 + l * 2); look = Vector3.new(0, headY - 0.5 - l, -l * 3); shake = 0.15 + l * 0.4
+		elseif key == "kraken" then -- tentacles close in around you, then the beak
+			local u = ease(e / 1.3)
+			camPos = Vector3.new(0, 2, -12); look = Vector3.new(0, 1.5 + u * 1.5, 0)
+			for j, list2 in ipairs(tents) do
+				local a = j / 6 * math.pi * 2 + e * 0.8
+				for i, q in ipairs(list2) do
+					local r = (4.5 - u * 2.8) + i * 0.15
+					q.CFrame = CFrame.new(Vector3.new(math.cos(a + i * 0.25 * u) * r, -5 + i * 1.3 * (0.4 + u), -12 + math.sin(a + i * 0.25 * u) * r))
+				end
+			end
+			local l = ease((e - 1.2) / 0.5)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 8)); shake = 0.05 + u * 0.2 + l * 0.3
+		elseif key == "cthulhu" then -- a towering figure in the storm, lit by lightning
+			camPos = Vector3.new(0, 2, -11 + ease((e - 0.8) / 0.9) * 5); look = Vector3.new(0, headY, 0)
+			flash.BackgroundTransparency = ((e > 0.25 and e < 0.35) or (e > 0.9 and e < 1.0) or (e > 1.45 and e < 1.52)) and 0.1 or 1
+			m:PivotTo(base * CFrame.Angles(math.rad(-ease((e - 0.9) / 0.8) * 25), 0, 0)); shake = 0.05 + ease((e - 0.9) / 0.8) * 0.4
+		elseif key == "leviathan" then -- the coils wind around you, then it strikes
+			local a = e * 2.6
+			local l = ease((e - 1.25) / 0.45)
+			camPos = Vector3.new(math.sin(a) * (9 - l * 4), 2.2, -9 + math.cos(a) * (9 - l * 4) * 0.4 - l * 2); look = Vector3.new(0, 1, -8)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 4)); shake = 0.05 + l * 0.4
+		elseif key == "mosasaurus" then -- the jaws burst up out of the water under you
+			local l = ease((e - 0.6) / 0.6)
+			m:PivotTo(CFrame.new(0, -14 + l * 14, -4 + l * 2) * CFrame.Angles(math.rad(80 - l * 25), 0, 0))
+			camPos = Vector3.new(0, 2.4, -8); look = Vector3.new(0, -2 + l * 4, -4); shake = 0.05 + l * 0.45
+		elseif key == "nessie" then -- a long neck rises from the water and the head swoops down at you
+			local r = ease(e / 1.0)
+			local l = ease((e - 1.0) / 0.5)
+			m:PivotTo(CFrame.new(0, -14 + r * 13, 2) * CFrame.Angles(math.rad(-35 * l), 0, 0) * CFrame.new(0, 0, -l * 3))
+			camPos = Vector3.new(0, 2, -10); look = Vector3.new(0, 2 + r * 12 - l * 9, -2 - l * 5); shake = 0.04 + l * 0.4
+		elseif key == "spinosaurus" then -- the sail cuts through the swamp, then it lunges out
+			local r = ease(e / 1.0)
+			local l = ease((e - 1.0) / 0.55)
+			m:PivotTo(base * CFrame.new(r * 0, -10 + r * 10, 6 - r * 4 - l * 5))
+			camPos = Vector3.new(0, 3, -9); look = Vector3.new(0, 2 + r * 6, 0); shake = 0.04 + l * 0.4
+		elseif key == "yeti" or key == "trex" then -- a deafening roar, then the bite
+			local roar = (e > 0.3 and e < 1.1) and 1 or 0
+			local l = ease((e - 1.1) / 0.45)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 3) * CFrame.Angles(math.rad(-20 * l), 0, 0))
+			camPos = Vector3.new(0, key == "trex" and 2 or headY - 2, -9 + l * 3); look = Vector3.new(0, headY, -l * 4); shake = 0.05 + roar * 0.55 + l * 0.3
+			if key == "yeti" and math.random() < 0.7 then
+				table.insert(squares, new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.3, Position = UDim2.fromScale(math.random(), math.random()), Size = UDim2.fromOffset(math.random(6, 30), math.random(6, 30)), ZIndex = 33 }, scareFx))
+			end
+		elseif key == "chupacabra" then -- it leaps at you from the side
+			local l = ease(e / 1.0)
+			m:PivotTo(base * CFrame.new(9 - l * 9, math.sin(l * math.pi) * 3, -l * 5))
+			camPos = Vector3.new(0, 2, -8); look = Vector3.new(9 - l * 9, 2, -l * 5); shake = 0.05 + l * 0.4
+		elseif key == "vampire" then -- nothing there... you turn around: it's right behind you
+			local tr = ease((e - 0.55) / 0.35)
+			local l = ease((e - 1.0) / 0.4)
+			camPos = Vector3.new(0, headY, -5.5 + l * 2)
+			local ahead = Vector3.new(0, headY, -20)
+			look = ahead:Lerp(Vector3.new(0, headY, 0), tr); shake = 0.02 + l * 0.4
+		elseif key == "bigfoot" then -- it charges out of the dark woods
+			local l = ease(e / 1.45)
+			m:PivotTo(base * CFrame.new(0, math.abs(math.sin(e * 9)) * 0.6, 22 - l * 22))
+			camPos = Vector3.new(0, headY - 1, -6); look = Vector3.new(0, headY, 22 - l * 22); shake = 0.05 + l * 0.35
+		elseif key == "quetzalcoatlus" then -- a shriek from above, then it dives out of the sky
+			local l = ease(e / 1.3)
+			m:PivotTo(CFrame.new(0, 34 - l * 34, 14 - l * 14) * CFrame.Angles(math.rad(-50 * (1 - l)), 0, 0))
+			camPos = Vector3.new(0, 2, -8); look = Vector3.new(0, 34 - l * 30, 14 - l * 14); shake = 0.04 + l * 0.4
+		elseif key == "gargoyle" then -- a still statue... its eyes light up and it lunges
+			local l = ease((e - 1.0) / 0.3)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 4))
+			camPos = Vector3.new(0, headY, -7 + l * 2); shake = e < 1 and 0 or 0.5
+		elseif key == "dragon" then -- a wall of fire, then the jaws
+			local f2 = ease((e - 0.4) / 0.6)
+			flash.BackgroundColor3 = Color3.fromRGB(255, 120, 20)
+			flash.BackgroundTransparency = e > 0.4 and e < 1.2 and (1 - f2 * 0.6) or 1
+			local l = ease((e - 1.1) / 0.4)
+			m:PivotTo(base * CFrame.new(0, 0, -l * 5))
+			camPos = Vector3.new(0, headY - 1, -12 + l * 4); look = Vector3.new(0, headY - 1, -l * 6); shake = 0.1 + f2 * 0.2 + l * 0.3
+		elseif key == "fester" then -- the lights flicker; every time they come back he is closer
+			local step = math.floor(e / 0.3)
+			local dark = (e % 0.3) < 0.1 and e < 1.5
+			scareBlack.Visible = dark
+			m:PivotTo(base * CFrame.new(0, 0, 14 - math.min(5, step) * 3.2))
+			camPos = Vector3.new(0, headY - 1, -7); look = Vector3.new(0, headY - 0.6, 14 - math.min(5, step) * 3.2); shake = 0.03 + step * 0.05
 		else
 			local l = ease((e - 0.3) / 0.8)
 			camPos = Vector3.new(0, headY, -9 + l * 6); shake = 0.05 + l * 0.35
@@ -3426,7 +5388,40 @@ local SFX = { -- uploads in Config.SOUNDS win; otherwise built-in Roblox sounds,
 	swing = { "rbxasset://sounds/swoosh.wav", 1.4 }, hit = { "rbxasset://sounds/collide.wav", 0.8 },
 	pistol = { "rbxasset://sounds/electronicpingshort.wav", 3 }, shotgun = { "rbxasset://sounds/electronicpingshort.wav", 2 }, rifle = { "rbxasset://sounds/electronicpingshort.wav", 3.5 },
 	dry = { "rbxasset://sounds/electronicpingshort.wav", 4 }, drink = { "rbxasset://sounds/impact_water.mp3", 1.4 }, eat = { "rbxasset://sounds/swoosh.wav", 2.5 },
+	-- v1.4 phase 2
+	wave = { "rbxasset://sounds/impact_water.mp3", 0.5 }, splash = { "rbxasset://sounds/impact_water.mp3", 0.8 }, whirl = { "rbxasset://sounds/swoosh.wav", 0.25 },
+	tentacle = { "rbxasset://sounds/swoosh.wav", 0.6 }, thunder = { "rbxasset://sounds/action_falling.mp3", 0.25 }, slam = { "rbxasset://sounds/collide.wav", 0.4 },
+	roar = { "rbxasset://sounds/uuhhh.mp3", 0.45 }, drain = { "rbxasset://sounds/swoosh.wav", 1.8 }, bats = { "rbxasset://sounds/electronicpingshort.wav", 2.8 },
+	throw = { "rbxasset://sounds/swoosh.wav", 0.8 }, screech = { "rbxasset://sounds/electronicpingshort.wav", 1.6 }, stone = { "rbxasset://sounds/collide.wav", 0.3 },
+	fire = { "rbxasset://sounds/swoosh.wav", 0.4 }, fester = { "rbxasset://sounds/uuhhh.mp3", 0.6 },
 }
+-- phase-2 screen effects: tint pulses, camera shake, lightning
+local tintOver = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 13 }, gui)
+local tintText = label(tintOver, "", 34, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.3, 0), Size = UDim2.new(1, 0, 0, 50), ZIndex = 13 })
+local function tint(color, from, secs, text)
+	tintOver.BackgroundColor3 = color
+	tintOver.BackgroundTransparency = from
+	tintText.Text = text or ""
+	TweenService:Create(tintOver, TweenInfo.new(secs), { BackgroundTransparency = 1 }):Play()
+	if text then task.delay(secs, function() if tintText.Text == text then tintText.Text = "" end end) end
+end
+local shakeUntil, shakeAmt = 0, 0
+RunService:BindToRenderStep("NH_Shake", Enum.RenderPriority.Camera.Value + 1, function()
+	if os.clock() < shakeUntil then
+		local cam = workspace.CurrentCamera
+		cam.CFrame = cam.CFrame * CFrame.Angles((math.random() - 0.5) * shakeAmt, (math.random() - 0.5) * shakeAmt, 0)
+	end
+end)
+local function shakeFor(secs, amt) shakeUntil = os.clock() + secs; shakeAmt = amt or 0.02 end
+local function lightning(n)
+	for i = 1, n do task.delay((i - 1) * 0.35 + math.random() * 0.2, function() tint(Color3.new(1, 1, 1), 0.15, 0.25) end) end
+end
+local OMEN = {
+	kraken = "Tentacles break the surface nearby...", leviathan = "Huge coils roll through the water...", mosasaurus = "A giant tail flicks out of the sea...",
+	megalodon = "A dorsal fin is circling...", nessie = "A long neck rises out of the water...", spinosaurus = "A sail glides through the swamp...",
+	cthulhu = "Red eyes and wings in the storm clouds...",
+}
+local lastStormWarn = 0
 local function sfx(kind, pos)
 	local up = Config.SOUNDS[kind]
 	local d = SFX[kind]
@@ -3541,6 +5536,15 @@ local lockerScroll = new("ScrollingFrame", { BackgroundTransparency = 1, Positio
 list(lockerScroll, 6)
 button(locker, "Close", { Position = UDim2.new(0, 0, 1, -38), Size = UDim2.new(1, 0, 0, 36), ZIndex = 52 }, function() locker.Visible = false end)
 local refreshLocker
+local lockerTab = "shop" -- shop (item counter) / look (dressing room) / skins (gallery)
+local tabBar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 34), Size = UDim2.new(1, 0, 0, 30), ZIndex = 52 }, locker)
+for i, tb in ipairs({ { "shop", "Item counter" }, { "look", "Dressing room" }, { "skins", "Skins" } }) do
+	button(tabBar, tb[2], { Size = UDim2.new(1 / 3, -4, 1, 0), Position = UDim2.new((i - 1) / 3, 2, 0, 0), TextSize = 12, ZIndex = 53, BackgroundColor3 = Color3.fromRGB(70, 50, 40) }, function() lockerTab = tb[1]; refreshLocker() end)
+end
+lockerScroll.Position = UDim2.new(0, 0, 0, 70)
+lockerScroll.Size = UDim2.new(1, 0, 1, -114)
+locker.Size = UDim2.new(0, 460, 0, 540)
+locker.Position = UDim2.new(0.5, -230, 0.5, -270)
 local function row(text, order, actions)
 	local r = new("Frame", { BackgroundColor3 = DARK, Size = UDim2.new(1, -8, 0, 34), LayoutOrder = order, ZIndex = 52 }, lockerScroll)
 	corner(r, 6)
@@ -3553,18 +5557,33 @@ local monsterPrefIdx = 0
 refreshLocker = function()
 	for _, c in ipairs(lockerScroll:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end
 	local pr = myProfile()
-	lockerTitle.Text = ("LOCKER  -  %d coins"):format(pr.coins or 0)
+	lockerTitle.Text = ("%s  -  %d coins"):format(({ shop = "ITEM COUNTER", look = "DRESSING ROOM", skins = "SKINS GALLERY" })[lockerTab], pr.coins or 0)
 	local o = 0
 	local function nxt() o += 1; return o end
-	label(lockerScroll, "Your survivor", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+	local cats = ({ shop = { "hat", "acc", "supply" }, look = { "outfit" }, skins = { "skin" } })[lockerTab]
+	if lockerTab == "look" then
+	label(lockerScroll, "Your survivor (check the mirror!)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local cyc = function(k, n) return function() Action:FireServer("look", { [k] = ((pr.look[k] or 1) % n) + 1 }) end end
 	row("Skin tone", nxt(), { { "Next", cyc("sk", #Config.SKIN_TONES) } })
 	row("Hair colour", nxt(), { { "Next", cyc("hc", #Config.HAIR_COLORS) } })
 	row("Hair style", nxt(), { { "Next", cyc("hs", 4) } })
 	row("Shirt", nxt(), { { "Next", cyc("top", #Config.CLOTHES) } })
 	row("Pants", nxt(), { { "Next", cyc("pants", #Config.CLOTHES) } })
-	for _, cat in ipairs({ "hat", "acc", "skin" }) do
-		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins" })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+	end
+	for _, cat in ipairs(cats) do
+		label(lockerScroll, ({ hat = "Hats", acc = "Accessories", skin = "Monster skins", outfit = "Outfits", supply = "Round supplies (max 2, handed out next round)" })[cat], 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
+		if cat == "supply" then
+			local kit = {}
+			for _, k in ipairs(pr.kit or {}) do table.insert(kit, Config.ITEMS[k] and Config.ITEMS[k].name or k) end
+			label(lockerScroll, "Packed: " .. (#kit > 0 and table.concat(kit, ", ") or "nothing"), 13, { LayoutOrder = nxt(), ZIndex = 52, TextColor3 = MUTED })
+			local items = {}
+			for id, price in pairs(Config.SHOP.supply) do table.insert(items, { id, price }) end
+			table.sort(items, function(x, y) return x[2] < y[2] end)
+			for _, it in ipairs(items) do
+				row(("%s  -  %d coins"):format(Config.ITEMS[it[1]] and Config.ITEMS[it[1]].name or it[1], it[2]), nxt(), { { "Buy", function() Action:FireServer("buy", { cat = "supply", id = it[1] }) end } })
+			end
+			continue
+		end
 		local cur = cat == "skin" and (pr.skin or "classic") or (pr.look[cat] or "none")
 		row((cat == "skin" and "classic" or "none") .. ((cur == "none" or cur == "classic") and "  (worn)" or ""), nxt(), { { "Wear", function() Action:FireServer("equip", { cat = cat, id = cat == "skin" and "classic" or "none" }) end, Color3.fromRGB(60, 60, 70) } })
 		local items = {}
@@ -3579,6 +5598,7 @@ refreshLocker = function()
 			})
 		end
 	end
+	if lockerTab ~= "skins" then return end
 	label(lockerScroll, "Monster preference (if you become a monster)", 15, { LayoutOrder = nxt(), Font = Enum.Font.GothamBold, ZIndex = 52 })
 	local prefName = (pr.pref and pr.pref ~= "" and Config.MONSTERS[pr.pref]) and Config.MONSTERS[pr.pref].name or "Random"
 	row(prefName, nxt(), { { "Next", function()
@@ -3839,7 +5859,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 			conn = RunService.RenderStepped:Connect(function()
 				local e = os.clock() - start
 				if vh and vh.Parent and myHead.Parent then
-					local eye = myHead.Position + Vector3.new(0, 4, 0)
+					local eye = myHead.Position + Vector3.new(0, ({ sirenhead = 26, nessie = 14, trex = 11, spinosaurus = 12, dragon = 10, cthulhu = 10, yeti = 8, bigfoot = 7, fester = 9, quetzalcoatlus = 8 })[a] or 4, 0)
 					cam.CFrame = CFrame.lookAt(eye, vh.Position + Vector3.new(0, 1.5, 0)) * CFrame.new((math.random() - 0.5) * 0.15, (math.random() - 0.5) * 0.15, 0)
 				end
 				kfx.BackgroundTransparency = 0.75 + math.sin(e * 9) * 0.08
@@ -3860,6 +5880,26 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 		if a == "dark" then darkUntil = os.clock() + b end
 		if a == "halluc" then hallucUntil = os.clock() + b end
 		if a == "lightsout" then toast("Your flashlight died...") end
+		local d = tonumber(b) or 1
+		if a == "wave" then tint(Color3.fromRGB(40, 110, 170), 0.2, d); shakeFor(d * 0.6, 0.03)
+		elseif a == "whirl" then tint(Color3.fromRGB(20, 70, 110), 0.35, d); shakeFor(d, 0.025); toast("You're caught in a whirlpool!")
+		elseif a == "thunder" then lightning(3); shakeFor(0.6, 0.02)
+		elseif a == "snow" then tint(Color3.fromRGB(235, 245, 255), 0.15, d); toast("Avalanche! You're buried in snow")
+		elseif a == "shake" then shakeFor(d, 0.04)
+		elseif a == "burn" then tint(Color3.fromRGB(255, 110, 20), 0.35, d); toast("You're on fire!")
+		elseif a == "storm" then tint(Color3.fromRGB(20, 30, 60), 0.4, d); if math.random() < 0.25 then lightning(1) end; shakeFor(0.4, 0.02)
+		elseif a == "stormwarn" then
+			if os.clock() - lastStormWarn > 4 then lastStormWarn = os.clock(); tint(Color3.fromRGB(20, 30, 60), 0.6, 1.5, "STORM AHEAD - TURN BACK") end
+		elseif a == "fester" then tint(Color3.new(0, 0, 0), 0, d, "HE IS GETTING CLOSER") end
+	elseif kind == "omen" then
+		toast(OMEN[a] or "Something stirs in the water...")
+		if a == "cthulhu" then lightning(2) end
+		sfx(a == "cthulhu" and "thunder" or "splash")
+	elseif kind == "store" then
+		-- walked up to a counter in the lobby store: open the locker on that section
+		lockerTab = (a == "look" or a == "skins") and a or "shop"
+		locker.Visible = true
+		refreshLocker()
 	elseif kind == "sfx" then
 		sfx(a, b)
 	elseif kind == "sight" then
@@ -4099,13 +6139,15 @@ end)
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="17">
+  <Item class="Workspace" referent="20">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
-      <bool name="StreamingEnabled">false</bool>
+      <bool name="StreamingEnabled">true</bool>
+      <int name="StreamingMinRadius">160</int>
+      <int name="StreamingTargetRadius">640</int>
     </Properties>
-    <Item class="SpawnLocation" referent="18">
+    <Item class="SpawnLocation" referent="21">
       <Properties>
         <string name="Name">LobbySpawn</string>
         <bool name="Anchored">true</bool>

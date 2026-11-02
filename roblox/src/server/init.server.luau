@@ -37,6 +37,7 @@ local State = make("Folder", "State", Shared)
 local Templates = make("Folder", "Templates", Shared)
 for _, k in ipairs(Config.MONSTER_KEYS) do Models.template(k).Parent = Templates end
 for i = 2, #Config.DN_FORMS do Models.template(Config.DN_FORMS[i].key).Parent = Templates end
+Models.template("megalodon_h").Parent = Templates -- the Megalodon's land form
 
 local IS_STUDIO = RunService:IsStudio()
 local CAN_TELEPORT = game.PlaceId ~= 0 and not IS_STUDIO
@@ -119,6 +120,16 @@ do
 	t.TextColor3 = Color3.fromRGB(220, 40, 40)
 	t.Text = "NIGHT HUNT\nboard the helicopter"
 	t.Parent = gui
+	-- v1.4: the walk-in store east of the helipad (item counter, dressing room, skins gallery)
+	local _, _, prompts = MapGen.store(lobby, Templates)
+	for _, pp in ipairs(prompts) do
+		pp.Triggered:Connect(function(plr) Notify:FireClient(plr, "store", pp:GetAttribute("Tab")) end)
+	end
+	local arrow = part(Vector3.new(14, 0.4, 3), CFrame.new(62, 0.25, 0), Color3.fromRGB(255, 200, 60), Enum.Material.Neon)
+	arrow.CanCollide = false
+	local s2 = part(Vector3.new(1, 5, 18), CFrame.new(70, 5, -14), Color3.fromRGB(20, 10, 10), Enum.Material.Slate)
+	local g2 = Instance.new("SurfaceGui"); g2.Face = Enum.NormalId.Left; g2.CanvasSize = Vector2.new(360, 100); g2.Parent = s2
+	local t2 = t:Clone(); t2.Text = "STORE  >>"; t2.TextColor3 = Color3.fromRGB(255, 200, 60); t2.Parent = g2
 end
 lobby.Parent = workspace
 
@@ -543,6 +554,14 @@ ABILITY.sonicexe = function(p)
 	return true
 end
 
+-- v1.4 phase 2: 16 more monsters, omens, ocean storm, boats, Megalodon land form, Father Fester escalation
+local P2 = require(script:WaitForChild("Phase2"))({
+	ABILITY = ABILITY, F = F, now = now, hrpOf = hrpOf, humOf = humOf, isHunting = isHunting, survivors = survivors, monsters = monsters,
+	nearestSurvivor = nearestSurvivor, appearNear = appearNear, portalFx = portalFx, clearLine = clearLine, flatLook = flatLook,
+	sfxAll = sfxAll, toast = toast, Notify = Notify, Models = Models, spaceFree = spaceFree, hide = _setMorphTransparency,
+	getMap = function() return currentMap end, getFolder = function() return roundFolder end, getProfile = function(p) return profiles[p] end,
+})
+
 local function useAbility(p)
 	if not isHunting(p) or p:GetAttribute("Role") ~= "Monster" or not hrpOf(p) then return end
 	if now() < (cooldowns[p] or 0) then return end
@@ -787,11 +806,13 @@ local function hurtSurvivor(s, dmg, by)
 	hum.Health = math.max(0, hum.Health - dmg * (1 - red))
 	Notify:FireClient(s, "hurt")
 end
+P2.setHurt(hurtSurvivor)
 
 -- monster health and knockdown
 local function hurtMonster(m, dmg, by, stun)
 	local f = F(m)
 	if f.downUntil and now() < f.downUntil then return end
+	if P2.isStone(m) then toast(by, "It's made of stone - your hit bounced off!"); return end
 	local hp = (m:GetAttribute("MonsterHp") or Config.MON_HP) - dmg
 	if stun then f.stunUntil = math.max(f.stunUntil or 0, now() + stun) end
 	if hp <= 0 then
@@ -820,7 +841,8 @@ local function tracer(a, b)
 end
 
 -- a monster's body as a vertical capsule for hit tests (morphs are far taller than a normal avatar)
-local TALL = { sirenhead = 30, locust = 15, cartooncat = 14 }
+local TALL = { sirenhead = 30, locust = 15, cartooncat = 14, megalodon = 8, megalodon_h = 11, kraken = 12, cthulhu = 13, leviathan = 8, mosasaurus = 7, nessie = 18,
+	spinosaurus = 16, trex = 14, yeti = 12, bigfoot = 11, dragon = 14, quetzalcoatlus = 13, fester = 12, gargoyle = 8, vampire = 8, chupacabra = 5 }
 local function rayHitsMonster(origin, dir, range)
 	local best, bestT
 	for _, m in ipairs(monsters()) do
@@ -956,10 +978,15 @@ local function cleanProfile(d)
 		look = { sk = n(look.sk, #Config.SKIN_TONES), hc = n(look.hc, #Config.HAIR_COLORS), hs = n(look.hs, 4),
 			top = n(look.top, #Config.CLOTHES), pants = n(look.pants or 8, #Config.CLOTHES),
 			hat = (type(look.hat) == "string" and Config.SHOP.hat[look.hat] and have("hat", look.hat)) and look.hat or "none",
-			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none" },
+			acc = (type(look.acc) == "string" and Config.SHOP.acc[look.acc] and have("acc", look.acc)) and look.acc or "none",
+			outfit = (type(look.outfit) == "string" and Config.SHOP.outfit[look.outfit] and have("outfit", look.outfit)) and look.outfit or "none" },
+		kit = {},
 		pref = (type(d.pref) == "string" and Config.MONSTERS[d.pref]) and d.pref or "",
 		skin = (type(d.skin) == "string" and Config.SHOP.skin[d.skin] and have("skin", d.skin)) and d.skin or "classic",
 	}
+	if type(d.kit) == "table" then
+		for _, k in ipairs(d.kit) do if type(k) == "string" and Config.SHOP.supply[k] and #out.kit < 2 then table.insert(out.kit, k) end end
+	end
 	return out
 end
 local function publishProfile(p)
@@ -968,14 +995,14 @@ local function publishProfile(p)
 	local owned = {}
 	for k in pairs(pr.owned) do table.insert(owned, k) end
 	p:SetAttribute("Coins", pr.coins)
-	p:SetAttribute("Profile", HttpService:JSONEncode({ coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }))
+	p:SetAttribute("Profile", HttpService:JSONEncode({ coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin, kit = pr.kit }))
 end
 local function saveProfile(p)
 	local pr = profiles[p]
 	if not pr or not profileStore then return end
 	local owned = {}
 	for k in pairs(pr.owned) do table.insert(owned, k) end
-	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin }) end)
+	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin, kit = pr.kit }) end)
 end
 local function loadProfile(p)
 	local data
@@ -1009,6 +1036,8 @@ local function applyLook(p)
 	if not pr or not c then return end
 	local L = pr.look
 	local skin, top, pants = Config.SKIN_TONES[L.sk], Config.CLOTHES[L.top], Config.CLOTHES[L.pants]
+	local outfit = Config.OUTFITS[L.outfit or "none"]
+	if outfit then top, pants = outfit[1], outfit[2] end
 	for _, d in ipairs(c:GetChildren()) do
 		if d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") or d:IsA("Accessory") then d:Destroy() end
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
@@ -1107,6 +1136,10 @@ local function catchSurvivor(victim, monster)
 				elseif kind == "monochrome" then cf = c0
 					for _, d in ipairs(victim.Character:GetDescendants()) do if d:IsA("BasePart") and d ~= vh then if saved[d] == nil then saved[d] = d.Transparency end; d.Transparency = math.max(d.Transparency, e / 1.8) end end
 				elseif kind == "locust" then cf = c0 * CFrame.new((math.random() - 0.5) * 0.6, 0, (math.random() - 0.5) * 0.6) * CFrame.Angles(0, 0, (math.random() - 0.5) * 0.5)
+				elseif kind == "megalodon" or kind == "mosasaurus" then cf = c0 + Vector3.new(0, e < 0.9 and e * 6 or (5.4 - (e - 0.9) * 14), 0) -- leap, swallow, dive
+				elseif kind == "kraken" or kind == "leviathan" or kind == "nessie" then cf = (c0 + toM * math.min(0.8, e * 0.5)) - Vector3.new(0, math.max(0, e - 0.6) * 6, 0)
+				elseif kind == "dragon" or kind == "quetzalcoatlus" or kind == "gargoyle" then cf = c0 + Vector3.new(0, math.min(18, e * e * 8), 0)
+				elseif kind == "vampire" or kind == "chupacabra" then cf = (c0 + toM * math.min(0.6, e * 0.5)) * CFrame.Angles(math.min(0.9, e), 0, 0)
 				else cf = (c0 + toM * math.min(0.7, e * 0.6)) * CFrame.Angles(-math.min(1.3, e * 1.4), 0, 0) end
 				vh.CFrame = cf
 				task.wait()
@@ -1179,9 +1212,13 @@ local function placeInMap(p)
 	if not c then return end
 	local role = p:GetAttribute("Role")
 	if role == "Monster" then
-		local sp = currentMap.monsterSpawns[math.random(1, #currentMap.monsterSpawns)]
-		c:PivotTo(CFrame.lookAt(sp, Config.MAP_ORIGIN + Vector3.new(0, 4, 0)))
-		Models.morph(c, p:GetAttribute("Monster"), profiles[p] and profiles[p].skin)
+		local kind = p:GetAttribute("Monster")
+		local list = currentMap.monsterSpawns
+		if currentMap.ocean and not Config.SEA[kind] and currentMap.landSpawns and #currentMap.landSpawns > 0 then list = currentMap.landSpawns end
+		local sp = list[math.random(1, #list)]
+		c:PivotTo(CFrame.lookAt(sp, Config.MAP_ORIGIN + Vector3.new(0, sp.Y, 0)))
+		Models.morph(c, kind, profiles[p] and profiles[p].skin)
+		p:SetAttribute("FesterStage", 0)
 		p:SetAttribute("Form", 1)
 		F(p).formAt = now() + Config.DN_PERIOD
 		p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
@@ -1192,6 +1229,14 @@ local function placeInMap(p)
 		c:PivotTo(CFrame.new(sp))
 		giveFlashlight(p)
 		applyLook(p)
+		local pr = profiles[p]
+		if pr and pr.kit and #pr.kit > 0 then -- supplies bought in the store are handed out and used up
+			for _, id in ipairs(pr.kit) do giveItem(p, id) end
+			toast(p, "Your store supplies are in your backpack.")
+			pr.kit = {}
+			publishProfile(p)
+			task.spawn(saveProfile, p)
+		end
 		local hum = humOf(p)
 		if hum then hum.MaxHealth = 100; hum.Health = 100; hum.BreakJointsOnDeath = false end
 	end
@@ -1259,7 +1304,13 @@ local function startRound(starter)
 	roundToken += 1
 	local token = roundToken
 	cleanupRound()
-	local theme = math.random() < 0.5 and Config.MAIN_THEME or Config.THEMES[math.random(1, #Config.THEMES)]
+	local theme = math.random() < 0.3 and Config.MAIN_THEME or Config.THEMES[math.random(1, #Config.THEMES)]
+	-- a monster player's lobby pick pulls the round to that monster's home map half the time
+	for _, p in ipairs(list) do
+		local pref = profiles[p] and profiles[p].pref
+		if pref and Config.HOME[pref] and math.random() < 0.5 then theme = Config.HOME[pref]; break end
+	end
+	P2.reset()
 	setState("Theme", theme)
 	setState("State", "Flight")
 	setState("TimeLeft", Config.FLIGHT_TIME)
@@ -1284,7 +1335,12 @@ local function startRound(starter)
 		if isMonster[p] then
 			-- the monster the player picked in the lobby locker, if nobody else already has it
 			local want = profiles[p] and profiles[p].pref or ""
-			local idx = table.find(kinds, want) or math.random(1, #kinds)
+			local idx = table.find(kinds, want)
+			if not idx then -- prefer a monster that lives on this map (sea monsters on the ocean)
+				local home = {}
+				for i, k in ipairs(kinds) do if Config.HOME[k] == theme then table.insert(home, i) end end
+				idx = (#home > 0 and math.random() < 0.7) and home[math.random(1, #home)] or math.random(1, #kinds)
+			end
 			local k = table.remove(kinds, idx)
 			p:SetAttribute("Role", "Monster")
 			p:SetAttribute("Monster", k)
@@ -1341,6 +1397,7 @@ RunService.Heartbeat:Connect(function(dt)
 				local def = Config.MONSTERS[p:GetAttribute("Monster")]
 				speed = def and def.speed or 19
 				if f.dashUntil and t < f.dashUntil then speed *= (p:GetAttribute("Monster") == "sonicexe") and 1.9 or 2.6 end
+				speed *= P2.speedMult(p, t)
 				canSprint = false
 				if p:GetAttribute("Monster") == "drnowhere" and f.formAt and t >= f.formAt then
 					setDnForm(p, (p:GetAttribute("Form") or 1) % #Config.DN_FORMS + 1)
@@ -1354,6 +1411,7 @@ RunService.Heartbeat:Connect(function(dt)
 				if f.slowUntil and t < f.slowUntil then speed *= 0.5 end
 				if (f.stunUntil and t < f.stunUntil) or (f.rootUntil and t < f.rootUntil) then frozen = true end
 				if f.boostUntil and t < f.boostUntil then speed *= 1.15 end
+				speed *= P2.speedMult(p, t)
 				if sleepers[p] and hum.MoveDirection.Magnitude > 0.1 and t - sleepers[p].t > 1 then wake(p) end
 				if sleepers[p] then
 					hum.Health = math.min(hum.MaxHealth, hum.Health + 6 * step)
@@ -1387,6 +1445,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 
 	if st ~= "Hunt" then return end
+	P2.tick(step)
 	-- monster attacks: hits that deal damage (armor absorbs some); a downed / stunned monster can't attack
 	for _, m in ipairs(monsters()) do
 		local mh = hrpOf(m)
@@ -1548,7 +1607,19 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		local pr = profiles[p]
 		if not pr or type(data) ~= "table" then return end
 		local cat, id = data.cat, data.id
-		if (cat ~= "hat" and cat ~= "acc" and cat ~= "skin") or type(id) ~= "string" then return end
+		if not Config.SHOP[cat] or type(id) ~= "string" then return end
+		if cat == "supply" then -- round supplies: bought for the next round (max 2), not kept
+			local price = Config.SHOP.supply[id]
+			if not price or kind ~= "buy" then return end
+			if #pr.kit >= 2 then toast(p, "Your kit is full (2 supplies max)."); return end
+			if pr.coins < price then toast(p, "Not enough coins."); return end
+			pr.coins -= price
+			table.insert(pr.kit, id)
+			toast(p, "Packed " .. Config.ITEMS[id].name .. " for the next round")
+			publishProfile(p)
+			task.spawn(saveProfile, p)
+			return
+		end
 		local free = id == "none" or id == "classic"
 		local price = Config.SHOP[cat][id]
 		if not free and not price then return end
@@ -1561,6 +1632,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 		end
 		if free or pr.owned[key] then
 			if cat == "skin" then pr.skin = id else pr.look[cat] = id end
+			if cat ~= "skin" and p:GetAttribute("Role") ~= "Monster" then applyLook(p) end
 		end
 		publishProfile(p)
 		task.spawn(saveProfile, p)
@@ -1574,6 +1646,7 @@ Action.OnServerEvent:Connect(function(p, kind, data)
 			end
 		end
 		publishProfile(p)
+		if p:GetAttribute("Role") ~= "Monster" then applyLook(p) end -- see it in the dressing-room mirror
 	elseif kind == "pref" then
 		local pr = profiles[p]
 		if not pr then return end

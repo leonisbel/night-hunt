@@ -2,6 +2,7 @@
 local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("NightHunt"):WaitForChild("Config"))
 
 local MapGen = {}
+local MapGen2 = require(script.Parent:WaitForChild("MapGen2"))
 
 local function part(parent, size, cf, color, mat, opts)
 	opts = opts or {}
@@ -51,6 +52,7 @@ local THEME = {
 		lamp = Color3.fromRGB(200, 220, 255), fogColor = Color3.fromRGB(30, 30, 34),
 	},
 }
+for k, v in pairs(MapGen2.THEMES) do THEME[k] = v end
 MapGen.THEME = THEME
 
 -- Every building is either a HOUSE (enterable rooms with furniture, a bed to sleep in, a TV) or a
@@ -334,24 +336,29 @@ local function tree(parent, pos, theme, rng)
 			part(tm, Vector3.new(0.7, 7, 0.7), CFrame.new(pos + Vector3.new(0, h * 0.7 + i * 2, 0)) * CFrame.Angles(0, math.rad(i * 120), math.rad(40)), Color3.fromRGB(58, 42, 30), Enum.Material.Wood)
 		end
 	end
+	return tm
 end
 
 -- Generate a map. Returns info { model, spawns, vents, extract, theme, half }.
 function MapGen.generate(themeName, seed)
 	local rng = Random.new(seed or os.time())
 	local t = THEME[themeName] or THEME["Foggy Woods"]
+	local H = { part = part, building = building, pine = pine, tree = tree, wallSide = wallSide }
+	if t.ocean then return MapGen2.ocean(themeName, rng, t, H) end
 	local O = Config.MAP_ORIGIN
-	local S = Config.MAP_SIZE
+	local S = t.size or Config.MAP_SIZE
 	local half = S / 2
+	-- v1.4: maps are several times bigger; object counts scale with the area (capped so part counts stay sane)
+	local K = math.min(4, (S / 360) ^ 2)
 	local map = Instance.new("Model")
 	map.Name = "NightHuntMap"
 
 	-- smooth Terrain ground (real grass/asphalt materials) with dirt/mud patches; an invisible slab underneath as a safety floor
-	part(map, Vector3.new(S + 20, 2, S + 20), CFrame.new(O + Vector3.new(0, -1, 0)), t.ground, t.groundMat, { name = "Ground", transp = 1 })
+	part(map, Vector3.new(S + 20, 2, S + 20), CFrame.new(O + Vector3.new(0, t.jungle and -12 or -1, 0)), t.ground, t.groundMat, { name = "Ground", transp = 1 })
 	local terrain = workspace.Terrain
 	pcall(function() terrain:SetMaterialColor(t.terrain, t.ground) end)
-	terrain:FillBlock(CFrame.new(O + Vector3.new(0, -2, 0)), Vector3.new(S + 40, 4, S + 40), t.terrain)
-	for _ = 1, 26 do
+	terrain:FillBlock(CFrame.new(O + Vector3.new(0, t.jungle and -5.5 or -2, 0)), Vector3.new(S + 40, t.jungle and 11 or 4, S + 40), t.terrain)
+	for _ = 1, math.floor(26 * K) do
 		local pp = O + Vector3.new(rng:NextNumber(-half, half), 0, rng:NextNumber(-half, half))
 		terrain:FillCylinder(CFrame.new(pp + Vector3.new(0, -1.9, 0)), 0.3, rng:NextNumber(6, 16), t.patch)
 	end
@@ -416,8 +423,11 @@ function MapGen.generate(themeName, seed)
 		end
 		for x = -half, half, 10 do claim(O + Vector3.new(x, 0, z0), 7) end
 	end
+	local ctx = { t = t, H = H, map = map, rng = rng, O = O, S = S, half = half, free = free, claim = claim, randPos = randPos, beds = beds, tvs = tvs, loot = loot }
+	local extra = MapGen2.extras(themeName, ctx)
 	local kinds = { "house", "house", "house", "warehouse", "lab", "industrial" }
-	for i = 1, t.buildings do
+	if t.snow or t.farm then kinds = { "house", "house", "warehouse" } end
+	for i = 1, math.floor(t.buildings * K) do
 		local kind = kinds[(i - 1) % #kinds + 1]
 		for _try = 1, 25 do
 			local w, d
@@ -435,7 +445,7 @@ function MapGen.generate(themeName, seed)
 		end
 	end
 	-- chests and bags out in the open
-	for i = 1, (t.pines and 16 or 10) do
+	for i = 1, math.floor((t.pines and 16 or 10) * K) do
 		for _try = 1, 12 do
 			local pos = randPos(12)
 			if free(pos, 4) then
@@ -446,24 +456,29 @@ function MapGen.generate(themeName, seed)
 		end
 	end
 
-	for _ = 1, t.trees do
+	for _ = 1, math.min(520, math.floor(t.trees * K)) do
 		for _try = 1, 10 do
 			local pos = randPos(6)
 			if free(pos, 5) then
 				claim(pos, 3)
-				if t.pines then pine(map, pos, rng) else tree(map, pos, themeName, rng) end
+				if t.jungle then
+					local tm = tree(map, pos, "Foggy Woods", rng)
+					if tm then
+						for _, lp in ipairs(tm:GetChildren()) do if lp:IsA("Part") and lp.Shape == Enum.PartType.Ball then lp.Size = Vector3.new(18, 10, 18); lp.Color = Color3.fromRGB(30, 70, 30) end end
+					end
+				elseif t.pines then pine(map, pos, rng) else tree(map, pos, themeName, rng) end
 				break
 			end
 		end
 	end
 
 	-- hiding bushes / crates (walk inside them to hide)
-	for _ = 1, t.hides do
+	for _ = 1, math.floor(t.hides * K) do
 		for _try = 1, 10 do
 			local pos = randPos(8)
 			if free(pos, 5) then
 				claim(pos, 4)
-				if themeName == "Abandoned Pizzeria Town" then
+				if themeName == "Abandoned Pizzeria Town" or themeName == "Fester Street" then
 					local c = part(map, Vector3.new(7, 7, 7), CFrame.new(pos + Vector3.new(0, 3.5, 0)), Color3.fromRGB(120, 90, 50), Enum.Material.WoodPlanks, { collide = false, name = "HideSpot", transp = 0.05 })
 					_ = c
 				else
@@ -475,7 +490,7 @@ function MapGen.generate(themeName, seed)
 	end
 
 	-- street lamps / static pylons
-	for _ = 1, 14 do
+	for _ = 1, (t.fester and 0 or math.floor(14 * K)) do
 		local pos = randPos(10)
 		if free(pos, 3) then
 			claim(pos, 2)
@@ -491,7 +506,7 @@ function MapGen.generate(themeName, seed)
 
 	-- vents (Springtrap teleports between these)
 	local vents = {}
-	for i = 1, 8 do
+	for i = 1, 12 do
 		for _try = 1, 15 do
 			local pos = randPos(14)
 			if free(pos, 3) then
@@ -515,7 +530,7 @@ function MapGen.generate(themeName, seed)
 	end
 
 	-- gentle terrain hills between everything else
-	for _ = 1, (t.hills or 0) do
+	for _ = 1, math.floor((t.hills or 0) * K) do
 		for _try = 1, 8 do
 			local pos = randPos(20)
 			if free(pos, 14) then
@@ -530,13 +545,20 @@ function MapGen.generate(themeName, seed)
 		beds = beds, tvs = tvs, loot = loot,
 		model = map, spawns = spawns, monsterSpawns = monsterSpawns, vents = vents,
 		extract = ex, theme = themeName, half = half, fog = t.fog, fogColor = t.fogColor,
+		pools = extra.pools, lights = extra.lights, size = S,
 	}
 end
 
 -- Remove the terrain a map created.
 function MapGen.clearTerrain()
-	local O, S = Config.MAP_ORIGIN, Config.MAP_SIZE
-	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, 3, 0)), Vector3.new(S + 48, 16, S + 48), Enum.Material.Air)
+	local O, S = Config.MAP_ORIGIN, math.max(Config.MAP_SIZE, Config.OCEAN_SIZE)
+	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, 20, 0)), Vector3.new(S + 48, 140, S + 48), Enum.Material.Air)
+	workspace.Terrain:FillBlock(CFrame.new(O + Vector3.new(0, -30, 0)), Vector3.new(S + 48, 40, S + 48), Enum.Material.Air)
+end
+
+-- the walk-in store building in the lobby
+function MapGen.store(parent, templates)
+	return MapGen2.store(parent, { part = part, building = building, pine = pine, tree = tree, wallSide = wallSide }, templates)
 end
 
 return MapGen

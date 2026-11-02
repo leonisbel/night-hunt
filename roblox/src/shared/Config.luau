@@ -20,13 +20,25 @@ C.SLOTS = 6              -- survivor inventory slots (Roblox backpack hotbar)
 C.LOBBY_PAD = Vector3.new(0, 0, 0)
 C.PAD_RADIUS = 16
 C.MAP_ORIGIN = Vector3.new(1200, 0, 0)
-C.MAP_SIZE = 360
+C.MAP_SIZE = 900        -- v1.4: maps are ~6x bigger in area (Workspace streaming keeps it smooth)
+C.OCEAN_SIZE = 1300     -- the ocean map is bigger still
+C.STORM_RADIUS = 520    -- ocean: past this distance from the centre the storm rages
+C.STORE_ORIGIN = Vector3.new(130, 0, 0) -- walk-in store in the lobby, east of the helipad
 
-C.THEMES = { "Powerline Forest", "Abandoned Pizzeria Town", "Foggy Woods", "Static Fields" }
-C.MAIN_THEME = "Powerline Forest" -- picked half of the time
+C.THEMES = { "Powerline Forest", "Abandoned Pizzeria Town", "Foggy Woods", "Static Fields",
+	"Stormy Ocean", "Rainforest Swamp", "Snowy Mountain", "Haunted Farm", "Vampire Castle", "Fester Street" }
+C.MAIN_THEME = "Powerline Forest" -- picked 30% of the time
 
 C.MONSTER_KEYS = { "freddy", "bonnie", "chica", "foxy", "springtrap", "cartooncat",
-	"sirenhead", "drnowhere", "locust", "monochrome", "demogorgon", "sonicexe" }
+	"sirenhead", "drnowhere", "locust", "monochrome", "demogorgon", "sonicexe",
+	"megalodon", "kraken", "cthulhu", "leviathan", "mosasaurus", "nessie", "spinosaurus", "yeti", "chupacabra",
+	"vampire", "bigfoot", "trex", "quetzalcoatlus", "gargoyle", "dragon", "fester" }
+-- sea monsters swim fast in water and slower on land; every phase-2 monster has a home map it prefers
+C.SEA = { megalodon = true, kraken = true, cthulhu = true, leviathan = true, mosasaurus = true, nessie = true }
+C.HOME = { megalodon = "Stormy Ocean", kraken = "Stormy Ocean", cthulhu = "Stormy Ocean", leviathan = "Stormy Ocean", mosasaurus = "Stormy Ocean", nessie = "Stormy Ocean",
+	spinosaurus = "Rainforest Swamp", yeti = "Snowy Mountain", chupacabra = "Haunted Farm", vampire = "Vampire Castle", bigfoot = "Foggy Woods", trex = "Rainforest Swamp",
+	quetzalcoatlus = "Snowy Mountain", gargoyle = "Vampire Castle", dragon = "Vampire Castle", fester = "Fester Street" }
+C.FESTER_MAX = 6
 
 local AFTON = { ability = "Afton Laugh", desc = "A creepy laugh echoes - you see every survivor for 10s", cd = 20 }
 local function afton(name, speed) return { name = name, ability = AFTON.ability, desc = AFTON.desc, cd = AFTON.cd, speed = speed } end
@@ -43,6 +55,23 @@ C.MONSTERS = {
 	monochrome = { name = "Monochrome",     ability = "Total Blackout",     desc = "Every survivor's screen goes pitch black for 10s",     cd = 20, speed = 19 },
 	sonicexe   = { name = "Sonic.exe",      ability = "You Can't Run",      desc = "A scary laugh, then you run much faster for 10s",      cd = 20, speed = 19.5 },
 	demogorgon = { name = "Demogorgon",     ability = "Upside Down Portal", desc = "Open a portal and come out near the nearest survivor", cd = 20, speed = 19.5 },
+	-- v1.4 phase 2
+	megalodon  = { name = "Megalodon",      ability = "Tidal Surge",    desc = "A giant wave knocks survivors back, stuns them and throws them out of boats. On land you walk as a buff humanoid shark", cd = 20, speed = 19 },
+	kraken     = { name = "Kraken",         ability = "Tentacle Grab",  desc = "A tentacle drags the closest survivor (even out of a boat) to you", cd = 20, speed = 18 },
+	cthulhu    = { name = "Cthulhu",        ability = "Thunderstorm",   desc = "Summon a storm: lightning strikes the nearest survivors and every screen flashes", cd = 20, speed = 18 },
+	leviathan  = { name = "Leviathan",      ability = "Whirlpool",      desc = "A whirlpool pulls nearby survivors toward you and slows them", cd = 20, speed = 19 },
+	mosasaurus = { name = "Mosasaurus",     ability = "Tail Slam",      desc = "A huge tail slam sends a wave that stuns survivors close by", cd = 20, speed = 19.5 },
+	nessie     = { name = "Nessie",         ability = "Deep Dive",      desc = "Dive out of sight and surface right next to the nearest survivor", cd = 20, speed = 18.5 },
+	spinosaurus= { name = "Spinosaurus",    ability = "Swamp Ambush",   desc = "Lunge forward out of the water and stun whoever is in the way", cd = 20, speed = 19 },
+	yeti       = { name = "Yeti",           ability = "Avalanche Roar", desc = "A roar brings snow down: nearby survivors are stunned, then slowed", cd = 20, speed = 18.5 },
+	chupacabra = { name = "Chupacabra",     ability = "Blood Drain",    desc = "Drain a close survivor's health to heal yourself", cd = 20, speed = 20 },
+	vampire    = { name = "Vampire",        ability = "Bat Swarm",      desc = "Burst into bats: invisible and fast for 4s, nearby survivors are blinded", cd = 20, speed = 19 },
+	bigfoot    = { name = "Bigfoot",        ability = "Boulder Throw",  desc = "Throw a boulder at the survivor in front of you", cd = 20, speed = 19 },
+	trex       = { name = "T-Rex",          ability = "Tyrant Roar",    desc = "A roar that freezes nearby survivors in terror and reveals them", cd = 20, speed = 19.5 },
+	quetzalcoatlus = { name = "Quetzalcoatlus", ability = "Sky Dive",   desc = "Take off and dive down on the nearest survivor", cd = 20, speed = 19 },
+	gargoyle   = { name = "Gargoyle",       ability = "Stone Skin",     desc = "Turn to stone: weapons can't hurt you for 6s, then a shockwave", cd = 20, speed = 18.5 },
+	dragon     = { name = "Dragon",         ability = "Fire Breath",    desc = "Breathe fire in a cone in front of you: survivors burn", cd = 20, speed = 19 },
+	fester     = { name = "Father Fester",  ability = "Lights Out",     desc = "Every light near you dies and survivors black out. Passive: each new survivor who sees you makes you stronger (6 stages)", cd = 20, speed = 17.5 },
 }
 
 -- Doctor Nowhere (fan horror art by Silas Orion) shapeshifts every DN_PERIOD seconds between these forms
@@ -85,7 +114,16 @@ C.LOOT = {
 C.SHOP = {
 	hat = { cap = 50, beanie = 50, hardhat = 100, cowboy = 120, headphones = 150, bunny = 200, crown = 500 },
 	acc = { glasses = 40, scarf = 60, mask = 80, goggles = 120 },
-	skin = { shadow = 250, toxic = 300, frost = 300, blood = 350, golden = 600 },
+	skin = { shadow = 250, toxic = 300, frost = 300, blood = 350, golden = 600, lava = 400, neon = 400, abyss = 450 },
+	outfit = { scout = 120, pajamas = 100, ranger = 150, hunter = 180, diver = 220, hazmat = 250, ninja = 300, ghostbuster = 350, astronaut = 450, knight = 500 },
+	supply = { water = 15, soda = 15, chips = 20, choco = 20, energy = 30, beans = 35, medkit = 60 }, -- round supplies (max 2, used up when the round starts)
+}
+C.OUTFITS = {
+	scout = { Color3.fromRGB(150, 130, 70), Color3.fromRGB(90, 80, 50) }, pajamas = { Color3.fromRGB(120, 160, 230), Color3.fromRGB(120, 160, 230) },
+	ranger = { Color3.fromRGB(60, 90, 50), Color3.fromRGB(110, 90, 60) }, hunter = { Color3.fromRGB(200, 80, 20), Color3.fromRGB(40, 40, 40) },
+	diver = { Color3.fromRGB(20, 20, 24), Color3.fromRGB(240, 200, 30) }, hazmat = { Color3.fromRGB(240, 210, 30), Color3.fromRGB(240, 210, 30) },
+	ninja = { Color3.fromRGB(16, 16, 18), Color3.fromRGB(16, 16, 18) }, ghostbuster = { Color3.fromRGB(190, 170, 120), Color3.fromRGB(190, 170, 120) },
+	astronaut = { Color3.fromRGB(235, 235, 240), Color3.fromRGB(235, 235, 240) }, knight = { Color3.fromRGB(160, 165, 175), Color3.fromRGB(120, 125, 135) },
 }
 C.EARN = { open = 5, catch = 40, knockdown = 25, escape = 60, survive = 10, monster = 15 }
 C.SKIN_TONES = { Color3.fromRGB(241, 204, 170), Color3.fromRGB(224, 172, 130), Color3.fromRGB(198, 134, 90), Color3.fromRGB(150, 98, 64), Color3.fromRGB(105, 70, 48), Color3.fromRGB(250, 220, 200) }

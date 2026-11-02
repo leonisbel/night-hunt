@@ -35,6 +35,17 @@ function grey(c) { // luminance copy, used as a bump map
 }
 
 const MAKERS = {
+  snow(size = 512) { const [c, g] = canvas(size); g.fillStyle = '#dfe6ee'; g.fillRect(0, 0, size, size); speckle(g, size, 1400, ['#ffffff', '#c8d2de', '#eef3f8', '#b4c0cc'], 2, 14, .35); speckle(g, size, 200, ['#a8b6c4'], 1, 3, .5); return c; },
+  sand(size = 512) { const [c, g] = canvas(size); g.fillStyle = '#b8a27a'; g.fillRect(0, 0, size, size); speckle(g, size, 2200, ['#c9b48a', '#a08860', '#d8c49a', '#8e7a58'], 1, 5, .45); for (let i = 0; i < 18; i++) { g.strokeStyle = 'rgba(120,100,70,.18)'; g.lineWidth = 3; g.beginPath(); const y = rnd() * size; g.moveTo(0, y); for (let x = 0; x <= size; x += 32) g.lineTo(x, y + Math.sin(x * .03 + i) * 8); g.stroke(); } return c; },
+  stone(size = 512) { const [c, g] = canvas(size); g.fillStyle = '#5a5a5e'; g.fillRect(0, 0, size, size); const bw = size / 4, bh = size / 8;
+    for (let r = 0; r < 8; r++) for (let k = 0; k < 5; k++) { const x = k * bw - (r % 2) * bw / 2, y = r * bh, l = 70 + rnd() * 40 | 0; g.fillStyle = `rgb(${l},${l},${l + 4})`; g.fillRect(x + 3, y + 3, bw - 6, bh - 6); }
+    speckle(g, size, 900, ['#2a2a2e', '#8a8a90', '#4a4a50'], 1, 6, .35); return c; },
+  scales(size = 512) { const [c, g] = canvas(size); g.fillStyle = '#3a4a3a'; g.fillRect(0, 0, size, size); const s = size / 16;
+    for (let r = 0; r < 18; r++) for (let k = 0; k < 17; k++) { const x = k * s + (r % 2) * s / 2, y = r * s * .7, l = 40 + rnd() * 30 | 0; g.fillStyle = `rgb(${l},${l + 12},${l})`; g.beginPath(); g.ellipse(x, y, s * .55, s * .45, 0, 0, Math.PI); g.fill(); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 1.5; g.stroke(); }
+    return c; },
+  water(size = 512) { const [c, g] = canvas(size); g.fillStyle = '#0d2230'; g.fillRect(0, 0, size, size); for (let i = 0; i < 260; i++) { g.strokeStyle = `rgba(${120 + rnd() * 60 | 0},${160 + rnd() * 60 | 0},${190 + rnd() * 50 | 0},${.08 + rnd() * .12})`; g.lineWidth = 1 + rnd() * 2; const x = rnd() * size, y = rnd() * size, l = 10 + rnd() * 40; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 4, x + l, y); g.stroke(); } return c; },
+  hay(size = 512) { const [c, g] = canvas(size); g.fillStyle = '#b89a48'; g.fillRect(0, 0, size, size); for (let i = 0; i < 1600; i++) { g.strokeStyle = ['#d8bc60', '#9a7c30', '#c8a850', '#7a6024'][i % 4]; g.globalAlpha = .6; g.lineWidth = 1.5; const x = rnd() * size, y = rnd() * size, a = rnd() * .6 - .3; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 30, y + Math.sin(a) * 30); g.stroke(); } g.globalAlpha = 1; return c; },
+  roof(size = 512) { const [c, g] = canvas(size); g.fillStyle = '#2a2224'; g.fillRect(0, 0, size, size); const h = size / 12; for (let r = 0; r < 12; r++) for (let k = 0; k < 9; k++) { const l = 30 + rnd() * 25 | 0; g.fillStyle = `rgb(${l + 6},${l},${l})`; g.fillRect(k * size / 8 - (r % 2) * size / 16 + 2, r * h + 2, size / 8 - 4, h - 3); } return c; },
   grass(size = 512) {
     const [c, g] = canvas(size); g.fillStyle = '#2b3a1f'; g.fillRect(0, 0, size, size);
     speckle(g, size, 900, ['#33461f', '#24331a', '#3d4f24', '#2a2a18', '#1b2614'], 6, 22, .35);

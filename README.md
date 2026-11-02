@@ -1,4 +1,4 @@
-# Night Hunt 🚁👹 (v1.3.0, rated 13+)
+# Night Hunt 🚁👹 (v1.4.0, rated 13+)
 
 A fan-made multiplayer monster survival game for playing with friends. Board the helicopter, drop into a dense power-line forest, loot chests and bags, and survive the monsters.
 
@@ -9,7 +9,10 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
    - **max players** (2-15);
    - **privacy**: friends only (code or link) or public (listed in the server browser);
    - **round length**: 5, 7 or 10 minutes (7 by default).
-2. In the lobby you can open the **locker** to customise your survivor and pick a preferred monster. The **coin shop** sells hats, accessories and monster skins for coins you earn in rounds. There is no real money. Your choices are saved.
+2. In the lobby, walk into the **Night Hunt Store** next to the helipad (press **E** at a counter). Everything costs in-game coins you earn in rounds; there is no real money. Your choices are saved.
+   - **Item counter:** hats, accessories and **round supplies** (up to 2 snacks, drinks or a medkit, handed to you at the start of your next round).
+   - **Dressing room:** customise your survivor and buy **outfits** (diver, hazmat, ninja, astronaut, knight and more); check the result in the mirror.
+   - **Skins gallery:** monster skins (including Lava, Neon and Abyss) shown on statues, plus your **preferred monster**. If you pick one, the round usually goes to that monster's home map.
 3. Everyone walks onto the helipad, and the host presses **Take off!**. Each player has a random chance to become a **monster**.
 4. **Survivors** search **chests and bags** for gear:
    - food and drinks (heal and restore stamina);
@@ -32,6 +35,26 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
 | Sonic.exe (fan-made creepypasta) | You Can't Run: a distorted laugh, then you run much faster for 10 s | grabs, then lunges |
 | Demogorgon | Upside Down Portal: come out of a portal near the closest survivor | the petal face blooms open as it lunges |
 
+| **Phase 2 (v1.4)** | | |
+| Megalodon | Tidal Surge: a wave knocks survivors back, stuns them and throws them out of boats. In water it's a 15 m shark; on land it walks as a huge buff humanoid shark | you're swarmed by fins, a shadow rises, then it leaps, swallows you and dives |
+| Kraken | Tentacle Grab: drags the closest survivor to you, even out of a boat | tentacles close in around you, then the beak |
+| Cthulhu | Thunderstorm: lightning hits the 3 closest survivors | a towering figure lit by lightning leans down |
+| Leviathan | Whirlpool: pulls in and slows everyone nearby for 4 s | the coils wind around you, then it strikes |
+| Mosasaurus | Tail Slam: a crashing wave stuns and capsizes | the jaws burst up out of the water under you |
+| Nessie | Deep Dive: invisible and faster for 6 s, sea fog rolls in | the neck rises and the head swoops down |
+| Spinosaurus | Swamp Ambush: sink out of sight, then burst out charging | the sail cuts through the swamp, then the lunge |
+| T-Rex | Tyrant Roar: stuns close survivors and reveals everyone | a deafening roar, then the bite from above |
+| Quetzalcoatlus | Sky Dive: dives onto the closest survivor | it dives at you out of the sky |
+| Yeti | Avalanche Roar: stun, slow and whiteout | a roar in a blizzard, then the lunge |
+| Dragon | Fire Breath: a cone of fire that keeps burning | a wall of fire, then the jaws |
+| Chupacabra | Blood Drain: bite to heal yourself and slow them | it leaps at you from the side |
+| Vampire | Bat Swarm: re-form beside the closest survivor and blind them | nothing there... you turn around: it's behind you |
+| Gargoyle | Stone Skin: no damage for 6 s, then a crashing stun | a still statue whose eyes light up, then it lunges |
+| Bigfoot | Boulder Throw: a big hit and a 2 s stun | it charges out of the dark woods |
+| Father Fester | Lights Out: every house light dies, survivors black out and are revealed. Passive: each survivor who sees him makes him stronger (6 stages, his look changes) | the lights flicker and he's closer every time they come back |
+
+**Sea monster omens:** before a sea monster reaches you, you may spot its sign: Kraken tentacles, Cthulhu's red eyes and wings in thunderclouds, Leviathan coils, a Mosasaurus tail flick, a Megalodon dorsal fin, Nessie's neck rising or a Spinosaurus sail.
+
 **Doctor Nowhere's forms** (fan horror art by Silas Orion):
 - The Doctor (white coat): Injection slows the survivor in front of you for 6 s.
 - Cone Zone (tall white cone head): Cone Quake stuns every survivor close by.
@@ -43,8 +66,14 @@ Every jumpscare cuts to black at the moment of impact. With **Blood effects** on
 ## Maps
 - **Powerline Forest** (the main map): dense forest with power-line towers and wires, fog, hills, cabins and facilities.
 - **Abandoned Pizzeria Town**, **Foggy Woods** and **Static Fields**.
+- **Stormy Ocean (new):** islands with huts and docks, plus **boats and ships you can drive** (E to board, WASD or joystick to steer; on Roblox, sit at the helm). "DANGER DEEP WATER" signs line the shore. Go too far out and you hit a **deadly storm**: buoys and "TURN BACK" signs mark the edge.
+- **Rainforest Swamp (new):** jungle, deep water pools and the Spinosaurus, T-Rex and Quetzalcoatlus.
+- **Snowy Mountain (new):** pines, a peak and a glacier lake; home of the Yeti.
+- **Haunted Farm (new):** red barns, silos, corn fields you can hide in, and scarecrows; home of the Chupacabra.
+- **Vampire Castle (new):** a walled castle with towers, a keep, a coffin and a graveyard; home of the Vampire, Gargoyle and Dragon.
+- **Fester Street (new):** a street grid of two-storey houses with varied, flickering window lights; Father Fester's map.
 
-Every building is a furnished house (rooms, beds, TVs and computers) or a facility.
+Maps are several times bigger than in v1.3, and far-away objects are streamed and simplified so it stays smooth. Every building is a furnished house (rooms, beds, TVs and computers) or a facility.
 
 ## Controls
 - **Keyboard and mouse:**
@@ -60,34 +89,19 @@ Every building is a furnished house (rooms, beds, TVs and computers) or a facili
 - **Roblox:** open `NightHunt.rbxlx` in Roblox Studio (see `roblox/README.md`).
 - **Own server:** `npm install && node server.js` (Node 18+).
 
-## Coming in phase 2
-- **New creatures**, each with its own jumpscare:
-  - Father Fester: his look escalates with every sighting; he swallows you whole, and his "consume" drains stamina, light or time.
-  - Cthulhu: grabs and squeezes.
-  - Leviathan, T-Rex and Mosasaurus: eat you.
-  - Kraken: drags you underwater.
-  - Loch Ness Monster: slams.
-  - Spinosaurus: bites.
-  - Megalodon: you're swarmed and a shadow rises, then it leaps out of the water, swallows you and dives.
-  - Yeti, Chupacabra and Bigfoot: maul lunge.
-  - Vampire: bite with a drain fade.
-  - Dragon: fire engulfs you.
-  - Gargoyle: carries you into the sky and drops you.
-  - Quetzalcoatlus: pecks.
-- **New maps:** ocean (boats, storms, waves), rainforest/swamp, snowy mountain, farm, castle.
-- **Ocean warning signs** for each lurking monster:
-  - Kraken: tentacles roaming in the deep.
-  - Cthulhu: a thunderstorm with red eyes and wings in the clouds.
-  - Leviathan: huge coils surfacing.
-  - Mosasaurus: a tail flick.
-  - Megalodon: a big dorsal fin.
-  - Loch Ness Monster: a long neck rising.
-  - Spinosaurus: a sail breaking the surface.
+## Coming next (phase 3 ideas)
+- Online accounts so coins and skins follow you between devices.
+- Swimming animations and underwater sections for the ocean map.
+- More store sections (emotes, flashlight colours) and monster skin previews in the mirror.
+- Uploaded audio for every new monster on Roblox.
 
-Fan-made for private play. All models and sounds are original, procedural look-alikes with no copied assets. The characters belong to their creators:
+Fan-made for private play. Models and sounds are original procedural look-alikes, apart from the CC0 models listed below; no copyrighted assets are used. The characters belong to their creators:
 - Freddy, Bonnie, Chica, Foxy and Springtrap: Scott Cawthon.
 - Cartoon Cat and Siren Head: Trevor Henderson.
 - The Demogorgon: Netflix.
 - Sonic.exe: a fan creepypasta based on Sega's Sonic.
 - Doctor Nowhere: Silas Orion.
 - The Locust and Monochrome: their creators.
+- Father Fester: his creator. Cthulhu: H. P. Lovecraft (public domain).
+
+Since v1.4 the browser and Windows versions also use a few free **CC0 (public domain) 3D models by Quaternius** as bases for the shark, dinosaurs and dragon (see `vendor/LICENSES.md`). The Roblox version builds every model from parts.
