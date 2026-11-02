@@ -103,8 +103,9 @@ function rep(t, rx, ry) { if (!t) return null; rx = Math.max(.5, Math.round(rx *
 // t: texture set ('ph:x' photo / generated kind), d: tiles per metre, ns: normal strength, r: roughness, sh: sheen, cc: clearcoat, sss: subsurface tint,
 // cs: countershading, wet: darken+gloss, env: reflection strength, fur: shell layers {n,len,d}
 const S = {
-  teddy: { t: 'ph:fur', d: 3.2, ns: 1.1, r: 1, sh: .8, shr: .5, env: .25 },
-  rottenfur: { t: 'ph:fur', d: 3.2, ns: 1.4, r: 1, sh: .5, shr: .7, env: .15, dirt: .75 },
+  teddy: { t: 'ph:fur', d: 3.2, ns: 1.1, r: 1, sh: .8, shr: .5, env: .25, fur: { n: 5, len: .022, d: 12 } },
+  rottenfur: { t: 'ph:fur', d: 3.2, ns: 1.4, r: 1, sh: .5, shr: .7, env: .15, dirt: .75, fur: { n: 4, len: .018, d: 10 } },
+  wetrock: { t: 'ph:rock', d: .9, ns: 1.8, r: .4, cc: 1, ccr: .08, wet: 1, env: .9 },
   hair: { t: 'ph:fur', d: 2.2, ns: 1.4, r: 1, sh: 1, shr: .45, env: .15, fur: { n: 8, len: .1, d: 4.5 } },
   velvet: { t: 'ph:fur', d: 6, ns: .6, r: 1, sh: 1, shr: .35, env: .2, fur: { n: 5, len: .018, d: 14 } },
   pycno: { t: 'skin', d: 2.5, ns: 1, r: .9, sh: .9, shr: .5, sss: '#a05030', env: .15, fur: { n: 6, len: .03, d: 10 } },
@@ -144,24 +145,27 @@ const MON = {
   cartooncat: { def: 'ink', '#f6f6f6': 'glove' },
   sirenhead: { skin: 'dried', metal: 'rust', '#0a0a0a': 'rubber', def: 'dried' },
   drnowhere: { cloth: 'wool', '#e6e6e2': 'cotton', skin: 'human', '#d8d8e0': 'steel', '#999999': 'steel', '#8a1a1a': 'cotton', '#333333': 'plastic' },
-  locust: { def: 'chitin', skin: 'human' }, monochrome: { def: 'matte' },
-  sonicexe: { fur: 'velvet', '#f2f2f2': 'glove', '#b51418': 'leather', '#e2b48a': 'velvet', def: 'velvet' },
+  locust: { def: 'chitin', skin: 'human' }, boisvert: { def: 'matte' },
+  sonicexe: { fur: 'velvet', '#6e0a0c': 'flesh', '#c8c870': 'enamel', '#f2f2f2': 'glove', '#b51418': 'leather', '#e2b48a': 'velvet', def: 'velvet' },
   demogorgon: { skin: 'slime', '#7a1018': 'flesh', '#efe8d6': 'enamel' },
   megalodon: { def: 'shark' }, megalodon_h: { skin: 'shark', '#f4f0e2': 'enamel', '#d9d6cb': 'shark', '#6e1e26': 'flesh', '#252c34': 'shark' },
-  kraken: { skin: 'wetskin', def: 'wetskin', '#1a0a08': 'horn', '#050505': 'eyeball' },
-  cthulhu: { scales: 'wetscales', '#2a4430': 'wetskin', '#3a5440': 'membrane', '#0a0a08': 'claw' },
-  leviathan: { scales: 'wetscales', '#2a6a7a': 'membrane', '#8aa6a0': 'wetskin', '#e8e4d4': 'enamel', '#d8d0b8': 'horn' },
-  mosasaurus: { scales: 'wetscales', '#c8c4b4': 'wetskin', '#5a1a1e': 'flesh', '#efe9d6': 'enamel' },
+  kraken: { skin: 'wetskin', def: 'wetskin', '#1a0a08': 'horn', '#050505': 'eyeball', '#d8d0c4': 'wetskin' },
+  cthulhu: { stone: 'wetrock', skin: 'wetskin', '#1c2c2c': 'membrane', '#8a948c': 'rock', '#0a0a08': 'claw' },
+  leviathan: { scales: 'wetscales', '#1a2632': 'membrane', '#2a3440': 'wetskin', '#e8e4d4': 'enamel', '#0c0e12': 'horn', '#5a1a24': 'flesh' },
+  mosasaurus: { scales: 'wetscales', '#c8c8b8': 'wetskin', '#c8707a': 'flesh', '#efe9d6': 'enamel', '#3a463e': 'wetscales', '#4c5a52': 'wetscales' },
   nessie: { def: 'wetskin' }, spinosaurus: { def: 'reptile', skin: 'membrane' }, trex: { def: 'reptile' },
-  quetzalcoatlus: { skin: 'pycno', '#3a2e26': 'claw', '#5a3a2a': 'membrane', '#c8a060': 'horn', '#a02a1a': 'horn' },
+  quetzalcoatlus: { skin: 'pycno', '#3a2e26': 'claw', '#b07a78': 'membrane', '#e0a030': 'horn', '#3a5aa0': 'horn' },
   yeti: { fur: 'hair', skin: 'hide', '#1a1612': 'claw', '#e6e0cc': 'enamel', '#c8c0a8': 'horn' },
   bigfoot: { fur: 'hair', skin: 'hide', '#1a1612': 'claw', '#e6e0cc': 'enamel' },
   dragon: { def: 'dscales', 'SK:Belly': 'scutes', 'SK:Wings': 'membrane', 'SK:Claws': 'claw' },
-  chupacabra: { def: 'hide', '#2a2622': 'horn' },
-  vampire: { cloth: 'wool', '#e8e4dc': 'cotton', '#7a0a12': 'cotton', skin: 'human', '#050505': 'leather', '#08080a': 'leather', '#ffffff': 'enamel' },
+  chupacabra: { skin: 'hide', '#3a3a40': 'hide', '#1a1a1e': 'horn', '#141414': 'claw', '#e6e0cc': 'enamel', '#5a0a0c': 'flesh' },
+  vampire: { '#2a2622': 'leather', '#f0ece0': 'eyeball', cloth: 'wool', '#e8e4dc': 'cotton', '#7a0a12': 'cotton', skin: 'human', '#050505': 'leather', '#08080a': 'leather', '#ffffff': 'enamel' },
   gargoyle: { stone: 'rock', concrete: 'rock', '#d8d4c8': 'rock' },
-  fester: { cloth: 'wool', skin: 'human', '#4a3a2a': 'hide', '#2a2018': 'claw', '#e8e4d8': 'cotton' },
-  dn_conezone: { skin: 'human', '#bdbcb6': 'cotton' }, dn_nightmare: { '#050507': 'matte', '#e8e4d8': 'enamel' }, dn_sixarm: { skin: 'human', '#2a2622': 'wool' },
+  fester: { cloth: 'wool', skin: 'human', '#4a1416': 'flesh', '#e8e0c8': 'enamel', '#2a2018': 'claw', '#8a7a6a': 'human' },
+  wendigo: { fur: 'hair', skin: 'hide', '#d8ccb0': 'horn', '#1a120c': 'matte', '#141010': 'claw', '#e6dcc0': 'enamel' },
+  wendigo_h: { skin: 'human', '#7a1414': 'flesh', '#e6dcc4': 'horn', '#6a3a24': 'leather', cloth: 'wool', '#1a1410': 'claw', '#e6dcc0': 'enamel' },
+  dn_guilt: { skin: 'human', '#e8e2cc': 'enamel', def: 'matte' },
+  dn_conezone: { fur: 'hair', skin: 'human', def: 'matte' }, dn_nightmare: { '#050507': 'matte', '#e8e4d8': 'enamel' }, dn_sixarm: { skin: 'human', '#2a2622': 'wool' },
 };
 const CS = { trex: .85, spinosaurus: .8, megalodon: .9, mosasaurus: .7, nessie: .6, leviathan: .6, dragon: .5, chupacabra: .6, quetzalcoatlus: .4, kraken: .3 };
 function classify(kind, m, o) {
@@ -288,7 +292,7 @@ function shellMat(base, i, n, len, strand) {
 export function realize(root, sub = root) {
   const kind = String(root.userData.kind || '').split('#')[0]; if (!MON[kind]) return;
   const cache = root.userData.rmat || (root.userData.rmat = new Map()); root.updateMatrixWorld(true);
-  const list = []; sub.traverse(o => { if (o.isMesh && !o.userData.real && !o.userData.shell && !Array.isArray(o.material) && o.material && o.material.isMeshStandardMaterial) list.push(o); });
+  const list = []; sub.traverse(o => { if (o.isMesh && !o.userData.keep && !o.userData.real && !o.userData.shell && !Array.isArray(o.material) && o.material && o.material.isMeshStandardMaterial) list.push(o); });
   for (const o of list) {
     o.userData.real = 1; o.userData.kindR = kind; const src = o.material, name = classify(kind, src, o); if (!name || !S[name]) continue;
     const span = uvSpan(o), k = [name, src.color.getHexString(), src.roughness, src.metalness, src.emissive?.getHexString(), src.emissiveIntensity, src.side, src.transparent, src.opacity, Math.round(span[0] * 2), Math.round(span[1] * 2), o.isSkinnedMesh ? src.uuid : ''].join('|');

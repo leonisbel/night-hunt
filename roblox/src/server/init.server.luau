@@ -38,6 +38,7 @@ local State = make("Folder", "State", Shared)
 local Templates = make("Folder", "Templates", Shared)
 for _, k in ipairs(Config.MONSTER_KEYS) do Models.template(k).Parent = Templates end
 for i = 2, #Config.DN_FORMS do Models.template(Config.DN_FORMS[i].key).Parent = Templates end
+Models.template("wendigo_h").Parent = Templates -- the Wendigo's human form
 Models.template("megalodon_h").Parent = Templates -- the Megalodon's land form
 
 local IS_STUDIO = RunService:IsStudio()
@@ -387,12 +388,12 @@ ABILITY.sirenhead = function(p)
 	sfxAll("siren", hrpOf(p).Position)
 	return true
 end
-ABILITY.monochrome = function(p)
+ABILITY.boisvert = function(p)
 	for _, s in ipairs(survivors(true)) do
-		Notify:FireClient(s, "effect", "dark", 10)
-		toast(s, "Monochrome: TOTAL BLACKOUT")
+		Notify:FireClient(s, "effect", "static", 10)
+		toast(s, "Boisvert: DEAD CHANNEL")
 	end
-	sfxAll("dark", hrpOf(p).Position)
+	sfxAll("static", hrpOf(p).Position)
 	return true
 end
 ABILITY.demogorgon = function(p)
@@ -429,15 +430,27 @@ end
 ABILITY.drnowhere = function(p)
 	local form = p:GetAttribute("Form") or 1
 	local h = hrpOf(p)
-	if form == 2 then -- Cone Zone: ground slam stuns survivors within 36 studs
+	if form == 2 then -- Cone Zone: the fuzzy spider skitters very fast for 2.5s
+		F(p).dashUntil = now() + 2.5
+		sfxAll("skitter", h.Position)
+		toast(p, "Skitter dash!")
+		return true
+	elseif form == 5 then -- Guilt: survivors looking at you are slowed and hallucinate
 		local hit = 0
 		for _, s in ipairs(survivors(true)) do
 			local sh = hrpOf(s)
-			if sh and (sh.Position - h.Position).Magnitude < 36 then F(s).stunUntil = now() + 1.6; hit += 1; toast(s, "Cone Zone's quake knocked you off your feet!") end
+			if sh and (sh.Position - h.Position).Magnitude < 130 then
+				local toMe = Vector3.new(h.Position.X - sh.Position.X, 0, h.Position.Z - sh.Position.Z)
+				if toMe.Magnitude > 0.1 and flatLook(sh):Dot(toMe.Unit) > 0.5 then
+					hit += 1
+					F(s).slowUntil = now() + 5
+					Notify:FireClient(s, "effect", "halluc", 2)
+					toast(s, "You looked at Guilt... your legs feel heavy")
+				end
+			end
 		end
-		portalFx(h.Position - Vector3.new(0, 3, 0), Color3.fromRGB(235, 235, 235))
-		sfxAll("quake", h.Position)
-		if hit == 0 then toast(p, "The quake hit nobody"); return 6 end
+		sfxAll("paranoia", h.Position)
+		if hit == 0 then toast(p, "Nobody was looking at you"); return 5 end
 		return true
 	elseif form == 3 then -- Nightmare Man: shadow step up to ~50 studs ahead
 		local look = flatLook(h)
@@ -475,15 +488,68 @@ ABILITY.drnowhere = function(p)
 	return dnInjection(p)
 end
 local function setDnForm(p, form)
-	local def = Config.DN_FORMS[form]
+	local forms = Config.FORMS[p:GetAttribute("Monster")] or Config.DN_FORMS
+	local def = forms[form]
+	local wg = forms == Config.WG_FORMS
 	p:SetAttribute("Form", form)
 	F(p).formAt = now() + Config.DN_PERIOD
 	if p.Character and isHunting(p) then
 		Models.morph(p.Character, def.key, profiles[p] and profiles[p].skin)
-		portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(30, 30, 34))
-		sfxAll("shift", hrpOf(p).Position)
+		portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), wg and Color3.fromRGB(216, 204, 176) or Color3.fromRGB(30, 30, 34))
+		sfxAll(wg and "crack" or "shift", hrpOf(p).Position)
 	end
 	toast(p, ("You shapeshift: %s - %s"):format(def.name, def.ability))
+end
+-- v1.5.1 Wendigo: deer form = Antler Charge, human form = Mimic Lure & Leap
+ABILITY.wendigo = function(p)
+	local h = hrpOf(p)
+	local look = flatLook(h)
+	if (p:GetAttribute("Form") or 1) == 1 then
+		F(p).dashUntil = now() + 1.1
+		sfxAll("crack", h.Position)
+		local hit = 0
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh then
+				local v = Vector3.new(sh.Position.X - h.Position.X, 0, sh.Position.Z - h.Position.Z)
+				if v.Magnitude < 22 and (v.Magnitude < 5 or look:Dot(v.Unit) > 0.5) then
+					hit += 1
+					F(s).stunUntil = now() + 1.4
+					sh.AssemblyLinearVelocity = look * 45 + Vector3.new(0, 18, 0)
+					local hum = s.Character and s.Character:FindFirstChildOfClass("Humanoid")
+					if hum then hum:TakeDamage(22) end
+					toast(s, "The Wendigo's antlers slammed into you!")
+				end
+			end
+		end
+		if hit == 0 then toast(p, "Antler charge!") end
+		return true
+	end
+	sfxAll("mimic", h.Position)
+	local best, bestD
+	for _, s in ipairs(survivors(true)) do
+		local sh = hrpOf(s)
+		if sh then
+			local d = (sh.Position - h.Position).Magnitude
+			if d < 70 then
+				toast(s, "\"...help me... over here...\" - that voice sounded almost right")
+				local hl = Instance.new("Highlight")
+				hl.Name = "NH_Reveal"
+				hl.FillColor = Color3.fromRGB(255, 40, 40)
+				hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				hl.Parent = s.Character
+				Debris:AddItem(hl, 5)
+			end
+			if d < 40 and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+	end
+	if best then
+		local tp = hrpOf(best).Position
+		appearNear(p, tp, 4, 7)
+		F(best).stunUntil = now() + 0.9
+		toast(best, "The Wendigo leapt on you!")
+	else toast(p, "You call out in a stolen voice... nobody close enough to leap on") end
+	return true
 end
 ABILITY.cartooncat = function(p)
 	local h = hrpOf(p)
@@ -845,7 +911,7 @@ end
 
 -- a monster's body as a vertical capsule for hit tests (morphs are far taller than a normal avatar)
 local TALL = { sirenhead = 30, locust = 15, cartooncat = 14, megalodon = 8, megalodon_h = 11, kraken = 12, cthulhu = 13, leviathan = 8, mosasaurus = 7, nessie = 18,
-	spinosaurus = 16, trex = 14, yeti = 12, bigfoot = 11, dragon = 14, quetzalcoatlus = 13, fester = 12, gargoyle = 8, vampire = 8, chupacabra = 5 }
+	spinosaurus = 16, trex = 14, yeti = 12, bigfoot = 11, dragon = 14, quetzalcoatlus = 13, fester = 12, gargoyle = 8, vampire = 8, chupacabra = 5, wendigo = 10, dn_guilt = 11 }
 local function rayHitsMonster(origin, dir, range)
 	local best, bestT
 	for _, m in ipairs(monsters()) do
@@ -1178,7 +1244,7 @@ local function catchSurvivor(victim, monster)
 				if kind == "sirenhead" then cf = c0 + Vector3.new(0, math.min(22, e * 12), 0)
 				elseif kind == "cartooncat" then cf = c0 + toM * math.min(0.8, e * 0.6) + Vector3.new(0, math.min(4, e * 3), 0)
 					pcall(function() victim.Character:ScaleTo(1 + e * 0.5) end)
-				elseif kind == "monochrome" then cf = c0
+				elseif kind == "boisvert" then cf = c0
 					for _, d in ipairs(victim.Character:GetDescendants()) do if d:IsA("BasePart") and d ~= vh then if saved[d] == nil then saved[d] = d.Transparency end; d.Transparency = math.max(d.Transparency, e / 1.8) end end
 				elseif kind == "locust" then cf = c0 * CFrame.new((math.random() - 0.5) * 0.6, 0, (math.random() - 0.5) * 0.6) * CFrame.Angles(0, 0, (math.random() - 0.5) * 0.5)
 				elseif kind == "megalodon" or kind == "mosasaurus" then cf = c0 + Vector3.new(0, e < 0.9 and e * 6 or (5.4 - (e - 0.9) * 14), 0) -- leap, swallow, dive
@@ -1369,7 +1435,8 @@ local function startRound(starter)
 	-- a monster player's lobby pick pulls the round to that monster's home map half the time
 	for _, p in ipairs(list) do
 		local pref = profiles[p] and profiles[p].pref
-		if pref and Config.HOME[pref] and math.random() < 0.5 then theme = Config.HOME[pref]; break end
+		local hm = pref and Config.HOME[pref]
+		if hm and math.random() < 0.5 then theme = type(hm) == "table" and hm[math.random(1, #hm)] or hm; break end
 	end
 	P2.reset()
 	setState("Theme", theme)
@@ -1400,7 +1467,7 @@ local function startRound(starter)
 			local idx = table.find(kinds, want)
 			if not idx then -- prefer a monster that lives on this map (sea monsters on the ocean)
 				local home = {}
-				for i, k in ipairs(kinds) do if Config.HOME[k] == theme then table.insert(home, i) end end
+				for i, k in ipairs(kinds) do local hm = Config.HOME[k]; if hm == theme or (type(hm) == "table" and table.find(hm, theme)) then table.insert(home, i) end end
 				idx = (#home > 0 and math.random() < 0.7) and home[math.random(1, #home)] or math.random(1, #kinds)
 			end
 			local k = table.remove(kinds, idx)
@@ -1462,8 +1529,11 @@ RunService.Heartbeat:Connect(function(dt)
 				if f.dashUntil and t < f.dashUntil then speed *= (p:GetAttribute("Monster") == "sonicexe") and 1.9 or 2.6 end
 				speed *= P2.speedMult(p, t)
 				canSprint = false
-				if p:GetAttribute("Monster") == "drnowhere" and f.formAt and t >= f.formAt then
-					setDnForm(p, (p:GetAttribute("Form") or 1) % #Config.DN_FORMS + 1)
+				local mk = p:GetAttribute("Monster")
+				if (mk == "trex" or mk == "spinosaurus") and math.random() < dt / 22 then sfxAll(mk == "trex" and "trexroar" or "spinoroar", hrpOf(p).Position) end -- an occasional idle roar
+				local forms = Config.FORMS[p:GetAttribute("Monster")]
+				if forms and f.formAt and t >= f.formAt then
+					setDnForm(p, (p:GetAttribute("Form") or 1) % #forms + 1)
 					p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
 				end
 				if (f.downUntil and t < f.downUntil) or (f.stunUntil and t < f.stunUntil) then frozen = true end

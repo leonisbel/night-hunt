@@ -7,6 +7,7 @@ import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 export const S = 1 / 20; // simulation pixels -> metres
 const W3 = (x, y, h = 0) => new THREE.Vector3(x * S, h, y * S);
 const lerp = (a, b, k) => a + (b - a) * k;
+const _bv = new THREE.Vector3();
 const angLerp = (a, b, k) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * k; };
 
 const THEMES = {
@@ -517,7 +518,10 @@ export class World {
   charFor(p, state) {
     const kind = p.role === 'monster' && state !== 'lobby' ? p.mt + ':' + (p.sk || 'classic') + ':' + (p.fm || 0) : 'survivor:' + p.c + ':' + (p.lk || '');
     let c = this.chars.get(p.id);
-    if (c && c.kind !== kind) { this.dropChar(c); c = null; }
+    if (c && c.kind !== kind) { const [m0, s0] = c.kind.split(':'), [m1, s1] = kind.split(':');
+      if (m0 === m1 && s0 === s1 && (p.mt === 'drnowhere' || p.mt === 'wendigo') && c.obj) { const at = c.obj.position.clone().setY(monsterHeight(modelKey(p.mt, p.fm)) * .55); // morph: glitch/static burst (Doctor Nowhere) or bone-crack dust (Wendigo)
+        if (p.mt === 'drnowhere') { this.sparks(at, '#ffffff', 36, 5); this.sparks(at, '#202020', 24, 4); this.glitchT = performance.now(); } else { this.sparks(at, '#d8ccb0', 30, 4); this.sparks(at, '#5a0a0a', 12, 3); } }
+      this.dropChar(c); c = null; }
     if (!c) {
       const obj = kind.startsWith('survivor') ? buildSurvivor(p.c, p.lk) : buildMonster(modelKey(p.mt, p.fm)); if (!kind.startsWith('survivor') && p.sk) applySkin(obj, p.sk);
       obj.userData.sea = SEA.has(p.mt); const surv = kind.startsWith('survivor'), th = surv ? 2.15 : monsterHeight(modelKey(p.mt, p.fm)) + .3;
@@ -613,11 +617,13 @@ export class World {
         if (parts.armL && k !== 'cartooncat') parts.armL.rotation.x = -sw * .6 - .2; if (parts.armR && k !== 'cartooncat') parts.armR.rotation.x = sw * .6 - .2;
         if (k === 'cartooncat') { parts.armL.rotation.x = Math.sin(t * 2.2) * .25 - sw * .3; parts.armR.rotation.x = Math.sin(t * 2.2 + 2) * .25 + sw * .3; }
         if (parts.head) { parts.head.rotation.z = Math.sin(t * 1.3 + p.id) * .08; if (k === 'sirenhead') parts.head.rotation.z = Math.sin(t * .8) * .18; }
-        if (k === 'demogorgon') { const open = .3 + .55 * (.5 + .5 * Math.sin(t * 2.4 + p.id)); parts.head.userData.petals.forEach(h => h.rotation.x = open); }
+        if (k === 'demogorgon') { const ag = (performance.now() - (c.atk || 0)) / 1000, want = ag < 1.4 || (p.st.dash > 0) ? .15 : 1.3; c.petal = lerp(c.petal ?? 1.3, want, Math.min(1, dt * 7)); parts.head.userData.petals.forEach(h => h.rotation.x = c.petal); } // bud closed while stalking, peels open to attack
+        if (k === 'boisvert' && parts.stat) { if (parts.stat.userData.u) parts.stat.userData.u.value = t; const cp = this.camera.position; parts.stat.lookAt(cp.x, parts.stat.getWorldPosition(_bv).y, cp.z); }
         if (k === 'locust' && parts.stat) parts.stat.visible = Math.random() < .5;
         if (k === 'drnowhere' && parts.stat) { parts.stat.rotation.y = t * .7; parts.stat.position.y = Math.sin(t * 2) * .05; }
         if (k === 'foxy' && parts.tail) parts.tail.rotation.y = Math.sin(t * 3) * .4;
         parts.body.position.y = Math.abs(Math.sin(c.phase)) * .08 * sp;
+        if (k === 'cartooncat') { const hv = c.hv || (c.hv = parts.body.getObjectByName('hover')); if (hv) hv.position.y = .35 + Math.sin(t * 1.7 + p.id) * .14; parts.body.position.y *= .2; } // floats above the ground
         // attack lunge, stagger, knocked-down pose
         const ac = (performance.now() - c.atk) / 1000; if (ac < .45 && parts.armR) { const k = Math.sin(ac / .45 * Math.PI); parts.armR.rotation.x = -.2 - 2 * k; if (parts.armL) parts.armL.rotation.x = -.2 - 1.6 * k; }
         if (p.st.stag) parts.body.rotation.z = Math.sin(t * 25) * .08; else parts.body.rotation.z = 0;
@@ -759,7 +765,7 @@ export class World {
     const u = this.post.uniforms;
     u.uGrey.value = lerp(u.uGrey.value, mp.st.grey ? 1 : 0, Math.min(1, dt * 4));
     u.uRed.value = danger * (.25 + .2 * Math.sin(t * 9)) + (isMon && playing ? .08 : 0);
-    u.uVig.value = 1.05 + danger * .35 + (mp.st.blind ? .5 : 0); u.uGrain.value = this.theme.staticNoise ? .11 : .07; u.uAb.value = .6 + danger * 3;
+    u.uVig.value = 1.05 + danger * .35 + (mp.st.blind ? .5 : 0); u.uGrain.value = this.theme.staticNoise ? .11 : .07; u.uAb.value = .6 + danger * 3; { const gk = (performance.now() - (this.glitchT || -1e9)) / 700; if (gk < 1) { u.uAb.value += (1 - gk) * 22 * Math.random(); u.uGrain.value += (1 - gk) * .5; } } // Doctor Nowhere's form-change glitch
     u.uExp.value = st === 'lobby' ? 1.5 : 1.7; u.uFade.value = 0; u.uFlash.value = Math.max(0, u.uFlash.value - dt * 3);
     this.render(this.scene, this.camera);
     return { danger, myPos };
@@ -955,19 +961,28 @@ export class World {
       if (p.armL) p.armL.rotation.x = -1.6; if (p.armR) p.armR.rotation.x = -1.6; M.scale.set(1, 1 + st * .25, 1);
     } else if (k === 'demogorgon') { // petal face blooms open as it lunges
       const lunge = ease((e - .6) / .6); pos = new THREE.Vector3(hp.x, hp.y, hp.z + 3.4 - lunge * 2.7);
-      if (p.head?.userData.petals) p.head.userData.petals.forEach(h => h.rotation.x = .2 + ease(e / .9) * 1.15);
+      if (p.head?.userData.petals) p.head.userData.petals.forEach(h => h.rotation.x = 1.3 - ease((e - .35) / .5) * 1.15); // closed bud → peels open red
       if (p.armL) p.armL.rotation.x = -1.4 * lunge; if (p.armR) p.armR.rotation.x = -1.4 * lunge; shake = .03 + lunge * .1;
     } else if (k === 'locust') { // possession: it leans in close, the picture tears and jitters (game.js adds static)
       const lean = ease(e / 1.6); pos = new THREE.Vector3(hp.x + Math.sin(t * 13) * .05, hp.y, hp.z + 2.6 - lean * 2.1); shake = .04 + lean * .15; ab = 18 * lean + 4;
       if (p.stat) p.stat.visible = Math.random() < .7; if (p.head) p.head.rotation.z = Math.sin(t * 70) * .2 * lean;
-    } else if (k === 'monochrome') { // it just stares while you dissolve into grey blocks (game.js)
-      pos = new THREE.Vector3(hp.x, hp.y, hp.z + 2.4 - e * .4); shake = .005; red = 0; ab = 2;
+    } else if (k === 'boisvert') { // it just stares while you dissolve into grey blocks (game.js)
+      pos = new THREE.Vector3(hp.x, hp.y, hp.z + 2.4 - e * .4); shake = .005; red = 0; ab = 2; if (p.stat?.userData.u) p.stat.userData.u.value = t;
     } else if (k === 'drnowhere') { // each form: injection rush, cone slam from above, shadow engulf, six arms close in
       const f = sc.fm || 0, lunge = ease((e - .5) / .7);
-      if (f === 1) { pos = new THREE.Vector3(0, 1.4 + ease(e / 1.2) * 2.6, 2.4 - lunge * 1.2); shake = .05 + lunge * .15; if (p.head) p.head.rotation.x = .6 * lunge; }
+      if (f === 1) { // Cone Zone: skitters low across the floor on spider legs, then the cone face rears up into the camera
+        M.position.set(Math.sin(e * 9) * .6 * (1 - lunge) - 3 * (1 - ease(e / .6)), 0, -2.5 + lunge * 1.6); p.body.children.forEach(o => { if (o.name.startsWith('leg') || o.name.startsWith('arm')) o.rotation.z = Math.sin(t * 30 + o.position.x * 5) * .25; });
+        pos = new THREE.Vector3(0, .6 + lunge * .5, 2.2 - lunge * .6); look = new THREE.Vector3(M.position.x, hp.y * (1 - lunge) + (hp.y + .6) * lunge, hp.z + M.position.z); if (p.head) p.head.rotation.x = -.7 * lunge; shake = .05 + lunge * .15; }
+      else if (f === 4) { // Guilt: a white figure towers over you, the face plate tilts down to stare, then it bends in close
+        const bend = ease((e - .9) / .7); pos = new THREE.Vector3(0, 1.5, 1.6 - bend * .3); look = new THREE.Vector3(0, hp.y - bend * 1.2, hp.z); M.position.z = -.6 + bend * .2; if (p.body) p.body.rotation.x = .55 * bend; if (p.head) p.head.rotation.x = .5 * ease(e / .8); shake = .01 + bend * .1; red = .05; ab = 3 + bend * 8; }
       else if (f === 2) { pos = new THREE.Vector3(hp.x, hp.y, hp.z + 3 - lunge * 2.6); M.scale.setScalar(1 + lunge * .4); shake = .03; red = .1; }
       else if (f === 3) { pos = new THREE.Vector3(0, hp.y - .8, 1.6 - lunge * .5); p.body.children.forEach(o => { if (o.userData.low) o.rotation.x = -1.5 * lunge; }); shake = .04 + lunge * .1; }
       else { pos = new THREE.Vector3(hp.x, hp.y, hp.z + 3.4 - lunge * 2.8); if (p.armR) p.armR.rotation.x = -1.7 * lunge; shake = .03 + lunge * .1; }
+    } else if (k === 'wendigo') { // deer form: antler charge out of the trees; human form: a scream, then the crouched leap
+      const f = sc.fm || 0;
+      if (f === 0) { const ch = ease((e - .5) / .6); M.position.z = -7 + ch * 5.6; if (p.head) p.head.rotation.x = .5 * ch; if (p.armL) p.armL.rotation.x = -.6 - .9 * ch; if (p.armR) p.armR.rotation.x = -.6 - .9 * ch; pos = new THREE.Vector3(0, 1.6, 1.8); look = new THREE.Vector3(0, hp.y - .3, hp.z + M.position.z); shake = .03 + ch * .18; red = .3; }
+      else { const lp = ease((e - .9) / .45), scream = e > .3 && e < .9; M.position.set(0, Math.sin(lp * Math.PI) * 1.1, -3.2 + lp * 2.6); const jw = M.getObjectByName('jaw'); if (jw) jw.rotation.x = scream ? .95 + Math.sin(t * 40) * .08 : .75;
+        if (p.armL) p.armL.rotation.x = -.9 - 1.0 * lp; if (p.armR) p.armR.rotation.x = -.9 - 1.0 * lp; pos = new THREE.Vector3(0, 1.0, 1.4); look = new THREE.Vector3(0, hp.y + M.position.y, hp.z + M.position.z); shake = scream ? .08 : .03 + lp * .16; red = .35; }
     } else if (P2.has(k)) { const r2 = this.scare2(k, sc, M, p, hp, e, t, dt, ease); pos = r2.pos; look = r2.look; shake = r2.shake ?? .03; red = r2.red ?? .3; ab = r2.ab ?? 4; fov = r2.fov ?? 50; }
     else { const lunge = ease((e - .3) / .8); pos = new THREE.Vector3(hp.x, hp.y, hp.z + 4 - lunge * 3.2); shake = .03 + lunge * .1; }
     if (this.scareWater) { this.scareWater.visible = SEA.has(k) && !(k === 'megalodon' && sc.fm === 1); this.scareSwarm.visible = k === 'megalodon' && sc.fm !== 1 && e < 2.2; }
@@ -975,7 +990,7 @@ export class World {
     cam.position.set(pos.x + (Math.random() - .5) * shake, pos.y + (Math.random() - .5) * shake, pos.z); cam.lookAt(look);
     this.scareLight.position.set(hp.x, hp.y - 1.2, hp.z + 1.8); this.scareLight.intensity = Math.random() < .2 ? 5 : 35; this.scareRed.position.set(hp.x + 1, hp.y + 1, hp.z + 1);
     if (p.head && !fnaf && k !== 'sirenhead' && k !== 'locust') p.head.rotation.z = Math.sin(t * 40) * .05;
-    const u = this.post.uniforms; u.uGrey.value = k === 'monochrome' ? 1 : 0; u.uRed.value = red + Math.random() * .15; u.uVig.value = 1.5; u.uGrain.value = .25; u.uAb.value = ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = e < .06 ? .5 : 0;
+    const u = this.post.uniforms; u.uGrey.value = k === 'boisvert' ? 1 : 0; u.uRed.value = red + Math.random() * .15; u.uVig.value = 1.5; u.uGrain.value = .25; u.uAb.value = ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = e < .06 ? .5 : 0;
     this.render(this.scareScene, cam);
   }
   // phase 2 jumpscares: one choreography per creature (teen level: lunges, bites and cut-to-black, no gore)
@@ -1025,7 +1040,7 @@ export class World {
       const still = e < 1.1, lp = ease((e - 1.1) / .45); M.position.set(0, 3 * (1 - lp), -3 + lp * 2.4); if (still) this.scareLight.intensity = 30;
       return { pos: V(0, 1.5, hp.z + 2.6), look: V(0, hp.y + M.position.y, hp.z + M.position.z), shake: still ? 0 : .18, red: still ? 0 : .35, ab: still ? 1 : 8 }; }
     if (k === 'fester') { // the lights flicker and each time it is closer, grinning wider
-      const st = Math.min(3, Math.floor(e / .55)); flick(); M.position.z = -6 + st * 2.1 + ease((e - 1.75) / .4) * 2.4; M.visible = this.scareLight.intensity > 5 || e > 1.75;
+      const st = Math.min(3, Math.floor(e / .55)); flick(); { const jw = M.getObjectByName('jaw'); if (jw) jw.rotation.x = .05 + ease((e - 1.6) / .4) * .3 + Math.sin(t * 9) * .03; } // the long jaw swings lower M.position.z = -6 + st * 2.1 + ease((e - 1.75) / .4) * 2.4; M.visible = this.scareLight.intensity > 5 || e > 1.75;
       return { pos: V(0, hp.y - .1, hp.z + 3.2), look: V(0, hp.y, hp.z + M.position.z), shake: .02 + (e > 1.75 ? .14 : 0), red: .35, fov: 52 }; }
     // land-form Megalodon: a giant shark-man charges and bites
     const lunge = ease((e - .5) / .7); if (p.armL) p.armL.rotation.x = -1.5 * lunge; if (p.armR) p.armR.rotation.x = -1.5 * lunge;
@@ -1050,7 +1065,7 @@ export class World {
       else if (k === 'vampire') { o.position.y = Math.min(1.2, e * .8); o.rotation.y += .15; if (Math.random() < .15) this.sparks(o.position.clone().setY(1.6), '#2a1018', 6, 3); }
       else if (k === 'fester') { o.visible = Math.random() < .6; }
       else if (k === 'cartooncat') o.scale.set(Math.max(.3, 1 - e * .35), 1 + e * 1.2, Math.max(.3, 1 - e * .35));
-      else if (k === 'monochrome') o.traverse(x => { if (x.material && !Array.isArray(x.material)) { x.material.transparent = true; x.material.opacity = Math.max(0, 1 - e / 1.8); } });
+      else if (k === 'boisvert') o.traverse(x => { if (x.material && !Array.isArray(x.material)) { x.material.transparent = true; x.material.opacity = Math.max(0, 1 - e / 1.8); } });
       else if (k === 'locust') { o.position.x += (Math.random() - .5) * .08; o.rotation.z = Math.sin(e * 40) * .2; }
       else { if (toM.length() > .6) o.position.addScaledVector(toM.normalize(), .03); o.rotation.x = -Math.min(1.3, e * 1.2); o.position.y = Math.sin(Math.min(1, e) * Math.PI) * .4; }
     }

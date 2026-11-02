@@ -1,4 +1,4 @@
-# Night Hunt 🚁👹 (v1.5.0, rated 13+)
+# Night Hunt 🚁👹 (v1.5.1, rated 13+)
 
 A fan-made multiplayer monster survival game for playing with friends. Board the helicopter, drop into a dense power-line forest, loot chests and bags, and survive the monsters.
 
@@ -27,6 +27,11 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
    Fight back, sleep in beds to heal, and reach the **extraction helicopter**, which lands for the last 90 seconds.
 5. **Monsters** have health. Survivors can **knock them down and stun them**; they get back up after a few seconds. Monster hits drain survivors' health, and a survivor at 0 is caught.
 
+## Remodeled monsters (v1.5.1)
+Every monster except the Megalodon was rebuilt from reference images: furry FNAF suits with joint segments (Chica wears her LET'S EAT!!! bib and holds the cupcake), a Demogorgon whose petals stay closed until it attacks and then open red, a hovering Cartoon Cat, the Locust with hose hair and drips (its omen now shows an old floral beige wallpaper with brownish smears), a black anvil-headed Boisvert (formerly "Monochrome") and Father Fester with an egg head, hollow eyes and a very long drooping jaw (still 6 stages). Also remodeled: Siren Head, Sonic.exe (teen-level blood only), Kraken, Cthulhu, Leviathan, Mosasaurus, Nessie, Spinosaurus, T-Rex, Quetzalcoatlus, Yeti, Dragon (gold scales, blue-green wings), Chupacabra, Vampire (Nosferatu), Gargoyle and Bigfoot. The new **Wendigo** lives in the forest maps and on Snowy Mountain.
+
+**Dinosaur roars:** the T-Rex and Spinosaurus have new big-movie-style roars that play when they use their power, now and then while they hunt, and in their jumpscare. No movie audio is used. They are layered and pitch-shifted from CC0/public-domain animal recordings (elephant, tiger, grizzly, alligator), and the credits are in `vendor/LICENSES.md`.
+
 ## Realistic monsters (v1.5.0)
 - **PBR surfaces on every monster:** each body part is mapped to a real material: animatronic teddy fur and rusted endoskeletons, scaly reptile hide with pale-belly countershading, wet glossy shark and sea-monster skin with clearcoat, slick Demogorgon skin, weathered gargoyle stone, dried Siren Head flesh, rubbery Cartoon Cat ink, see-through wing membranes and glossy eyes. Each material has normal, roughness and colour-detail maps. Some are CC0 photo-scanned sets from Poly Haven; the others (scales, scutes, hide, chitin and more) are generated in code.
 - **Lighting:** a moonlit environment map adds reflections and specular highlights. Skin uses a wrap-lighting subsurface-scattering approximation, so it glows softly at the edges instead of looking like plastic. Thin wing membranes glow red when the moon is behind them. Eyes glow, and every monster casts shadows and fades into the fog.
@@ -53,7 +58,7 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
 | Siren Head | Siren Call: reveals every survivor (even hidden ones) for 8 s | lifts you up to its speaker head |
 | Doctor Nowhere | Shapeshift: changes form every 30 s, and each form has its own power (see below) | a different one per form |
 | The Locust | Swarm Omen: one random survivor's TV/phone/computer shows an old wallpaper and a child-like voice, then it slams their screen | possession: the screen tears and distorts |
-| Monochrome | Total Blackout: every survivor's screen goes pitch black for 10 s | you dissolve into grey blocks |
+| Boisvert (black anvil head, tiny white eyes, grainy static aura) | Dead Channel: every survivor's whole screen fills with opaque, animated TV static and a roaring hiss for 10 s | you dissolve into grey blocks |
 | Sonic.exe (fan-made creepypasta) | You Can't Run: a distorted laugh, then you run much faster for 10 s | grabs, then lunges |
 | Demogorgon | Upside Down Portal: come out of a portal near the closest survivor | the petal face blooms open as it lunges |
 
@@ -73,15 +78,19 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
 | Vampire | Bat Swarm: re-form beside the closest survivor and blind them | nothing there... you turn around: it's behind you |
 | Gargoyle | Stone Skin: no damage for 6 s, then a crashing stun | a still statue whose eyes light up, then it lunges |
 | Bigfoot | Boulder Throw: a big hit and a 2 s stun | it charges out of the dark woods |
+| Wendigo (new in v1.5.1) | Two forms that swap every 30 s with a bone-crack morph. Deer form: Antler Charge gores, stuns and shoves the survivor in front. Human form: Mimic Lure & Leap calls out in a stolen voice, reveals nearby survivors, then leaps at the closest | deer: an antler charge out of the trees; human: a scream, then it leaps at you |
 | Father Fester | Lights Out: every house light dies, survivors black out and are revealed. Passive: each survivor who sees him makes him stronger (6 stages, his look changes) | the lights flicker and he's closer every time they come back |
 
 **Sea monster omens:** before a sea monster reaches you, you may spot its sign: Kraken tentacles, Cthulhu's red eyes and wings in thunderclouds, Leviathan coils, a Mosasaurus tail flick, a Megalodon dorsal fin, Nessie's neck rising or a Spinosaurus sail.
 
 **Doctor Nowhere's forms** (fan horror art by Silas Orion):
 - The Doctor (white coat): Injection slows the survivor in front of you for 6 s.
-- Cone Zone (tall white cone head): Cone Quake stuns every survivor close by.
+- Cone Zone (charcoal, fuzzy long-legged spider): Skitter Dash, very fast for 2.5 s.
 - Nightmare Man (smoky black figure): Shadow Step blinks you far ahead.
 - The six-armed Doctor: Paranoia makes nearby survivors hallucinate and reveals them to you.
+- Guilt (tall white figure with a flat face plate, new in v1.5.1): Guilty Stare slows every survivor who is looking at it for 5 s.
+
+Each form has its own jumpscare, and the switch is a glitch morph (sparks, screen glitch).
 
 Every jumpscare cuts to black at the moment of impact. With **Blood effects** on (the default), it adds teen-level red splatter and drips; there is no dismemberment and no detailed gore. You can turn this off in the menu (browser) or with the top-left button (Roblox). Players near the catch see the victim lifted, stretched, dissolved or dragged away, and hear the scream.
 
@@ -123,7 +132,7 @@ Fan-made for private play. Models and sounds are original procedural look-alikes
 - The Demogorgon: Netflix.
 - Sonic.exe: a fan creepypasta based on Sega's Sonic.
 - Doctor Nowhere: Silas Orion.
-- The Locust and Monochrome: their creators.
+- The Locust and Boisvert: their creators.
 - Father Fester: his creator. Cthulhu: H. P. Lovecraft (public domain).
 
 Since v1.4 the browser and Windows versions also use a few free **CC0 (public domain) 3D models by Quaternius** as bases for the shark, dinosaurs and dragon (see `vendor/LICENSES.md`). The Roblox version builds every model from parts.

@@ -125,14 +125,15 @@ C.THEMES = { "Powerline Forest", "Abandoned Pizzeria Town", "Foggy Woods", "Stat
 C.MAIN_THEME = "Powerline Forest" -- picked 30% of the time
 
 C.MONSTER_KEYS = { "freddy", "bonnie", "chica", "foxy", "springtrap", "cartooncat",
-	"sirenhead", "drnowhere", "locust", "monochrome", "demogorgon", "sonicexe",
+	"sirenhead", "drnowhere", "locust", "boisvert", "demogorgon", "sonicexe",
 	"megalodon", "kraken", "cthulhu", "leviathan", "mosasaurus", "nessie", "spinosaurus", "yeti", "chupacabra",
-	"vampire", "bigfoot", "trex", "quetzalcoatlus", "gargoyle", "dragon", "fester" }
+	"vampire", "bigfoot", "trex", "quetzalcoatlus", "gargoyle", "dragon", "fester", "wendigo" }
 -- sea monsters swim fast in water and slower on land; every phase-2 monster has a home map it prefers
 C.SEA = { megalodon = true, kraken = true, cthulhu = true, leviathan = true, mosasaurus = true, nessie = true }
 C.HOME = { megalodon = "Stormy Ocean", kraken = "Stormy Ocean", cthulhu = "Stormy Ocean", leviathan = "Stormy Ocean", mosasaurus = "Stormy Ocean", nessie = "Stormy Ocean",
 	spinosaurus = "Rainforest Swamp", yeti = "Snowy Mountain", chupacabra = "Haunted Farm", vampire = "Vampire Castle", bigfoot = "Foggy Woods", trex = "Rainforest Swamp",
-	quetzalcoatlus = "Snowy Mountain", gargoyle = "Vampire Castle", dragon = "Vampire Castle", fester = "Fester Street" }
+	quetzalcoatlus = "Snowy Mountain", gargoyle = "Vampire Castle", dragon = "Vampire Castle", fester = "Fester Street",
+	wendigo = { "Snowy Mountain", "Powerline Forest", "Foggy Woods" } } -- a value can list several home maps
 C.FESTER_MAX = 6
 
 local AFTON = { ability = "Afton Laugh", desc = "A creepy laugh echoes - you see every survivor for 10s", cd = 20 }
@@ -147,7 +148,7 @@ C.MONSTERS = {
 	sirenhead  = { name = "Siren Head",     ability = "Siren Call",         desc = "A deafening siren reveals every survivor for 8s",       cd = 20, speed = 18 },
 	drnowhere  = { name = "Doctor Nowhere", ability = "Shapeshift",         desc = "Changes form every 30s; each form has its own power", cd = 20, speed = 19 },
 	locust     = { name = "The Locust",     ability = "Swarm Omen",         desc = "Crawl out of a screen near one random survivor and slam their screen", cd = 20, speed = 19 },
-	monochrome = { name = "Monochrome",     ability = "Total Blackout",     desc = "Every survivor's screen goes pitch black for 10s",     cd = 20, speed = 19 },
+	boisvert   = { name = "Boisvert",       ability = "Dead Channel",       desc = "Every survivor's screen fills with roaring TV static for 10s", cd = 20, speed = 19 },
 	sonicexe   = { name = "Sonic.exe",      ability = "You Can't Run",      desc = "A scary laugh, then you run much faster for 10s",      cd = 20, speed = 19.5 },
 	demogorgon = { name = "Demogorgon",     ability = "Upside Down Portal", desc = "Open a portal and come out near the nearest survivor", cd = 20, speed = 19.5 },
 	-- v1.4 phase 2
@@ -166,6 +167,7 @@ C.MONSTERS = {
 	quetzalcoatlus = { name = "Quetzalcoatlus", ability = "Sky Dive",   desc = "Take off and dive down on the nearest survivor", cd = 20, speed = 19 },
 	gargoyle   = { name = "Gargoyle",       ability = "Stone Skin",     desc = "Turn to stone: weapons can't hurt you for 6s, then a shockwave", cd = 20, speed = 18.5 },
 	dragon     = { name = "Dragon",         ability = "Fire Breath",    desc = "Breathe fire in a cone in front of you: survivors burn", cd = 20, speed = 19 },
+	wendigo    = { name = "Wendigo",        ability = "Two Forms",      desc = "Bone-cracks between a deer form (Antler Charge) and a human form (Mimic Lure & Leap) every 30s", cd = 20, speed = 19.5 },
 	fester     = { name = "Father Fester",  ability = "Lights Out",     desc = "Every light near you dies and survivors black out. Passive: each new survivor who sees you makes you stronger (6 stages)", cd = 20, speed = 17.5 },
 }
 
@@ -173,10 +175,17 @@ C.MONSTERS = {
 C.DN_PERIOD = 30
 C.DN_FORMS = {
 	{ key = "drnowhere",    name = "The Doctor",           ability = "Injection",   desc = "Inject the survivor in front of you - slowed for 6s" },
-	{ key = "dn_conezone",  name = "Cone Zone",            ability = "Cone Quake",  desc = "Slam the ground - survivors close to you are stunned" },
+	{ key = "dn_conezone",  name = "Cone Zone",            ability = "Skitter Dash", desc = "Skitter forward on eight fuzzy legs - very fast for 2.5s" },
 	{ key = "dn_nightmare", name = "Nightmare Man",        ability = "Shadow Step", desc = "Melt into shadow and reappear far ahead" },
 	{ key = "dn_sixarm",    name = "The Doctor (six arms)", ability = "Paranoia",   desc = "Nearby survivors hallucinate and are revealed to you" },
+	{ key = "dn_guilt",     name = "Guilt",                ability = "Guilty Stare", desc = "Survivors who look at you are slowed and see things" },
 }
+-- v1.5.1 Wendigo: deer form and human form, switching every DN_PERIOD with a bone-crack morph
+C.WG_FORMS = {
+	{ key = "wendigo",   name = "Wendigo (deer)",  ability = "Antler Charge",     desc = "Charge forward - the survivor in front is gored, stunned and shoved" },
+	{ key = "wendigo_h", name = "Wendigo (human)", ability = "Mimic Lure & Leap", desc = "Call out in a stolen voice to reveal survivors, then leap at the nearest" },
+}
+C.FORMS = { drnowhere = C.DN_FORMS, wendigo = C.WG_FORMS }
 
 -- loot (same items as the browser version). Studs: ~3.6 studs per metre of the browser game.
 C.ITEMS = {
@@ -264,7 +273,10 @@ C.CLOTHES = { Color3.fromRGB(200, 60, 50), Color3.fromRGB(40, 120, 200), Color3.
 
 -- Optional sound uploads: the Afton laugh etc. are original sounds rendered from the browser synth
 -- (roblox/sounds/*.wav). Upload them in Studio and paste the asset ids here; empty = built-in fallback.
-C.SOUNDS = { laugh = "", siren = "", locust = "", portal = "", sonic = "", scream = "", quake = "", shift = "" }
+C.SOUNDS = { laugh = "", siren = "", locust = "", portal = "", sonic = "", scream = "", quake = "", shift = "",
+	-- v1.5.1: T-Rex / Spinosaurus roars (roblox/sounds/trex_roar.mp3, spino_roar.mp3 - layered from CC0/public-domain animal
+	-- recordings, no movie audio) and a TV-static hiss. Upload in Studio (or pick Creator Store sounds) and paste "rbxassetid://..." here.
+	trexroar = "", spinoroar = "", static = "" }
 
 return C
 ]]></string>
@@ -320,6 +332,7 @@ local State = make("Folder", "State", Shared)
 local Templates = make("Folder", "Templates", Shared)
 for _, k in ipairs(Config.MONSTER_KEYS) do Models.template(k).Parent = Templates end
 for i = 2, #Config.DN_FORMS do Models.template(Config.DN_FORMS[i].key).Parent = Templates end
+Models.template("wendigo_h").Parent = Templates -- the Wendigo's human form
 Models.template("megalodon_h").Parent = Templates -- the Megalodon's land form
 
 local IS_STUDIO = RunService:IsStudio()
@@ -669,12 +682,12 @@ ABILITY.sirenhead = function(p)
 	sfxAll("siren", hrpOf(p).Position)
 	return true
 end
-ABILITY.monochrome = function(p)
+ABILITY.boisvert = function(p)
 	for _, s in ipairs(survivors(true)) do
-		Notify:FireClient(s, "effect", "dark", 10)
-		toast(s, "Monochrome: TOTAL BLACKOUT")
+		Notify:FireClient(s, "effect", "static", 10)
+		toast(s, "Boisvert: DEAD CHANNEL")
 	end
-	sfxAll("dark", hrpOf(p).Position)
+	sfxAll("static", hrpOf(p).Position)
 	return true
 end
 ABILITY.demogorgon = function(p)
@@ -711,15 +724,27 @@ end
 ABILITY.drnowhere = function(p)
 	local form = p:GetAttribute("Form") or 1
 	local h = hrpOf(p)
-	if form == 2 then -- Cone Zone: ground slam stuns survivors within 36 studs
+	if form == 2 then -- Cone Zone: the fuzzy spider skitters very fast for 2.5s
+		F(p).dashUntil = now() + 2.5
+		sfxAll("skitter", h.Position)
+		toast(p, "Skitter dash!")
+		return true
+	elseif form == 5 then -- Guilt: survivors looking at you are slowed and hallucinate
 		local hit = 0
 		for _, s in ipairs(survivors(true)) do
 			local sh = hrpOf(s)
-			if sh and (sh.Position - h.Position).Magnitude < 36 then F(s).stunUntil = now() + 1.6; hit += 1; toast(s, "Cone Zone's quake knocked you off your feet!") end
+			if sh and (sh.Position - h.Position).Magnitude < 130 then
+				local toMe = Vector3.new(h.Position.X - sh.Position.X, 0, h.Position.Z - sh.Position.Z)
+				if toMe.Magnitude > 0.1 and flatLook(sh):Dot(toMe.Unit) > 0.5 then
+					hit += 1
+					F(s).slowUntil = now() + 5
+					Notify:FireClient(s, "effect", "halluc", 2)
+					toast(s, "You looked at Guilt... your legs feel heavy")
+				end
+			end
 		end
-		portalFx(h.Position - Vector3.new(0, 3, 0), Color3.fromRGB(235, 235, 235))
-		sfxAll("quake", h.Position)
-		if hit == 0 then toast(p, "The quake hit nobody"); return 6 end
+		sfxAll("paranoia", h.Position)
+		if hit == 0 then toast(p, "Nobody was looking at you"); return 5 end
 		return true
 	elseif form == 3 then -- Nightmare Man: shadow step up to ~50 studs ahead
 		local look = flatLook(h)
@@ -757,15 +782,68 @@ ABILITY.drnowhere = function(p)
 	return dnInjection(p)
 end
 local function setDnForm(p, form)
-	local def = Config.DN_FORMS[form]
+	local forms = Config.FORMS[p:GetAttribute("Monster")] or Config.DN_FORMS
+	local def = forms[form]
+	local wg = forms == Config.WG_FORMS
 	p:SetAttribute("Form", form)
 	F(p).formAt = now() + Config.DN_PERIOD
 	if p.Character and isHunting(p) then
 		Models.morph(p.Character, def.key, profiles[p] and profiles[p].skin)
-		portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), Color3.fromRGB(30, 30, 34))
-		sfxAll("shift", hrpOf(p).Position)
+		portalFx(hrpOf(p).Position - Vector3.new(0, 3, 0), wg and Color3.fromRGB(216, 204, 176) or Color3.fromRGB(30, 30, 34))
+		sfxAll(wg and "crack" or "shift", hrpOf(p).Position)
 	end
 	toast(p, ("You shapeshift: %s - %s"):format(def.name, def.ability))
+end
+-- v1.5.1 Wendigo: deer form = Antler Charge, human form = Mimic Lure & Leap
+ABILITY.wendigo = function(p)
+	local h = hrpOf(p)
+	local look = flatLook(h)
+	if (p:GetAttribute("Form") or 1) == 1 then
+		F(p).dashUntil = now() + 1.1
+		sfxAll("crack", h.Position)
+		local hit = 0
+		for _, s in ipairs(survivors(true)) do
+			local sh = hrpOf(s)
+			if sh then
+				local v = Vector3.new(sh.Position.X - h.Position.X, 0, sh.Position.Z - h.Position.Z)
+				if v.Magnitude < 22 and (v.Magnitude < 5 or look:Dot(v.Unit) > 0.5) then
+					hit += 1
+					F(s).stunUntil = now() + 1.4
+					sh.AssemblyLinearVelocity = look * 45 + Vector3.new(0, 18, 0)
+					local hum = s.Character and s.Character:FindFirstChildOfClass("Humanoid")
+					if hum then hum:TakeDamage(22) end
+					toast(s, "The Wendigo's antlers slammed into you!")
+				end
+			end
+		end
+		if hit == 0 then toast(p, "Antler charge!") end
+		return true
+	end
+	sfxAll("mimic", h.Position)
+	local best, bestD
+	for _, s in ipairs(survivors(true)) do
+		local sh = hrpOf(s)
+		if sh then
+			local d = (sh.Position - h.Position).Magnitude
+			if d < 70 then
+				toast(s, "\"...help me... over here...\" - that voice sounded almost right")
+				local hl = Instance.new("Highlight")
+				hl.Name = "NH_Reveal"
+				hl.FillColor = Color3.fromRGB(255, 40, 40)
+				hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				hl.Parent = s.Character
+				Debris:AddItem(hl, 5)
+			end
+			if d < 40 and (not bestD or d < bestD) then best, bestD = s, d end
+		end
+	end
+	if best then
+		local tp = hrpOf(best).Position
+		appearNear(p, tp, 4, 7)
+		F(best).stunUntil = now() + 0.9
+		toast(best, "The Wendigo leapt on you!")
+	else toast(p, "You call out in a stolen voice... nobody close enough to leap on") end
+	return true
 end
 ABILITY.cartooncat = function(p)
 	local h = hrpOf(p)
@@ -1127,7 +1205,7 @@ end
 
 -- a monster's body as a vertical capsule for hit tests (morphs are far taller than a normal avatar)
 local TALL = { sirenhead = 30, locust = 15, cartooncat = 14, megalodon = 8, megalodon_h = 11, kraken = 12, cthulhu = 13, leviathan = 8, mosasaurus = 7, nessie = 18,
-	spinosaurus = 16, trex = 14, yeti = 12, bigfoot = 11, dragon = 14, quetzalcoatlus = 13, fester = 12, gargoyle = 8, vampire = 8, chupacabra = 5 }
+	spinosaurus = 16, trex = 14, yeti = 12, bigfoot = 11, dragon = 14, quetzalcoatlus = 13, fester = 12, gargoyle = 8, vampire = 8, chupacabra = 5, wendigo = 10, dn_guilt = 11 }
 local function rayHitsMonster(origin, dir, range)
 	local best, bestT
 	for _, m in ipairs(monsters()) do
@@ -1460,7 +1538,7 @@ local function catchSurvivor(victim, monster)
 				if kind == "sirenhead" then cf = c0 + Vector3.new(0, math.min(22, e * 12), 0)
 				elseif kind == "cartooncat" then cf = c0 + toM * math.min(0.8, e * 0.6) + Vector3.new(0, math.min(4, e * 3), 0)
 					pcall(function() victim.Character:ScaleTo(1 + e * 0.5) end)
-				elseif kind == "monochrome" then cf = c0
+				elseif kind == "boisvert" then cf = c0
 					for _, d in ipairs(victim.Character:GetDescendants()) do if d:IsA("BasePart") and d ~= vh then if saved[d] == nil then saved[d] = d.Transparency end; d.Transparency = math.max(d.Transparency, e / 1.8) end end
 				elseif kind == "locust" then cf = c0 * CFrame.new((math.random() - 0.5) * 0.6, 0, (math.random() - 0.5) * 0.6) * CFrame.Angles(0, 0, (math.random() - 0.5) * 0.5)
 				elseif kind == "megalodon" or kind == "mosasaurus" then cf = c0 + Vector3.new(0, e < 0.9 and e * 6 or (5.4 - (e - 0.9) * 14), 0) -- leap, swallow, dive
@@ -1651,7 +1729,8 @@ local function startRound(starter)
 	-- a monster player's lobby pick pulls the round to that monster's home map half the time
 	for _, p in ipairs(list) do
 		local pref = profiles[p] and profiles[p].pref
-		if pref and Config.HOME[pref] and math.random() < 0.5 then theme = Config.HOME[pref]; break end
+		local hm = pref and Config.HOME[pref]
+		if hm and math.random() < 0.5 then theme = type(hm) == "table" and hm[math.random(1, #hm)] or hm; break end
 	end
 	P2.reset()
 	setState("Theme", theme)
@@ -1682,7 +1761,7 @@ local function startRound(starter)
 			local idx = table.find(kinds, want)
 			if not idx then -- prefer a monster that lives on this map (sea monsters on the ocean)
 				local home = {}
-				for i, k in ipairs(kinds) do if Config.HOME[k] == theme then table.insert(home, i) end end
+				for i, k in ipairs(kinds) do local hm = Config.HOME[k]; if hm == theme or (type(hm) == "table" and table.find(hm, theme)) then table.insert(home, i) end end
 				idx = (#home > 0 and math.random() < 0.7) and home[math.random(1, #home)] or math.random(1, #kinds)
 			end
 			local k = table.remove(kinds, idx)
@@ -1744,8 +1823,11 @@ RunService.Heartbeat:Connect(function(dt)
 				if f.dashUntil and t < f.dashUntil then speed *= (p:GetAttribute("Monster") == "sonicexe") and 1.9 or 2.6 end
 				speed *= P2.speedMult(p, t)
 				canSprint = false
-				if p:GetAttribute("Monster") == "drnowhere" and f.formAt and t >= f.formAt then
-					setDnForm(p, (p:GetAttribute("Form") or 1) % #Config.DN_FORMS + 1)
+				local mk = p:GetAttribute("Monster")
+				if (mk == "trex" or mk == "spinosaurus") and math.random() < dt / 22 then sfxAll(mk == "trex" and "trexroar" or "spinoroar", hrpOf(p).Position) end -- an occasional idle roar
+				local forms = Config.FORMS[p:GetAttribute("Monster")]
+				if forms and f.formAt and t >= f.formAt then
+					setDnForm(p, (p:GetAttribute("Form") or 1) % #forms + 1)
 					p:SetAttribute("FormAt", workspace:GetServerTimeNow() + Config.DN_PERIOD)
 				end
 				if (f.downUntil and t < f.downUntil) or (f.stunUntil and t < f.stunUntil) then frozen = true end
@@ -3425,11 +3507,12 @@ local FABRIC, RUST, SLATE, PLASTIC = Enum.Material.Fabric, Enum.Material.Corrode
 local SKIN = {
 	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
 	cartooncat = Enum.Material.Rubber, sirenhead = Enum.Material.Leather, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
-	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Leather,
+	locust = SLATE, boisvert = PLASTIC, demogorgon = Enum.Material.Leather,
 	megalodon = Enum.Material.SmoothPlastic, megalodon_h = Enum.Material.SmoothPlastic, kraken = Enum.Material.Rubber, cthulhu = Enum.Material.Rubber,
 	leviathan = Enum.Material.Pebble, mosasaurus = Enum.Material.Pebble, nessie = Enum.Material.Pebble, spinosaurus = Enum.Material.Pebble,
 	trex = Enum.Material.Pebble, yeti = Enum.Material.Carpet, bigfoot = Enum.Material.Carpet, chupacabra = Enum.Material.Pebble, vampire = FABRIC,
 	quetzalcoatlus = Enum.Material.Leather, gargoyle = Enum.Material.Basalt, dragon = Enum.Material.Pebble, fester = FABRIC,
+	wendigo = Enum.Material.Carpet, wendigo_h = Enum.Material.Leather, dn_guilt = PLASTIC,
 }
 local defaultMat = PLASTIC
 
@@ -3697,7 +3780,7 @@ BUILD.locust = function(P)
 	P(Vector3.new(0.2, 1.8, 0.2), at(-0.6, 12.0, 0.3, 0, 0, 35), tube, { mat = Enum.Material.Rubber })
 	for i = 1, 4 do P(Vector3.new(1.3, 0.05, 0.05), at(math.sin(i * 5) * 0.3, 3.5 + i * 1.6, -0.5), rgb(220, 220, 220), { mat = NEON, transp = 0.5, noShadow = true }) end -- screen static clinging to it
 end
-BUILD.monochrome = function(P)
+BUILD.boisvert = function(P)
 	humanoidBody(P, rgb(154, 154, 154), { legs = rgb(110, 110, 110), arms = rgb(190, 190, 190) })
 	P(Vector3.new(0.9, 0.9, 0.12), at(-0.6, 0.6, -0.82), rgb(80, 80, 80))
 	P(Vector3.new(0.9, 0.9, 0.12), at(0.5, -0.4, -0.82), rgb(220, 220, 220))
@@ -3805,7 +3888,7 @@ end
 -- v1.5 realism pass: wet sheen on sea creatures/slime, glowing eyes that actually light the face,
 -- subtle per-part tone variation so skin, fur and scales don't read as flat plastic, shadows on every part
 local WET = { megalodon = true, megalodon_h = true, kraken = true, cthulhu = true, leviathan = true, mosasaurus = true, nessie = true, demogorgon = true }
-local ROBOT = { freddy = true, bonnie = true, chica = true, foxy = true, springtrap = true, monochrome = true }
+local ROBOT = { freddy = true, bonnie = true, chica = true, foxy = true, springtrap = true, boisvert = true }
 function Models.realize(model, kind)
 	local i, lights = 0, 0
 	for _, p in ipairs(model:GetDescendants()) do
@@ -4232,11 +4315,15 @@ return function(L)
 			for f = -2, 2 do seg(P, Vector3.new(x * 2.4, 1, -1.2), Vector3.new(x * 2.5 + f * 0.18, -1.4, -1.9), 0.14, pale) end
 		end
 		seg(P, Vector3.new(0, 6, 0), Vector3.new(0, 7.2, -0.2), 0.7, pale)
-		P(Vector3.new(1.8, 2.6, 1.8), at(0, 8.4, -0.2), pale, { name = "Head" })
-		P(Vector3.new(0.55, 0.7, 0.2), at(-0.42, 8.8, -1.1), rgb(5, 5, 5)); P(Vector3.new(0.55, 0.7, 0.2), at(0.42, 8.8, -1.1), rgb(5, 5, 5))
-		P(Vector3.new(0.16, 0.16, 0.1), at(-0.42, 8.8, -1.22), rgb(255, 255, 255), { mat = NEON, name = "Pupil" }); P(Vector3.new(0.16, 0.16, 0.1), at(0.42, 8.8, -1.22), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
-		P(Vector3.new(1.5, 0.35, 0.15), at(0, 7.7, -1.12), rgb(60, 8, 10))
-		teeth(P, at(0, 7.75, -1.18), 7, 1.4, nil)
+		-- v1.5.1: egg-shaped head, hollow black eyes, a very long drooping jaw lined with thin teeth
+		P(Vector3.new(1.9, 2.8, 2), at(0, 8.6, -0.2), pale, { shape = BALL, name = "Head" })
+		P(Vector3.new(0.6, 0.8, 0.3), at(-0.42, 8.9, -1.08), rgb(5, 5, 5), { shape = BALL }); P(Vector3.new(0.6, 0.8, 0.3), at(0.42, 8.9, -1.08), rgb(5, 5, 5), { shape = BALL })
+		P(Vector3.new(0.14, 0.14, 0.1), at(-0.42, 8.9, -1.24), rgb(255, 255, 255), { mat = NEON, name = "Pupil" }); P(Vector3.new(0.14, 0.14, 0.1), at(0.42, 8.9, -1.24), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
+		P(Vector3.new(1.3, 2.2, 0.3), at(0, 6.8, -1.0, -8, 0, 0), rgb(74, 20, 22), { name = "Jaw" })          -- gaping mouth
+		P(Vector3.new(1.4, 0.4, 0.9), at(0, 5.7, -0.95, -8, 0, 0), pale, { name = "Jaw" })                     -- drooping chin
+		for k = 0, 9 do local x = -0.55 + k * 0.122
+			P(Vector3.new(0.07, 0.45, 0.07), at(x, 7.75, -1.18), rgb(235, 228, 205)); P(Vector3.new(0.07, 0.45, 0.07), at(x, 5.95, -1.22), rgb(235, 228, 205))
+		end
 		P(Vector3.new(2.4, 0.3, 2.4), at(0, 9.8, -0.2), robe, { name = "Hat" })
 		P(Vector3.new(1.6, 1.4, 1.6), at(0, 10.6, -0.2), robe, { name = "Hat" })
 		-- escalation stage parts (hidden until he grows stronger)
@@ -4245,6 +4332,89 @@ return function(L)
 			seg(P, Vector3.new(x * 1, 3.2, 0.6), Vector3.new(x * 3.4, 6.6, 1.4), 0.4, robe, { name = "Stage5" })
 		end
 		P(Vector3.new(4.6, 11, 4.6), at(0, 2.4, 0.4), rgb(120, 0, 0), { mat = Enum.Material.ForceField, name = "Stage6", transp = 1 })
+	end
+	-- v1.5.1 Doctor Nowhere forms, Boisvert and the Wendigo
+	B.dn_conezone = function(P) -- Cone Zone: a charcoal, fuzzy long-legged spider
+		local fur = rgb(38, 36, 36)
+		P(Vector3.new(3.2, 2.2, 3.6), at(0, -0.2, 0.6), fur, { shape = BALL, mat = Enum.Material.Carpet })     -- abdomen
+		P(Vector3.new(2, 1.6, 2), at(0, -0.4, -1.6), fur, { shape = BALL, mat = Enum.Material.Carpet })         -- head
+		for _, x in ipairs({ -1, 1 }) do
+			for k = 0, 3 do local z = -1.6 + k * 0.9
+				seg(P, Vector3.new(x * 0.8, -0.2, z), Vector3.new(x * 3, 1.6, z + (k - 1.5) * 0.9), 0.3, fur, { mat = Enum.Material.Carpet })
+				seg(P, Vector3.new(x * 3, 1.6, z + (k - 1.5) * 0.9), Vector3.new(x * 4.2, -3, z + (k - 1.5) * 1.4), 0.24, fur, { mat = Enum.Material.Carpet })
+			end
+			P(Vector3.new(0.3, 0.3, 0.3), at(x * 0.4, -0.1, -2.55), rgb(10, 10, 10), { shape = BALL, mat = Enum.Material.Glass })
+			P(Vector3.new(0.2, 0.2, 0.2), at(x * 0.7, 0.2, -2.45), rgb(10, 10, 10), { shape = BALL, mat = Enum.Material.Glass })
+		end
+	end
+	B.dn_guilt = function(P) -- Guilt: a tall white figure whose face is a flat plate
+		local white = rgb(236, 234, 228)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.5, 2, 0), Vector3.new(x * 0.55, -3, 0), 0.5, white)
+			seg(P, Vector3.new(x * 1.2, 6, 0), Vector3.new(x * 1.6, 0.4, -0.6), 0.38, white)
+		end
+		P(Vector3.new(1.9, 4.6, 1.1), at(0, 4.1, 0), white)
+		seg(P, Vector3.new(0, 6.4, 0), Vector3.new(0, 7.6, -0.1), 0.5, white)
+		P(Vector3.new(1.7, 2.2, 1.7), at(0, 8.5, 0), white, { shape = BALL, name = "Head" })
+		P(Vector3.new(1.5, 1.9, 0.18), at(0, 8.5, -0.85), rgb(250, 250, 248), { mat = Enum.Material.SmoothPlastic })  -- the face plate
+		P(Vector3.new(0.22, 0.08, 0.05), at(-0.35, 8.8, -0.95), rgb(20, 20, 20)); P(Vector3.new(0.22, 0.08, 0.05), at(0.35, 8.8, -0.95), rgb(20, 20, 20))
+	end
+	B.boisvert = function(P) -- black anvil head, tiny white eyes, grainy static aura
+		local blk = rgb(12, 12, 14)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.55, 0, 0), Vector3.new(x * 0.6, -3, 0), 0.6, blk)
+			seg(P, Vector3.new(x * 1.3, 2.6, 0), Vector3.new(x * 1.6, -0.6, -0.3), 0.45, blk)
+		end
+		P(Vector3.new(2.2, 3, 1.3), at(0, 1.4, 0), blk)
+		P(Vector3.new(3.6, 0.9, 1.6), at(0, 4.1, 0), blk, { name = "Head" })        -- anvil face
+		P(Vector3.new(1.4, 1.1, 1.2), at(0, 3.3, 0), blk)                            -- waist of the anvil
+		P(Vector3.new(1.2, 0.6, 1.0), at(2.1, 4.25, 0, 0, 0, -12), blk)             -- horn
+		P(Vector3.new(0.12, 0.12, 0.05), at(-0.35, 4.15, -0.82), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
+		P(Vector3.new(0.12, 0.12, 0.05), at(0.35, 4.15, -0.82), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
+		for k = 1, 16 do P(Vector3.new(0.18, 0.18, 0.18), at(math.sin(k * 2.7) * 1.8, 0.4 + (k % 8) * 0.55, math.cos(k * 1.9) * 1), rgb(90 + (k * 37) % 160, 90 + (k * 37) % 160, 90 + (k * 37) % 160), { mat = NEON, transp = 0.45, noShadow = true }) end -- static grain
+	end
+	local function antlers(P, y, bone)
+		for _, x in ipairs({ -1, 1 }) do
+			local a, b = Vector3.new(x * 0.5, y, 0), Vector3.new(x * 1.8, y + 2.2, 0.3)
+			seg(P, a, b, 0.22, bone); seg(P, b, Vector3.new(x * 2.6, y + 3.6, 0.1), 0.18, bone)
+			seg(P, Vector3.new(x * 1.2, y + 1.3, 0.2), Vector3.new(x * 1.0, y + 2.6, -0.4), 0.15, bone)
+			seg(P, b, Vector3.new(x * 1.5, y + 3.4, -0.3), 0.15, bone)
+		end
+	end
+	B.wendigo = function(P) -- deer form: gaunt furred beast, deer skull, antlers, exposed ribs
+		local fur, bone = rgb(74, 52, 36), rgb(216, 204, 176)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.6, 1.2, 0.6), Vector3.new(x * 0.7, -0.8, 1.3), 0.6, fur, { mat = Enum.Material.Carpet })
+			seg(P, Vector3.new(x * 0.7, -0.8, 1.3), Vector3.new(x * 0.65, -3, 0.9), 0.32, fur)
+			seg(P, Vector3.new(x * 1.1, 5, -0.4), Vector3.new(x * 1.7, 0.6, -1.4), 0.35, fur, { mat = Enum.Material.Carpet })
+			for f = -1, 1 do seg(P, Vector3.new(x * 1.7, 0.6, -1.4), Vector3.new(x * 1.8 + f * 0.15, -0.5, -1.9), 0.08, bone) end
+		end
+		P(Vector3.new(2, 4.2, 1.3), at(0, 3.4, -0.2, -12, 0, 0), fur, { mat = Enum.Material.Carpet })
+		for k = 0, 4 do P(Vector3.new(1.7, 0.12, 0.15), at(0, 2.4 + k * 0.5, -0.95, -12, 0, 0), bone) end   -- ribs
+		seg(P, Vector3.new(0, 5.4, -0.5), Vector3.new(0, 6.3, -1.1), 0.5, fur)
+		P(Vector3.new(0.9, 1.0, 1.9), at(0, 6.6, -1.6, 10, 0, 0), bone, { name = "Head" })                   -- deer skull
+		P(Vector3.new(0.28, 0.3, 0.2), at(-0.28, 6.75, -2.2), rgb(0, 0, 0), { shape = BALL }); P(Vector3.new(0.28, 0.3, 0.2), at(0.28, 6.75, -2.2), rgb(0, 0, 0), { shape = BALL })
+		P(Vector3.new(0.1, 0.1, 0.05), at(-0.28, 6.75, -2.32), rgb(255, 255, 255), { mat = NEON }); P(Vector3.new(0.1, 0.1, 0.05), at(0.28, 6.75, -2.32), rgb(255, 255, 255), { mat = NEON })
+		P(Vector3.new(0.7, 0.25, 1.2), at(0, 6.0, -1.9, 22, 0, 0), bone, { name = "Jaw" })
+		antlers(P, 7.1, bone)
+	end
+	B.wendigo_h = function(P) -- human form: crouched, pale, gaunt, bone & bead chest plate, screaming
+		local skin, stain, bone = rgb(200, 196, 188), rgb(122, 20, 20), rgb(216, 204, 176)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.5, 0.4, 0), Vector3.new(x * 0.9, -1.2, -0.9), 0.5, skin)
+			seg(P, Vector3.new(x * 0.9, -1.2, -0.9), Vector3.new(x * 0.7, -3, 0), 0.4, skin)
+			seg(P, Vector3.new(x * 0.9, 2.6, -0.3), Vector3.new(x * 1.5, -1.8, -1.2), 0.32, skin)
+			for f = -1, 1 do seg(P, Vector3.new(x * 1.5, -1.8, -1.2), Vector3.new(x * 1.6 + f * 0.12, -2.8, -1.4), 0.07, stain) end
+		end
+		P(Vector3.new(1.6, 2.6, 0.9), at(0, 1.6, -0.3, -25, 0, 0), skin)
+		P(Vector3.new(1.5, 1.4, 0.15), at(0, 1.9, -0.85, -25, 0, 0), bone)                                   -- bone & bead chest plate
+		for k = 0, 5 do P(Vector3.new(0.14, 0.14, 0.14), at(-0.55 + k * 0.22, 1.2, -0.95), rgb(160, 40, 30), { shape = BALL }) end
+		P(Vector3.new(1.4, 0.7, 1), at(0, 0.1, 0), rgb(58, 90, 42), { mat = FABRIC })                         -- loincloth
+		P(Vector3.new(1.2, 1.5, 1.2), at(0, 3.5, -0.9), skin, { shape = BALL, name = "Head" })
+		P(Vector3.new(0.3, 0.4, 0.2), at(-0.25, 3.7, -1.45), rgb(0, 0, 0), { shape = BALL }); P(Vector3.new(0.3, 0.4, 0.2), at(0.25, 3.7, -1.45), rgb(0, 0, 0), { shape = BALL })
+		P(Vector3.new(0.5, 0.9, 0.2), at(0, 2.9, -1.4), rgb(40, 6, 8), { name = "Jaw" })                      -- screaming mouth
+		P(Vector3.new(0.6, 0.2, 0.3), at(0, 2.4, -1.25), stain)                                               -- teen-level blood smear
+		antlers(P, 4.1, bone)
 	end
 	return B
 end
@@ -4512,7 +4682,7 @@ return function(X)
 		if not dest then toast(p, "No room to lunge"); return 3 end
 		ring(h.Position + Vector3.new(0, -2.5, 0), rgb(120, 140, 80), 4, 16, 0.6)
 		p.Character:PivotTo(CFrame.lookAt(dest, dest + look))
-		sfxAll("roar", dest)
+		sfxAll("spinoroar", dest)
 		local hit = 0
 		for _, s in ipairs(survivorsNear(dest, 14)) do
 			hit += 1
@@ -4606,7 +4776,7 @@ return function(X)
 	end
 	ABILITY.trex = function(p) -- Tyrant Roar
 		local h = hrpOf(p)
-		sfxAll("roar", h.Position)
+		sfxAll("trexroar", h.Position)
 		ring(h.Position + Vector3.new(0, -2.5, 0), rgb(255, 200, 120), 4, 70, 0.9)
 		local hit = 0
 		for _, s in ipairs(survivorsNear(h.Position, 75)) do
@@ -5513,10 +5683,10 @@ local scareFx = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScal
 local scareBlack = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 33, Visible = false }, scareFx)
 local scareText = label(scareFx, "CAUGHT", 70, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.42, 0), Size = UDim2.new(1, 0, 0, 80), ZIndex = 36, Visible = false })
 local bloodOn = true -- settings toggle (default on). Teen-level only: red splatter / drips, no gore.
-local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, monochrome = 2.0, locust = 1.9,
+local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, boisvert = 2.0, locust = 1.9,
 	-- v1.4 phase 2 (keyed by template: the Megalodon has a water and a land form)
 	megalodon = 1.95, megalodon_h = 1.45, kraken = 1.7, cthulhu = 1.8, leviathan = 1.7, mosasaurus = 1.25, nessie = 1.55, spinosaurus = 1.6,
-	yeti = 1.6, chupacabra = 1.05, vampire = 1.45, bigfoot = 1.5, trex = 1.6, quetzalcoatlus = 1.35, gargoyle = 1.35, dragon = 1.5, fester = 1.75 }
+	yeti = 1.6, chupacabra = 1.05, vampire = 1.45, bigfoot = 1.5, trex = 1.6, quetzalcoatlus = 1.35, gargoyle = 1.35, dragon = 1.5, fester = 1.75, wendigo = 1.15, wendigo_h = 1.3, dn_conezone = 1.25, dn_guilt = 1.35 }
 local SCARE_LEN = 2.6
 local scareRun = 0
 
@@ -5554,6 +5724,7 @@ local function jumpscare(kind, form, stats)
 	local key = kind
 	if kind == "drnowhere" and Config.DN_FORMS[form or 1] then key = Config.DN_FORMS[form or 1].key end
 	if kind == "megalodon" and form == 2 then key = "megalodon_h" end
+	if kind == "wendigo" and Config.WG_FORMS[form or 1] then key = Config.WG_FORMS[form or 1].key end
 	local t = Templates:FindFirstChild(key) or Templates:FindFirstChild("freddy")
 	local m = t:Clone()
 	m.Parent = scare
@@ -5602,6 +5773,10 @@ local function jumpscare(kind, form, stats)
 	local hit = false
 	local squares = {}
 	playSound("rbxasset://sounds/electronicpingshort.wav", kind == "sonicexe" and 0.6 or 0.35, 2)
+	local roarId = (kind == "trex" or kind == "spinosaurus") and Config.SOUNDS[kind == "trex" and "trexroar" or "spinoroar"]
+	if roarId and roarId ~= "" then playSound(roarId, 1, 2.5) -- uploaded roar (built from CC0/public-domain recordings)
+	elseif roarId then playSound("rbxasset://sounds/uuhhh.mp3", kind == "trex" and 0.32 or 0.55, 2.5) end
+	if kind == "wendigo" then playSound("rbxasset://sounds/collide.wav", 1.6, 2) end
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
 		if run ~= scareRun then conn:Disconnect(); return end
@@ -5630,7 +5805,7 @@ local function jumpscare(kind, form, stats)
 		elseif kind == "locust" then -- possession: leans in, the picture tears
 			local l = ease(e / 1.6)
 			camPos = Vector3.new(math.sin(e * 13) * 0.2, headY, -7 + l * 4.5); shake = 0.1 + l * 0.6
-		elseif kind == "monochrome" then -- it stares while you dissolve
+		elseif kind == "boisvert" then -- it stares while you dissolve
 			camPos = Vector3.new(0, headY, -5.5 + e * 0.4); shake = 0.01
 		elseif kind == "drnowhere" then
 			local l = ease((e - 0.5) / 0.7)
@@ -5735,6 +5910,22 @@ local function jumpscare(kind, form, stats)
 			local l = ease((e - 1.1) / 0.4)
 			m:PivotTo(base * CFrame.new(0, 0, -l * 5))
 			camPos = Vector3.new(0, headY - 1, -12 + l * 4); look = Vector3.new(0, headY - 1, -l * 6); shake = 0.1 + f2 * 0.2 + l * 0.3
+		elseif key == "wendigo" then -- antler charge out of the trees
+			local l = ease((e - 0.5) / 0.6)
+			m:PivotTo(base * CFrame.new(0, -0.5, 16 - l * 15) * CFrame.Angles(math.rad(-20 * l), 0, 0))
+			camPos = Vector3.new(0, headY - 1.5, -6); look = Vector3.new(0, headY - 1, 10 - l * 10); shake = 0.05 + l * 0.5
+		elseif key == "wendigo_h" then -- a scream, then it leaps at you
+			local l = ease((e - 0.8) / 0.45)
+			m:PivotTo(base * CFrame.new(0, math.sin(l * math.pi) * 3, 10 - l * 10))
+			camPos = Vector3.new(0, headY, -5); look = Vector3.new(0, headY, 8 - l * 8); shake = e < 0.8 and 0.08 or 0.45
+		elseif key == "dn_conezone" then -- the spider skitters straight at the camera
+			local l = ease((e - 0.3) / 0.9)
+			m:PivotTo(base * CFrame.new(math.sin(e * 40) * 0.25 * (1 - l), 0, 18 - l * 17))
+			camPos = Vector3.new(0, 1, -5); look = Vector3.new(0, 0, 10 - l * 10); shake = 0.04 + l * 0.35
+		elseif key == "dn_guilt" then -- it towers over you and bends down, face plate first
+			local l = ease((e - 0.4) / 0.9)
+			m:PivotTo(base * CFrame.new(0, 0, 3) * CFrame.Angles(math.rad(-38 * l), 0, 0))
+			camPos = Vector3.new(0, 1, -4); look = Vector3.new(0, headY - l * 3, 3 - l * 3); shake = l * 0.25
 		elseif key == "fester" then -- the lights flicker; every time they come back he is closer
 			local step = math.floor(e / 0.3)
 			local dark = (e % 0.3) < 0.1 and e < 1.5
@@ -5754,7 +5945,7 @@ local function jumpscare(kind, form, stats)
 				for _, c in ipairs(squares) do c:Destroy() end
 				table.clear(squares)
 				for _ = 1, 6 do table.insert(squares, new("Frame", { BackgroundColor3 = ({ Color3.new(1, 0, 0), Color3.new(0, 1, 0), Color3.new(0, 0, 1), Color3.new(1, 1, 1) })[math.random(1, 4)], BackgroundTransparency = 0.5, Position = UDim2.fromScale(0, math.random()), Size = UDim2.new(1, 0, 0, math.random(3, 30)), ZIndex = 33 }, scareFx)) end
-			elseif kind == "monochrome" and math.random() < 0.8 then
+			elseif kind == "boisvert" and math.random() < 0.8 then
 				local g = math.random(0, 255)
 				table.insert(squares, new("Frame", { BackgroundColor3 = Color3.fromRGB(g, g, g), Position = UDim2.fromScale(math.random(), math.random()), Size = UDim2.fromOffset(40, 40), ZIndex = 33 }, scareFx))
 			end
@@ -6012,6 +6203,28 @@ local hurtOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(160, 0, 0), Ba
 local locustOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(0, 120, 140), Size = UDim2.fromScale(1, 1), ZIndex = 25, Visible = false }, gui)
 local locustText = label(locustOver, "", 30, { Font = Enum.Font.Arcade, TextColor3 = Color3.new(1, 1, 1), Position = UDim2.new(0, 0, 0.45, 0), Size = UDim2.new(1, 0, 0, 40), ZIndex = 26 })
 local darkUntil, hallucUntil = 0, 0
+-- v1.5.1 Boisvert "Dead Channel": the whole screen fills with opaque, animated TV static + a hiss for 10s
+local staticUntil = 0
+local staticOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(128, 128, 128), Size = UDim2.fromScale(1, 1), ZIndex = 16, Visible = false, BorderSizePixel = 0 }, gui)
+local SCOLS, SROWS = 48, 27
+local snow = {}
+for y = 0, SROWS - 1 do for x = 0, SCOLS - 1 do
+	snow[#snow + 1] = new("Frame", { BorderSizePixel = 0, Size = UDim2.fromScale(1 / SCOLS + 0.002, 1 / SROWS + 0.004), Position = UDim2.fromScale(x / SCOLS, y / SROWS), ZIndex = 16 }, staticOver)
+end end
+local rollBar = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.75, Size = UDim2.fromScale(1, 0.06), ZIndex = 17 }, staticOver)
+local hissSound = Instance.new("Sound")
+hissSound.SoundId = (Config.SOUNDS.static and Config.SOUNDS.static ~= "") and Config.SOUNDS.static or "rbxasset://sounds/swoosh.wav"
+hissSound.Looped, hissSound.Volume, hissSound.PlaybackSpeed = true, 1.2, (Config.SOUNDS.static and Config.SOUNDS.static ~= "") and 1 or 3.2
+hissSound.Parent = gui
+RunService.RenderStepped:Connect(function()
+	local on = os.clock() < staticUntil and State:GetAttribute("State") == "Hunt"
+	staticOver.Visible = on
+	if on then
+		if not hissSound.IsPlaying then hissSound:Play() end
+		for i, f in ipairs(snow) do local n = math.random(0, 255); f.BackgroundColor3 = Color3.fromRGB(n, n, n) end
+		rollBar.Position = UDim2.fromScale(0, (os.clock() * 0.6) % 1)
+	elseif hissSound.IsPlaying then hissSound:Stop() end
+end)
 local halluc = Instance.new("ColorCorrectionEffect")
 halluc.Name = "NH_Halluc"
 halluc.Enabled = false
@@ -6037,6 +6250,10 @@ local SFX = { -- uploads in Config.SOUNDS win; otherwise built-in Roblox sounds,
 	roar = { "rbxasset://sounds/uuhhh.mp3", 0.45 }, drain = { "rbxasset://sounds/swoosh.wav", 1.8 }, bats = { "rbxasset://sounds/electronicpingshort.wav", 2.8 },
 	throw = { "rbxasset://sounds/swoosh.wav", 0.8 }, screech = { "rbxasset://sounds/electronicpingshort.wav", 1.6 }, stone = { "rbxasset://sounds/collide.wav", 0.3 },
 	fire = { "rbxasset://sounds/swoosh.wav", 0.4 }, fester = { "rbxasset://sounds/uuhhh.mp3", 0.6 },
+	-- v1.5.1 (T-Rex / Spinosaurus roars: upload roblox/sounds/trex_roar.mp3 + spino_roar.mp3 - built from CC0/public-domain recordings - and paste ids into Config.SOUNDS)
+	trexroar = { "rbxasset://sounds/uuhhh.mp3", 0.32 }, spinoroar = { "rbxasset://sounds/uuhhh.mp3", 0.55 },
+	static = { "rbxasset://sounds/swoosh.wav", 3.2 }, crack = { "rbxasset://sounds/collide.wav", 1.6 }, mimic = { "rbxasset://sounds/uuhhh.mp3", 1.25 },
+	skitter = { "rbxasset://sounds/electronicpingshort.wav", 5 },
 }
 -- phase-2 screen effects: tint pulses, camera shake, lightning
 local tintOver = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 13 }, gui)
@@ -6603,6 +6820,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 	elseif kind == "effect" then
 		if a == "grey" then greyUntil = os.clock() + b end
 		if a == "dark" then darkUntil = os.clock() + b end
+		if a == "static" then staticUntil = os.clock() + b end
 		if a == "halluc" then hallucUntil = os.clock() + b end
 		if a == "lightsout" then toast("Your flashlight died...") end
 		local d = tonumber(b) or 1

@@ -256,7 +256,7 @@ return function(X)
 		if not dest then toast(p, "No room to lunge"); return 3 end
 		ring(h.Position + Vector3.new(0, -2.5, 0), rgb(120, 140, 80), 4, 16, 0.6)
 		p.Character:PivotTo(CFrame.lookAt(dest, dest + look))
-		sfxAll("roar", dest)
+		sfxAll("spinoroar", dest)
 		local hit = 0
 		for _, s in ipairs(survivorsNear(dest, 14)) do
 			hit += 1
@@ -350,7 +350,7 @@ return function(X)
 	end
 	ABILITY.trex = function(p) -- Tyrant Roar
 		local h = hrpOf(p)
-		sfxAll("roar", h.Position)
+		sfxAll("trexroar", h.Position)
 		ring(h.Position + Vector3.new(0, -2.5, 0), rgb(255, 200, 120), 4, 70, 0.9)
 		local hit = 0
 		for _, s in ipairs(survivorsNear(h.Position, 75)) do

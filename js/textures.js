@@ -203,3 +203,20 @@ export function textSprite(text, color = '#fff', size = 34) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
   s.scale.set(4, .75, 1); s.renderOrder = 10; return s;
 }
+
+// faded beige floral wallpaper with brownish smears (Locust broadcast; used by the screen overlay and in-world TVs)
+export function oldWallpaper(g, W, H, k = 1) {
+  let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  g.fillStyle = '#cbbf9e'; g.fillRect(0, 0, W, H); // aged cream-beige
+  for (let x = 0; x < W; x += 6 * k) { g.fillStyle = `rgba(120,100,70,${.03 + rnd() * .04})`; g.fillRect(x, 0, 2 * k, H); } // faint paper grain stripes
+  const fl = (x, y, s) => { g.save(); g.translate(x, y); g.scale(s, s); // small faded flower sprig: dusty rose petals, olive leaves
+    g.strokeStyle = 'rgba(110,112,70,.55)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, 10); g.quadraticCurveTo(-3, 2, 0, -6); g.stroke();
+    g.fillStyle = 'rgba(120,124,78,.55)'; for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(sx * 5, 4, 5, 2.2, sx * .6, 0, 6.283); g.fill(); }
+    g.fillStyle = 'rgba(176,120,110,.6)'; for (let i = 0; i < 5; i++) { const a = i * 1.2566; g.beginPath(); g.ellipse(Math.cos(a) * 4, -8 + Math.sin(a) * 4, 3.6, 2.2, a, 0, 6.283); g.fill(); }
+    g.fillStyle = 'rgba(150,110,60,.7)'; g.beginPath(); g.arc(0, -8, 1.8, 0, 6.283); g.fill(); g.restore(); };
+  const sx = 46 * k, sy = 40 * k; for (let y = 0, row = 0; y < H + sy; y += sy, row++) for (let x = (row % 2) * sx / 2; x < W + sx; x += sx) fl(x, y, k * (.9 + rnd() * .2));
+  for (let i = 0; i < 9; i++) { const x = rnd() * W, y = rnd() * H * .6, w = (30 + rnd() * 70) * k, h = (80 + rnd() * 200) * k; // brownish water stains running down
+    const gr = g.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, 'rgba(110,72,36,.0)'); gr.addColorStop(.25, `rgba(110,72,36,${.18 + rnd() * .2})`); gr.addColorStop(1, 'rgba(90,60,30,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y + h / 2, w / 2, h / 2, (rnd() - .5) * .3, 0, 6.283); g.fill(); }
+  for (let i = 0; i < 26; i++) { g.fillStyle = `rgba(80,52,26,${.08 + rnd() * .2})`; const x = rnd() * W, y = rnd() * H; g.beginPath(); g.ellipse(x, y, (2 + rnd() * 10) * k, (2 + rnd() * 6) * k, rnd() * 3, 0, 6.283); g.fill(); } // dirt smudges
+  const v = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .2, W / 2, H / 2, Math.max(W, H) * .7); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(40,24,8,.6)'); g.fillStyle = v; g.fillRect(0, 0, W, H);
+}

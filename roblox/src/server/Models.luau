@@ -12,11 +12,12 @@ local FABRIC, RUST, SLATE, PLASTIC = Enum.Material.Fabric, Enum.Material.Corrode
 local SKIN = {
 	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
 	cartooncat = Enum.Material.Rubber, sirenhead = Enum.Material.Leather, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
-	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Leather,
+	locust = SLATE, boisvert = PLASTIC, demogorgon = Enum.Material.Leather,
 	megalodon = Enum.Material.SmoothPlastic, megalodon_h = Enum.Material.SmoothPlastic, kraken = Enum.Material.Rubber, cthulhu = Enum.Material.Rubber,
 	leviathan = Enum.Material.Pebble, mosasaurus = Enum.Material.Pebble, nessie = Enum.Material.Pebble, spinosaurus = Enum.Material.Pebble,
 	trex = Enum.Material.Pebble, yeti = Enum.Material.Carpet, bigfoot = Enum.Material.Carpet, chupacabra = Enum.Material.Pebble, vampire = FABRIC,
 	quetzalcoatlus = Enum.Material.Leather, gargoyle = Enum.Material.Basalt, dragon = Enum.Material.Pebble, fester = FABRIC,
+	wendigo = Enum.Material.Carpet, wendigo_h = Enum.Material.Leather, dn_guilt = PLASTIC,
 }
 local defaultMat = PLASTIC
 
@@ -284,7 +285,7 @@ BUILD.locust = function(P)
 	P(Vector3.new(0.2, 1.8, 0.2), at(-0.6, 12.0, 0.3, 0, 0, 35), tube, { mat = Enum.Material.Rubber })
 	for i = 1, 4 do P(Vector3.new(1.3, 0.05, 0.05), at(math.sin(i * 5) * 0.3, 3.5 + i * 1.6, -0.5), rgb(220, 220, 220), { mat = NEON, transp = 0.5, noShadow = true }) end -- screen static clinging to it
 end
-BUILD.monochrome = function(P)
+BUILD.boisvert = function(P)
 	humanoidBody(P, rgb(154, 154, 154), { legs = rgb(110, 110, 110), arms = rgb(190, 190, 190) })
 	P(Vector3.new(0.9, 0.9, 0.12), at(-0.6, 0.6, -0.82), rgb(80, 80, 80))
 	P(Vector3.new(0.9, 0.9, 0.12), at(0.5, -0.4, -0.82), rgb(220, 220, 220))
@@ -392,7 +393,7 @@ end
 -- v1.5 realism pass: wet sheen on sea creatures/slime, glowing eyes that actually light the face,
 -- subtle per-part tone variation so skin, fur and scales don't read as flat plastic, shadows on every part
 local WET = { megalodon = true, megalodon_h = true, kraken = true, cthulhu = true, leviathan = true, mosasaurus = true, nessie = true, demogorgon = true }
-local ROBOT = { freddy = true, bonnie = true, chica = true, foxy = true, springtrap = true, monochrome = true }
+local ROBOT = { freddy = true, bonnie = true, chica = true, foxy = true, springtrap = true, boisvert = true }
 function Models.realize(model, kind)
 	local i, lights = 0, 0
 	for _, p in ipairs(model:GetDescendants()) do

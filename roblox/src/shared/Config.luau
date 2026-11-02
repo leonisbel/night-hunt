@@ -30,14 +30,15 @@ C.THEMES = { "Powerline Forest", "Abandoned Pizzeria Town", "Foggy Woods", "Stat
 C.MAIN_THEME = "Powerline Forest" -- picked 30% of the time
 
 C.MONSTER_KEYS = { "freddy", "bonnie", "chica", "foxy", "springtrap", "cartooncat",
-	"sirenhead", "drnowhere", "locust", "monochrome", "demogorgon", "sonicexe",
+	"sirenhead", "drnowhere", "locust", "boisvert", "demogorgon", "sonicexe",
 	"megalodon", "kraken", "cthulhu", "leviathan", "mosasaurus", "nessie", "spinosaurus", "yeti", "chupacabra",
-	"vampire", "bigfoot", "trex", "quetzalcoatlus", "gargoyle", "dragon", "fester" }
+	"vampire", "bigfoot", "trex", "quetzalcoatlus", "gargoyle", "dragon", "fester", "wendigo" }
 -- sea monsters swim fast in water and slower on land; every phase-2 monster has a home map it prefers
 C.SEA = { megalodon = true, kraken = true, cthulhu = true, leviathan = true, mosasaurus = true, nessie = true }
 C.HOME = { megalodon = "Stormy Ocean", kraken = "Stormy Ocean", cthulhu = "Stormy Ocean", leviathan = "Stormy Ocean", mosasaurus = "Stormy Ocean", nessie = "Stormy Ocean",
 	spinosaurus = "Rainforest Swamp", yeti = "Snowy Mountain", chupacabra = "Haunted Farm", vampire = "Vampire Castle", bigfoot = "Foggy Woods", trex = "Rainforest Swamp",
-	quetzalcoatlus = "Snowy Mountain", gargoyle = "Vampire Castle", dragon = "Vampire Castle", fester = "Fester Street" }
+	quetzalcoatlus = "Snowy Mountain", gargoyle = "Vampire Castle", dragon = "Vampire Castle", fester = "Fester Street",
+	wendigo = { "Snowy Mountain", "Powerline Forest", "Foggy Woods" } } -- a value can list several home maps
 C.FESTER_MAX = 6
 
 local AFTON = { ability = "Afton Laugh", desc = "A creepy laugh echoes - you see every survivor for 10s", cd = 20 }
@@ -52,7 +53,7 @@ C.MONSTERS = {
 	sirenhead  = { name = "Siren Head",     ability = "Siren Call",         desc = "A deafening siren reveals every survivor for 8s",       cd = 20, speed = 18 },
 	drnowhere  = { name = "Doctor Nowhere", ability = "Shapeshift",         desc = "Changes form every 30s; each form has its own power", cd = 20, speed = 19 },
 	locust     = { name = "The Locust",     ability = "Swarm Omen",         desc = "Crawl out of a screen near one random survivor and slam their screen", cd = 20, speed = 19 },
-	monochrome = { name = "Monochrome",     ability = "Total Blackout",     desc = "Every survivor's screen goes pitch black for 10s",     cd = 20, speed = 19 },
+	boisvert   = { name = "Boisvert",       ability = "Dead Channel",       desc = "Every survivor's screen fills with roaring TV static for 10s", cd = 20, speed = 19 },
 	sonicexe   = { name = "Sonic.exe",      ability = "You Can't Run",      desc = "A scary laugh, then you run much faster for 10s",      cd = 20, speed = 19.5 },
 	demogorgon = { name = "Demogorgon",     ability = "Upside Down Portal", desc = "Open a portal and come out near the nearest survivor", cd = 20, speed = 19.5 },
 	-- v1.4 phase 2
@@ -71,6 +72,7 @@ C.MONSTERS = {
 	quetzalcoatlus = { name = "Quetzalcoatlus", ability = "Sky Dive",   desc = "Take off and dive down on the nearest survivor", cd = 20, speed = 19 },
 	gargoyle   = { name = "Gargoyle",       ability = "Stone Skin",     desc = "Turn to stone: weapons can't hurt you for 6s, then a shockwave", cd = 20, speed = 18.5 },
 	dragon     = { name = "Dragon",         ability = "Fire Breath",    desc = "Breathe fire in a cone in front of you: survivors burn", cd = 20, speed = 19 },
+	wendigo    = { name = "Wendigo",        ability = "Two Forms",      desc = "Bone-cracks between a deer form (Antler Charge) and a human form (Mimic Lure & Leap) every 30s", cd = 20, speed = 19.5 },
 	fester     = { name = "Father Fester",  ability = "Lights Out",     desc = "Every light near you dies and survivors black out. Passive: each new survivor who sees you makes you stronger (6 stages)", cd = 20, speed = 17.5 },
 }
 
@@ -78,10 +80,17 @@ C.MONSTERS = {
 C.DN_PERIOD = 30
 C.DN_FORMS = {
 	{ key = "drnowhere",    name = "The Doctor",           ability = "Injection",   desc = "Inject the survivor in front of you - slowed for 6s" },
-	{ key = "dn_conezone",  name = "Cone Zone",            ability = "Cone Quake",  desc = "Slam the ground - survivors close to you are stunned" },
+	{ key = "dn_conezone",  name = "Cone Zone",            ability = "Skitter Dash", desc = "Skitter forward on eight fuzzy legs - very fast for 2.5s" },
 	{ key = "dn_nightmare", name = "Nightmare Man",        ability = "Shadow Step", desc = "Melt into shadow and reappear far ahead" },
 	{ key = "dn_sixarm",    name = "The Doctor (six arms)", ability = "Paranoia",   desc = "Nearby survivors hallucinate and are revealed to you" },
+	{ key = "dn_guilt",     name = "Guilt",                ability = "Guilty Stare", desc = "Survivors who look at you are slowed and see things" },
 }
+-- v1.5.1 Wendigo: deer form and human form, switching every DN_PERIOD with a bone-crack morph
+C.WG_FORMS = {
+	{ key = "wendigo",   name = "Wendigo (deer)",  ability = "Antler Charge",     desc = "Charge forward - the survivor in front is gored, stunned and shoved" },
+	{ key = "wendigo_h", name = "Wendigo (human)", ability = "Mimic Lure & Leap", desc = "Call out in a stolen voice to reveal survivors, then leap at the nearest" },
+}
+C.FORMS = { drnowhere = C.DN_FORMS, wendigo = C.WG_FORMS }
 
 -- loot (same items as the browser version). Studs: ~3.6 studs per metre of the browser game.
 C.ITEMS = {
@@ -169,6 +178,9 @@ C.CLOTHES = { Color3.fromRGB(200, 60, 50), Color3.fromRGB(40, 120, 200), Color3.
 
 -- Optional sound uploads: the Afton laugh etc. are original sounds rendered from the browser synth
 -- (roblox/sounds/*.wav). Upload them in Studio and paste the asset ids here; empty = built-in fallback.
-C.SOUNDS = { laugh = "", siren = "", locust = "", portal = "", sonic = "", scream = "", quake = "", shift = "" }
+C.SOUNDS = { laugh = "", siren = "", locust = "", portal = "", sonic = "", scream = "", quake = "", shift = "",
+	-- v1.5.1: T-Rex / Spinosaurus roars (roblox/sounds/trex_roar.mp3, spino_roar.mp3 - layered from CC0/public-domain animal
+	-- recordings, no movie audio) and a TV-static hiss. Upload in Studio (or pick Creator Store sounds) and paste "rbxassetid://..." here.
+	trexroar = "", spinoroar = "", static = "" }
 
 return C

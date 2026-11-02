@@ -269,10 +269,10 @@ local scareFx = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScal
 local scareBlack = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 33, Visible = false }, scareFx)
 local scareText = label(scareFx, "CAUGHT", 70, { Font = Enum.Font.Creepster, TextColor3 = RED, Position = UDim2.new(0, 0, 0.42, 0), Size = UDim2.new(1, 0, 0, 80), ZIndex = 36, Visible = false })
 local bloodOn = true -- settings toggle (default on). Teen-level only: red splatter / drips, no gore.
-local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, monochrome = 2.0, locust = 1.9,
+local IMPACT = { sirenhead = 2.0, cartooncat = 1.9, boisvert = 2.0, locust = 1.9,
 	-- v1.4 phase 2 (keyed by template: the Megalodon has a water and a land form)
 	megalodon = 1.95, megalodon_h = 1.45, kraken = 1.7, cthulhu = 1.8, leviathan = 1.7, mosasaurus = 1.25, nessie = 1.55, spinosaurus = 1.6,
-	yeti = 1.6, chupacabra = 1.05, vampire = 1.45, bigfoot = 1.5, trex = 1.6, quetzalcoatlus = 1.35, gargoyle = 1.35, dragon = 1.5, fester = 1.75 }
+	yeti = 1.6, chupacabra = 1.05, vampire = 1.45, bigfoot = 1.5, trex = 1.6, quetzalcoatlus = 1.35, gargoyle = 1.35, dragon = 1.5, fester = 1.75, wendigo = 1.15, wendigo_h = 1.3, dn_conezone = 1.25, dn_guilt = 1.35 }
 local SCARE_LEN = 2.6
 local scareRun = 0
 
@@ -310,6 +310,7 @@ local function jumpscare(kind, form, stats)
 	local key = kind
 	if kind == "drnowhere" and Config.DN_FORMS[form or 1] then key = Config.DN_FORMS[form or 1].key end
 	if kind == "megalodon" and form == 2 then key = "megalodon_h" end
+	if kind == "wendigo" and Config.WG_FORMS[form or 1] then key = Config.WG_FORMS[form or 1].key end
 	local t = Templates:FindFirstChild(key) or Templates:FindFirstChild("freddy")
 	local m = t:Clone()
 	m.Parent = scare
@@ -358,6 +359,10 @@ local function jumpscare(kind, form, stats)
 	local hit = false
 	local squares = {}
 	playSound("rbxasset://sounds/electronicpingshort.wav", kind == "sonicexe" and 0.6 or 0.35, 2)
+	local roarId = (kind == "trex" or kind == "spinosaurus") and Config.SOUNDS[kind == "trex" and "trexroar" or "spinoroar"]
+	if roarId and roarId ~= "" then playSound(roarId, 1, 2.5) -- uploaded roar (built from CC0/public-domain recordings)
+	elseif roarId then playSound("rbxasset://sounds/uuhhh.mp3", kind == "trex" and 0.32 or 0.55, 2.5) end
+	if kind == "wendigo" then playSound("rbxasset://sounds/collide.wav", 1.6, 2) end
 	local conn
 	conn = RunService.RenderStepped:Connect(function()
 		if run ~= scareRun then conn:Disconnect(); return end
@@ -386,7 +391,7 @@ local function jumpscare(kind, form, stats)
 		elseif kind == "locust" then -- possession: leans in, the picture tears
 			local l = ease(e / 1.6)
 			camPos = Vector3.new(math.sin(e * 13) * 0.2, headY, -7 + l * 4.5); shake = 0.1 + l * 0.6
-		elseif kind == "monochrome" then -- it stares while you dissolve
+		elseif kind == "boisvert" then -- it stares while you dissolve
 			camPos = Vector3.new(0, headY, -5.5 + e * 0.4); shake = 0.01
 		elseif kind == "drnowhere" then
 			local l = ease((e - 0.5) / 0.7)
@@ -491,6 +496,22 @@ local function jumpscare(kind, form, stats)
 			local l = ease((e - 1.1) / 0.4)
 			m:PivotTo(base * CFrame.new(0, 0, -l * 5))
 			camPos = Vector3.new(0, headY - 1, -12 + l * 4); look = Vector3.new(0, headY - 1, -l * 6); shake = 0.1 + f2 * 0.2 + l * 0.3
+		elseif key == "wendigo" then -- antler charge out of the trees
+			local l = ease((e - 0.5) / 0.6)
+			m:PivotTo(base * CFrame.new(0, -0.5, 16 - l * 15) * CFrame.Angles(math.rad(-20 * l), 0, 0))
+			camPos = Vector3.new(0, headY - 1.5, -6); look = Vector3.new(0, headY - 1, 10 - l * 10); shake = 0.05 + l * 0.5
+		elseif key == "wendigo_h" then -- a scream, then it leaps at you
+			local l = ease((e - 0.8) / 0.45)
+			m:PivotTo(base * CFrame.new(0, math.sin(l * math.pi) * 3, 10 - l * 10))
+			camPos = Vector3.new(0, headY, -5); look = Vector3.new(0, headY, 8 - l * 8); shake = e < 0.8 and 0.08 or 0.45
+		elseif key == "dn_conezone" then -- the spider skitters straight at the camera
+			local l = ease((e - 0.3) / 0.9)
+			m:PivotTo(base * CFrame.new(math.sin(e * 40) * 0.25 * (1 - l), 0, 18 - l * 17))
+			camPos = Vector3.new(0, 1, -5); look = Vector3.new(0, 0, 10 - l * 10); shake = 0.04 + l * 0.35
+		elseif key == "dn_guilt" then -- it towers over you and bends down, face plate first
+			local l = ease((e - 0.4) / 0.9)
+			m:PivotTo(base * CFrame.new(0, 0, 3) * CFrame.Angles(math.rad(-38 * l), 0, 0))
+			camPos = Vector3.new(0, 1, -4); look = Vector3.new(0, headY - l * 3, 3 - l * 3); shake = l * 0.25
 		elseif key == "fester" then -- the lights flicker; every time they come back he is closer
 			local step = math.floor(e / 0.3)
 			local dark = (e % 0.3) < 0.1 and e < 1.5
@@ -510,7 +531,7 @@ local function jumpscare(kind, form, stats)
 				for _, c in ipairs(squares) do c:Destroy() end
 				table.clear(squares)
 				for _ = 1, 6 do table.insert(squares, new("Frame", { BackgroundColor3 = ({ Color3.new(1, 0, 0), Color3.new(0, 1, 0), Color3.new(0, 0, 1), Color3.new(1, 1, 1) })[math.random(1, 4)], BackgroundTransparency = 0.5, Position = UDim2.fromScale(0, math.random()), Size = UDim2.new(1, 0, 0, math.random(3, 30)), ZIndex = 33 }, scareFx)) end
-			elseif kind == "monochrome" and math.random() < 0.8 then
+			elseif kind == "boisvert" and math.random() < 0.8 then
 				local g = math.random(0, 255)
 				table.insert(squares, new("Frame", { BackgroundColor3 = Color3.fromRGB(g, g, g), Position = UDim2.fromScale(math.random(), math.random()), Size = UDim2.fromOffset(40, 40), ZIndex = 33 }, scareFx))
 			end
@@ -768,6 +789,28 @@ local hurtOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(160, 0, 0), Ba
 local locustOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(0, 120, 140), Size = UDim2.fromScale(1, 1), ZIndex = 25, Visible = false }, gui)
 local locustText = label(locustOver, "", 30, { Font = Enum.Font.Arcade, TextColor3 = Color3.new(1, 1, 1), Position = UDim2.new(0, 0, 0.45, 0), Size = UDim2.new(1, 0, 0, 40), ZIndex = 26 })
 local darkUntil, hallucUntil = 0, 0
+-- v1.5.1 Boisvert "Dead Channel": the whole screen fills with opaque, animated TV static + a hiss for 10s
+local staticUntil = 0
+local staticOver = new("Frame", { BackgroundColor3 = Color3.fromRGB(128, 128, 128), Size = UDim2.fromScale(1, 1), ZIndex = 16, Visible = false, BorderSizePixel = 0 }, gui)
+local SCOLS, SROWS = 48, 27
+local snow = {}
+for y = 0, SROWS - 1 do for x = 0, SCOLS - 1 do
+	snow[#snow + 1] = new("Frame", { BorderSizePixel = 0, Size = UDim2.fromScale(1 / SCOLS + 0.002, 1 / SROWS + 0.004), Position = UDim2.fromScale(x / SCOLS, y / SROWS), ZIndex = 16 }, staticOver)
+end end
+local rollBar = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.75, Size = UDim2.fromScale(1, 0.06), ZIndex = 17 }, staticOver)
+local hissSound = Instance.new("Sound")
+hissSound.SoundId = (Config.SOUNDS.static and Config.SOUNDS.static ~= "") and Config.SOUNDS.static or "rbxasset://sounds/swoosh.wav"
+hissSound.Looped, hissSound.Volume, hissSound.PlaybackSpeed = true, 1.2, (Config.SOUNDS.static and Config.SOUNDS.static ~= "") and 1 or 3.2
+hissSound.Parent = gui
+RunService.RenderStepped:Connect(function()
+	local on = os.clock() < staticUntil and State:GetAttribute("State") == "Hunt"
+	staticOver.Visible = on
+	if on then
+		if not hissSound.IsPlaying then hissSound:Play() end
+		for i, f in ipairs(snow) do local n = math.random(0, 255); f.BackgroundColor3 = Color3.fromRGB(n, n, n) end
+		rollBar.Position = UDim2.fromScale(0, (os.clock() * 0.6) % 1)
+	elseif hissSound.IsPlaying then hissSound:Stop() end
+end)
 local halluc = Instance.new("ColorCorrectionEffect")
 halluc.Name = "NH_Halluc"
 halluc.Enabled = false
@@ -793,6 +836,10 @@ local SFX = { -- uploads in Config.SOUNDS win; otherwise built-in Roblox sounds,
 	roar = { "rbxasset://sounds/uuhhh.mp3", 0.45 }, drain = { "rbxasset://sounds/swoosh.wav", 1.8 }, bats = { "rbxasset://sounds/electronicpingshort.wav", 2.8 },
 	throw = { "rbxasset://sounds/swoosh.wav", 0.8 }, screech = { "rbxasset://sounds/electronicpingshort.wav", 1.6 }, stone = { "rbxasset://sounds/collide.wav", 0.3 },
 	fire = { "rbxasset://sounds/swoosh.wav", 0.4 }, fester = { "rbxasset://sounds/uuhhh.mp3", 0.6 },
+	-- v1.5.1 (T-Rex / Spinosaurus roars: upload roblox/sounds/trex_roar.mp3 + spino_roar.mp3 - built from CC0/public-domain recordings - and paste ids into Config.SOUNDS)
+	trexroar = { "rbxasset://sounds/uuhhh.mp3", 0.32 }, spinoroar = { "rbxasset://sounds/uuhhh.mp3", 0.55 },
+	static = { "rbxasset://sounds/swoosh.wav", 3.2 }, crack = { "rbxasset://sounds/collide.wav", 1.6 }, mimic = { "rbxasset://sounds/uuhhh.mp3", 1.25 },
+	skitter = { "rbxasset://sounds/electronicpingshort.wav", 5 },
 }
 -- phase-2 screen effects: tint pulses, camera shake, lightning
 local tintOver = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 13 }, gui)
@@ -1359,6 +1406,7 @@ Notify.OnClientEvent:Connect(function(kind, a, b, c)
 	elseif kind == "effect" then
 		if a == "grey" then greyUntil = os.clock() + b end
 		if a == "dark" then darkUntil = os.clock() + b end
+		if a == "static" then staticUntil = os.clock() + b end
 		if a == "halluc" then hallucUntil = os.clock() + b end
 		if a == "lightsout" then toast("Your flashlight died...") end
 		local d = tonumber(b) or 1

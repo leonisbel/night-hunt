@@ -52,7 +52,7 @@ const ALIAS = { look: 'clothing', mirror: 'clothing', monster: 'monskins', shop:
 const ALL = () => [...SHOP, ...OUTFITS, ...MSKIN_SHOP, ...EMOTES, ...PETS, ...TRAILS];
 export function loadProfile() {
   let p; try { p = JSON.parse(localStorage.getItem(KEY)); } catch { }
-  p = Object.assign({ coins: 0, owned: [], look: { sk: Math.floor(Math.random() * 6), hc: 0, hs: 0, top: null, pants: null, hat: 'none', acc: 'none', of: 'none', pet: 'none', tr: 'none' }, pref: null, skin: 'classic', kit: [], emote: 'wave' }, p || {});
+  p = Object.assign({ coins: 0, owned: [], look: { sk: Math.floor(Math.random() * 6), hc: 0, hs: 0, top: null, pants: null, hat: 'none', acc: 'none', of: 'none', pet: 'none', tr: 'none' }, pref: null, skin: 'classic', kit: [], emote: 'wave' }, p || {}); if (p.pref === 'monochrome') p.pref = 'boisvert';
   if (!p.look.of) p.look.of = 'none'; if (!p.look.pet) p.look.pet = 'none'; if (!p.look.tr) p.look.tr = 'none'; if (!Array.isArray(p.kit)) p.kit = []; if (!p.owned.includes('em:wave')) p.owned.push('em:wave');
   return p;
 }

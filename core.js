@@ -37,9 +37,15 @@ const AFTON = { ability: 'Afton Laugh', desc: 'A creepy laugh echoes — you see
 // Doctor Nowhere shapeshifts every 30s between forms drawn from Doctor Nowhere's (Silas Orion's) creature catalogue; each has its own power
 const DN_FORMS = [
   { k: 'doctor', name: 'The Doctor (coat)', ability: 'Injection', desc: 'Jab the nearest survivor with a syringe: they are slowed for 6s' },
-  { k: 'conezone', name: 'Cone Zone', ability: 'Cone Quake', desc: 'The tall white cone slams the ground: survivors close by are stunned for 1.6s' },
+  { k: 'conezone', name: 'Cone Zone', ability: 'Skitter Dash', desc: 'Drop low on your spider legs and skitter across the floor at triple speed for 2.5s' },
   { k: 'nightmare', name: 'Nightmare Man', ability: 'Shadow Step', desc: 'Melt into shadow and reappear far ahead of you' },
   { k: 'sixarm', name: 'The Doctor (six arms)', ability: 'Paranoia', desc: 'Survivors near you hallucinate (screen distortion) for 8s and you see them for 6s' },
+  { k: 'guilt', name: 'Guilt', ability: 'Guilty Stare', desc: 'Every survivor nearby who is looking at you is frozen with guilt: slowed for 5s' },
+];
+// Wendigo: every 30s its bones crack and it shifts between a hunched deer-skull beast and an emaciated human; each form has its own power
+const WG_FORMS = [
+  { k: 'deer', name: 'Wendigo (deer skull)', ability: 'Antler Charge', desc: 'Lower your antlers and charge: survivors in front of you are hit, knocked back and stunned' },
+  { k: 'human', name: 'Wendigo (human)', ability: 'Mimic Lure & Leap', desc: 'Call out in a friend\'s voice to lure nearby survivors (they are revealed), then leap at the closest one' },
 ];
 const DN_PERIOD = 30;
 const MONSTERS = {
@@ -50,9 +56,9 @@ const MONSTERS = {
   springtrap: { name: 'Springtrap',     ...AFTON, speed: 168, r: 20 },
   cartooncat: { name: 'Cartoon Cat',    ability: 'Rubber Grab',       desc: 'Stretch a rubber arm and yank the survivor in front of you to your feet', cd: 20, speed: 178, r: 18 },
   sirenhead:  { name: 'Siren Head',     ability: 'Siren Call',        desc: 'A deafening siren reveals every survivor (even hidden) for 8s', cd: 20, speed: 165, r: 26 },
-  drnowhere:  { name: 'Doctor Nowhere', ability: 'Shapeshift',        desc: 'Changes form every 30s — Doctor: injection · Cone Zone: quake · Nightmare Man: shadow step · six-armed Doctor: paranoia', forms: DN_FORMS, cd: 20, speed: 170, r: 19 },
+  drnowhere:  { name: 'Doctor Nowhere', ability: 'Shapeshift',        desc: 'Changes form every 30s with a glitch — Doctor: injection · Cone Zone: skitter dash · Nightmare Man: shadow step · six-armed Doctor: paranoia · Guilt: guilty stare', forms: DN_FORMS, cd: 20, speed: 170, r: 19 },
   locust:     { name: 'The Locust',     ability: 'Swarm Omen',        desc: 'Pick one random survivor: you appear nearby and a locust smashes into their screen', cd: 20, speed: 172, r: 20 },
-  monochrome: { name: 'Monochrome',     ability: 'Total Blackout',    desc: 'Every survivor\'s screen goes pitch black for 10s', cd: 20, speed: 172, r: 20 },
+  boisvert:   { name: 'Boisvert',       ability: 'Dead Channel',      desc: 'Every survivor\'s screen fills with roaring TV static for 10s', cd: 20, speed: 172, r: 20 },
   sonicexe:   { name: 'Sonic.exe',      ability: "You Can't Run",     desc: 'A distorted laugh… then you run much faster for 10s', cd: 20, speed: 174, r: 18 },
   demogorgon: { name: 'Demogorgon',     ability: 'Upside Down Portal',desc: 'Open a portal and come out near the closest survivor', cd: 20, speed: 174, r: 21 },
   // ---- phase 2: sea monsters (they hide under the water; survivors only see their telltale signs) ----
@@ -72,6 +78,7 @@ const MONSTERS = {
   vampire:    { name: 'Vampire',        ability: 'Bat Swarm',         desc: 'Burst into bats and re-form beside the closest survivor, blinding them for 3s', cd: 20, speed: 174, r: 18, home: ['Vampire Castle'] },
   gargoyle:   { name: 'Gargoyle',       ability: 'Stone Skin',        desc: 'Turn to stone for 6s (no damage) and crash down, stunning survivors close by', cd: 20, speed: 170, r: 22, home: ['Vampire Castle'] },
   bigfoot:    { name: 'Bigfoot',        ability: 'Boulder Throw',     desc: 'Hurl a boulder at the survivor in front of you: big hit + 2s stun', cd: 20, speed: 176, r: 24, hp: 360, home: ['Powerline Forest', 'Foggy Woods'] },
+  wendigo:    { name: 'Wendigo',        ability: 'Bone Shift',        desc: 'Changes form every 30s with a bone crack — deer skull: antler charge · human: mimic voice lure & leap', forms: WG_FORMS, cd: 20, speed: 178, r: 22, hp: 360, home: ['Powerline Forest', 'Foggy Woods', 'Snowy Mountain'] },
   fester:     { name: 'Father Fester',  ability: 'Lights Out',        desc: 'Every house light dies near you: survivors black out and are revealed. Passive: each new survivor who sees you makes you stronger (6 stages)', cd: 20, speed: 166, r: 20, home: ['Fester Street'] },
 };
 const CLASSIC = ['Powerline Forest', 'Abandoned Pizzeria Town', 'Foggy Woods', 'Static Fields'];
@@ -522,15 +529,23 @@ function useAbility(r, p) {
     case 'freddy': case 'bonnie': case 'chica': case 'foxy': case 'springtrap':
       p.st.sight = t + 10; snd = 'laugh'; event(r, `${M.name}: "Ha… ha… ha…" — it can see you all!`, 'bad'); break;
     case 'sirenhead': surv.forEach(s => s.st.reveal = t + 8); bcast(r, { t: 'fx', kind: 'siren', x: p.x, y: p.y }); event(r, 'A deafening siren wails… Siren Head can see everyone!', 'bad'); break;
-    case 'monochrome': surv.forEach(s => s.st.dark = t + 10); snd = 'dark'; event(r, 'Total blackout… you can\'t see anything!', 'bad'); break;
+    case 'boisvert': surv.forEach(s => { s.st.static = t + 10; delete s.st.dark; }); snd = 'static'; event(r, 'Every screen dissolves into roaring TV static…', 'bad'); break;
+    case 'wendigo': { const F = WG_FORMS[p.form || 0].k;
+      if (F === 'deer') { p.st.dash = t + 1.1; const hit = surv.filter(s => dist(s, p) < 280 && Math.abs(((Math.atan2(s.y - p.y, s.x - p.x) - p.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < .6);
+        bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 140, c: '#d8ccb0' }); for (const s of hit) { wake(s); s.st.stun = t + 1.4; shove(r, s, p, 160); hurtSurvivor(r, s, 22, p); say(s, 'Antlers slam into you out of the dark!'); } snd = 'crack'; break; }
+      const near = within(900); for (const s of near) { s.st.reveal = t + 5; say(s, 'Someone you know is calling your name from the trees… "Help me! Over here!"'); }
+      const tg = near.sort((a, b) => dist(a, p) - dist(b, p))[0]; if (tg && dist(tg, p) < 520) { const a = Math.atan2(tg.y - p.y, tg.x - p.x); let d = Math.min(dist(tg, p) - p.r - tg.r - 4, 340);
+        for (; d > 20; d -= 20) { const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d; if (!collides(r.map, x, y, p.r)) { p.x = x; p.y = y; p.a = a; break; } } bcast(r, { t: 'fx', kind: 'poof', x: p.x, y: p.y, c: '#c8c4bc' }); if (dist(tg, p) < p.r + tg.r + 30) { wake(tg); tg.st.stun = t + .9; } }
+      if (!near.length) cd = 5; snd = 'mimic'; break; }
     case 'demogorgon': { const tg = nearest(); if (!tg) { cd = 3; break; } bcast(r, { t: 'fx', kind: 'portal', x: p.x, y: p.y }); appearNear(tg, 140, 230); bcast(r, { t: 'fx', kind: 'portal', x: p.x, y: p.y }); snd = 'portal'; break; }
     case 'drnowhere': { const F = DN_FORMS[p.form || 0].k;
       if (F === 'doctor') { const tg = surv.filter(s => dist(s, p) < p.r + s.r + 70).sort((a, b) => dist(a, p) - dist(b, p))[0];
         if (!tg) { cd = 2.5; send(p, { t: 'event', msg: 'Injection missed — get closer!', kind: 'bad' }); break; }
         tg.st.slow = t + 6; send(tg, { t: 'event', msg: 'Doctor Nowhere injected you! You feel sluggish…', kind: 'bad' }); bcast(r, { t: 'fx', kind: 'hit', x: tg.x, y: tg.y, c: '#66ffcc' }); snd = 'inject'; break; }
-      if (F === 'conezone') { bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 220, c: '#f4f4f4' }); let n = 0;
-        for (const s of surv) if (dist(s, p) < 220) { n++; if (s.sleeping) wake(s); s.st.stun = t + 1.6; send(s, { t: 'event', msg: 'The ground shakes — Cone Zone stunned you!', kind: 'bad' }); }
-        snd = 'quake'; if (!n) cd = 6; break; }
+      if (F === 'conezone') { p.st.dash = t + 2.5; for (const s of within(700)) say(s, 'Something is skittering across the floor toward you…'); snd = 'skitter'; break; }
+      if (F === 'guilt') { let n = 0; bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 600, c: '#f0f0ea' });
+        for (const s of within(600)) { const look = Math.cos(Math.atan2(p.y - s.y, p.x - s.x) - s.a); if (look > .5) { n++; s.st.slow = t + 5; s.st.halluc = Math.max(s.st.halluc || 0, t + 2); say(s, 'You looked at Guilt… it stares back. Your legs feel like lead.'); } }
+        snd = 'paranoia'; if (!n) { cd = 5; send(p, { t: 'event', msg: 'Nobody was looking at you.', kind: 'bad' }); } break; }
       if (F === 'nightmare') { bcast(r, { t: 'fx', kind: 'poof', x: p.x, y: p.y, c: '#000' }); let ok = false;
         for (let d = 300; d >= 90 && !ok; d -= 30) { const x = p.x + Math.cos(p.a) * d, y = p.y + Math.sin(p.a) * d; if (x > 60 && y > 60 && x < r.map.w - 60 && y < r.map.h - 60 && !collides(r.map, x, y, p.r)) { p.x = x; p.y = y; ok = true; } }
         bcast(r, { t: 'fx', kind: 'poof', x: p.x, y: p.y, c: '#000' }); snd = 'shift'; if (!ok) cd = 3; break; }
@@ -568,9 +583,9 @@ function useAbility(r, p) {
     case 'leviathan': { r.whirls.push({ x: p.x, y: p.y, r: 460, until: t + 4, by: p.id }); bcast(r, { t: 'fx', kind: 'whirl', x: p.x, y: p.y, r: 460 }); p.st.surf = t + 4;
       for (const s of within(460)) { s.st.slow = t + 4; say(s, 'The sea starts spinning — a whirlpool is dragging you in!'); } snd = 'whirl'; break; }
     case 'nessie': { p.st.invis = t + 6; p.st.fast = t + 6; for (const s of within(900)) { s.st.fog = t + 8; say(s, 'A thick fog rolls in… a long neck slips under the water.'); } bcast(r, { t: 'fx', kind: 'splash', x: p.x, y: p.y, c: '#9fc8d8' }); snd = 'nessie'; break; }
-    case 'spinosaurus': { p.st.invis = t + 4; p.st.dash = t + 1.4; bcast(r, { t: 'fx', kind: 'splash', x: p.x, y: p.y, c: '#7a9a60' }); snd = 'roar'; break; }
+    case 'spinosaurus': { p.st.invis = t + 4; p.st.dash = t + 1.4; bcast(r, { t: 'fx', kind: 'splash', x: p.x, y: p.y, c: '#7a9a60' }); snd = 'spinoroar'; break; }
     case 'trex': { const hit = within(320); bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 320, c: '#ffb070' }); p.st.fast = t + 4;
-      for (const s of hit) { wake(s); s.st.stun = t + 1.2; say(s, 'The ground shakes with a deafening ROAR!'); } for (const s of within(1000)) s.st.reveal = t + 6; snd = 'roar'; break; }
+      for (const s of hit) { wake(s); s.st.stun = t + 1.2; say(s, 'The ground shakes with a deafening ROAR!'); } for (const s of within(1000)) s.st.reveal = t + 6; snd = 'trexroar'; break; }
     case 'quetzalcoatlus': { const tg = surv.filter(s => dist(s, p) < 1000).sort((a, b) => dist(a, p) - dist(b, p))[0]; if (!tg) { cd = 3; break; }
       bcast(r, { t: 'fx', kind: 'dive', x: p.x, y: p.y, tx: tg.x, ty: tg.y }); appearNear(tg, 60, 110); wake(tg); capsize(r, tg); tg.st.stun = t + 1; say(tg, 'A giant shadow drops out of the sky onto you!'); snd = 'screech'; break; }
     case 'yeti': { const hit = within(420); bcast(r, { t: 'fx', kind: 'ring', x: p.x, y: p.y, r: 420, c: '#e8f6ff' });
@@ -702,6 +717,8 @@ function step() {
         sp = MM.speed * (p.st.dash > t ? 3 : 1) * (p.st.fast > t ? 1.8 : 1) * (p.st.stag > t ? .5 : 1) * (MM.sea ? (wet ? 1.2 : .8) : wet ? .75 : 1) * (p.mt === 'fester' ? 1 + .07 * (p.esc || 0) : 1);
         if (p.mt === 'megalodon' && r.state === 'playing') { const f = wet ? 0 : 1; if (f !== p.form) { p.form = f; bcast(r, { t: 'fx', kind: 'splash', x: p.x, y: p.y, c: '#bfe8ff' }); if (!p.bot) send(p, { t: 'event', msg: f ? 'You haul yourself onto land in your giant humanoid shark form.' : 'You slip back into the sea as a colossal shark.', kind: 'good' }); } }
         if (p.mt === 'drnowhere' && r.state === 'playing') { if (!p.formT) { p.form = 0; p.formT = t + DN_PERIOD; } else if (t > p.formT) { p.form = (p.form + 1) % DN_FORMS.length; p.formT = t + DN_PERIOD; bcast(r, { t: 'fx', kind: 'poof', x: p.x, y: p.y, c: '#111' }); send(p, { t: 'event', msg: `You shapeshift into ${DN_FORMS[p.form].name}: ${DN_FORMS[p.form].ability} — ${DN_FORMS[p.form].desc}`, kind: 'good' }); bcast(r, { t: 'sfx', kind: 'shift', x: p.x, y: p.y }); } }
+        if (p.mt === 'wendigo' && r.state === 'playing') { if (!p.formT) { p.form = 0; p.formT = t + DN_PERIOD; } else if (t > p.formT) { p.form = (p.form + 1) % WG_FORMS.length; p.formT = t + DN_PERIOD; bcast(r, { t: 'fx', kind: 'poof', x: p.x, y: p.y, c: '#d8ccb0' }); send(p, { t: 'event', msg: `Your bones crack and twist — ${WG_FORMS[p.form].name}: ${WG_FORMS[p.form].ability} — ${WG_FORMS[p.form].desc}`, kind: 'good' }); bcast(r, { t: 'sfx', kind: 'crack', x: p.x, y: p.y }); } }
+        if ((p.mt === 'trex' || p.mt === 'spinosaurus') && r.state === 'playing' && Math.random() < dt / 22) bcast(r, { t: 'sfx', kind: p.mt === 'trex' ? 'trexroar' : 'spinoroar', x: Math.round(p.x), y: Math.round(p.y), idle: 1 }); // the occasional idle roar
         if (p.st.down > t) sp = 0; else if (p.hp <= 0) { p.hp = p.maxHp; p.st.guard = t + 2.5; } // gets back up with full health
       }
       else if (!p.alive || p.escaped || p.role === 'ghost') sp = 260;
@@ -766,7 +783,7 @@ function snapshot(r, t) {
       }
       const st = {}; for (const k in p.st) if (p.st[k] > t) st[k] = 1;
       if (me.role === 'monster' && me.st.sight > t && p.role === 'survivor') st.reveal = 1;
-      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined };
+      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester', 'wendigo'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined };
       if (r.state === 'playing') { q.hp = Math.round(p.hp / p.maxHp * 100); if (p.role === 'survivor') { const s = p.inv[p.sel]; q.w = s ? s.k : null; q.ar = (p.vest > 0 ? 1 : 0) | (p.helmet > 0 ? 2 : 0); } }
       ps.push(q);
     }
@@ -829,13 +846,13 @@ function handleConnection(ws) {
           bcast(r, { t: 'settings', max: r.max, isPublic: r.isPublic, roundLen: r.roundLen });
         } break;
         case 'emote': if (p && EMOTES.includes(m.e)) { p.emote = m.e; p.emoteUntil = now() + 3; } break;
-        case 'profile': if (p) { p.look = cleanLook(m.look); p.pref = MKEYS.includes(m.pref) ? m.pref : null; p.skin = MSKINS.includes(m.skin) ? m.skin : 'classic'; p.kit = (Array.isArray(m.kit) ? m.kit : []).filter(k => SUPPLIES.includes(k)).slice(0, KIT_MAX); if (r) bcast(r, { t: 'event', msg: p.pref ? `${p.name} wants to play ${MONSTERS[p.pref].name}` : `${p.name} updated their look`, kind: '' }); } break;
+        case 'profile': if (p) { p.look = cleanLook(m.look); { const pf = m.pref === 'monochrome' ? 'boisvert' : m.pref; p.pref = MKEYS.includes(pf) ? pf : null; } p.skin = MSKINS.includes(m.skin) ? m.skin : 'classic'; p.kit = (Array.isArray(m.kit) ? m.kit : []).filter(k => SUPPLIES.includes(k)).slice(0, KIT_MAX); if (r) bcast(r, { t: 'event', msg: p.pref ? `${p.name} wants to play ${MONSTERS[p.pref].name}` : `${p.name} updated their look`, kind: '' }); } break;
         case 'leave': if (p) { removeFromRoom(p); p = null; } break;
       }
     },
     close() { if (p) removeFromRoom(p); p = null; }
   };
 }
-const api = { STORES, LOBBY, genMap, THEMES, inWater, DN_FORMS, useAbility, handleConnection, step, rooms, MONSTERS, ITEMS, TICK, MAX_CAP, roomInfo, ROUND_LENS, HATS, ACCS, MSKINS };
+const api = { STORES, LOBBY, genMap, THEMES, inWater, DN_FORMS, WG_FORMS, useAbility, handleConnection, step, rooms, MONSTERS, ITEMS, TICK, MAX_CAP, roomInfo, ROUND_LENS, HATS, ACCS, MSKINS };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.NightHuntCore = api;
 })(typeof self !== 'undefined' ? self : this);

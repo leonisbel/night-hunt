@@ -1,4 +1,4 @@
-# Night Hunt: Roblox version (fan-made, v1.5.0, rated 13+)
+# Night Hunt: Roblox version (fan-made, v1.5.1, rated 13+)
 
 A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out together and land in a generated map; the main one is a dense power-line forest. Every player has a random chance to be a monster. Survivors loot chests and bags, fight back and get to the extraction helicopter.
 
@@ -35,7 +35,7 @@ A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out 
 | Siren Head | Siren Call: reveals every survivor (even hidden ones) for 8 s | lifts you up to its speaker head |
 | Doctor Nowhere | Shapeshift: changes form every 30 s, and each form has its own power (see below) | a different one per form |
 | The Locust | Swarm Omen: one random survivor's TV/phone/computer shows an old wallpaper and a child-like voice, then it slams their screen | possession: the screen tears and distorts |
-| Monochrome | Total Blackout: every survivor's screen goes pitch black for 10 s | you dissolve into grey blocks |
+| Boisvert | Total Blackout: every survivor's screen goes pitch black for 10 s | you dissolve into grey blocks |
 | Sonic.exe (fan-made creepypasta) | You Can't Run: a distorted laugh, then you run much faster for 10 s | grabs, then lunges |
 | Demogorgon | Upside Down Portal: come out of a portal near the closest survivor | the petal face blooms open as it lunges |
 
@@ -46,6 +46,16 @@ A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out 
 - The six-armed Doctor: Paranoia makes nearby survivors hallucinate and reveals them to you.
 
 Every jumpscare cuts to black at the moment of impact. With **Blood effects** on (the default), it adds teen-level red splatter and drips; there is no dismemberment and no detailed gore. You can turn this off in the menu (browser) or with the top-left button (Roblox). Players near the catch see the victim lifted, stretched, dissolved or dragged away, and hear the scream.
+
+## New in v1.5.1
+- **Boisvert** (formerly Monochrome) is remodeled with a black anvil head and tiny white eyes. Dead Channel fills every survivor's screen with full opaque, animated TV static (a ScreenGui grid that is re-randomized every frame) plus a looping hiss for 10 s. The cooldown is 20 s.
+- **Doctor Nowhere:** Cone Zone is now a charcoal fuzzy spider with Skitter Dash. The new fifth form, **Guilt**, uses Guilty Stare: survivors looking at it are slowed for 5 s. Each form has its own jumpscare.
+- **New Wendigo:** a deer form (Antler Charge) and a human form (Mimic Lure & Leap) swap every 30 s with a bone-crack sound. Its home maps are Snowy Mountain and the forests (`Config.HOME` now accepts a list).
+- Father Fester has an egg head and a long drooping jaw.
+- **T-Rex / Spinosaurus roars** play on ability use, occasionally while idle, and in the jumpscare.
+  - Limitation: Roblox needs uploaded asset ids, and the Creator Store couldn't be searched or uploaded to while this release was built. Until you add ids, a pitched built-in Roblox voice sound stands in.
+  - To use the real roars: upload `roblox/sounds/trex_roar.mp3` and `spino_roar.mp3` (made from CC0/public-domain recordings with no movie audio; see `vendor/LICENSES.md`) in Studio, or pick Creator Store roars. Then paste the `rbxassetid://` ids into `Config.SOUNDS.trexroar` / `spinoroar` (and optionally `static`).
+- The Roblox models are still built from primitive Parts, so they are simpler than the browser models. The Wendigo, Guilt, Cone Zone, Boisvert and Fester builders are new.
 
 ## New in v1.5.0
 - **More realistic monsters:**

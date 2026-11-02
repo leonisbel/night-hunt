@@ -9,6 +9,7 @@ export const audio = {
       master = AC.createGain(); master.gain.value = muted ? 0 : .9; master.connect(comp);
       verb = AC.createConvolver(); verb.buffer = impulse(3.2, 2.6); verbSend = AC.createGain(); verbSend.gain.value = .5; verbSend.connect(verb); verb.connect(master);
     }
+    preloadSamples();
     if (AC.state === 'suspended') AC.resume();
     // iOS needs a sound started inside the gesture
     const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0);
@@ -100,9 +101,29 @@ function laugh(v = 1) {
   }
   tone(55, 2.2, 'sine', .25 * v, 40, .8);
 }
+// recorded roars (sound-alikes layered from CC0 / public-domain animal recordings — see vendor/LICENSES.md), with a synth fallback
+const SAMPLES = { trexroar: 'sfx/trex_roar.mp3', spinoroar: 'sfx/spino_roar.mp3' }, SBUF = {};
+function sample(k, v = 1, pan = 0) {
+  const b = SBUF[k]; if (b === undefined) { SBUF[k] = null; fetch(SAMPLES[k]).then(r => r.arrayBuffer()).then(a => AC.decodeAudioData(a)).then(d => { SBUF[k] = d; }).catch(() => { SBUF[k] = false; }); return false; }
+  if (!b) return false; const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = b; s.playbackRate.value = .96 + Math.random() * .08; g.gain.value = v; s.connect(g); out(g, .45, pan); s.start(); return true;
+}
+export function preloadSamples() { if (AC) for (const k in SAMPLES) if (SBUF[k] === undefined) sample(k, 0); }
+// Boisvert's dead channel: a looping roaring TV static hiss while the survivor's screen is full of snow
+let hiss = null;
+export function staticHiss(on) {
+  if (!AC) return; if (on && !hiss && !muted) { const s = AC.createBufferSource(), hp = AC.createBiquadFilter(), pk = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = noiseBuffer(); s.loop = true; hp.type = 'highpass'; hp.frequency.value = 700; pk.type = 'peaking'; pk.frequency.value = 4200; pk.gain.value = 6;
+    g.gain.setValueAtTime(.0001, AC.currentTime); g.gain.exponentialRampToValueAtTime(.32, AC.currentTime + .08); s.connect(hp).connect(pk).connect(g); g.connect(master); s.start(); hiss = { s, g }; }
+  else if (!on && hiss) { const h = hiss; hiss = null; h.g.gain.setTargetAtTime(.0001, AC.currentTime, .08); h.s.stop(AC.currentTime + .5); }
+}
 export function sfx(k, o = {}) {
   if (!AC || muted) return; const pan = o.pan || 0, v = o.vol ?? 1;
   switch (k) {
+    case 'trexroar': if (!sample('trexroar', 1.1 * v, pan)) { tone(70, 2.6, 'sawtooth', .35 * v, 40, .8, pan); burst(2.4, .3 * v, 400, 1, 'lowpass', .8, pan); } break;
+    case 'spinoroar': if (!sample('spinoroar', 1.0 * v, pan)) { tone(240, 1.8, 'sawtooth', .3 * v, 90, .7, pan); burst(1.6, .3 * v, 2200, 2, 'bandpass', .6, pan); } break;
+    case 'static': burst(.6, .35 * v, 3000, .4, 'highpass', .2); tone(15000, .3, 'sine', .05 * v, 0, 0); break;
+    case 'crack': for (let i = 0; i < 7; i++) { burst(.035, .45 * v, 1800 + Math.random() * 2500, 3, 'bandpass', .3, pan, i * (.06 + Math.random() * .08)); tone(160 + Math.random() * 120, .05, 'square', .12 * v, 60, .2, pan, i * .09); } tone(90, .9, 'sawtooth', .15 * v, 45, .6, pan, .1); break;
+    case 'mimic': { for (const [f, d] of [[420, 0], [520, .22], [380, .5], [470, .9], [560, 1.1]]) tone(f, .28, 'triangle', .14 * v, f * .8, .9, pan, d); tone(300, 1.4, 'sawtooth', .04 * v, 200, .9, pan, 1.5); break; } // "help me… over here…" in a voice that is almost right
+    case 'skitter': for (let i = 0; i < 18; i++) burst(.02, .2 * v, 3000 + Math.random() * 2000, 4, 'bandpass', .2, pan, i * .045); break;
     case 'step': burst(.07, .05 * v, 500 + Math.random() * 300, 1, 'lowpass', .1, pan); break;
     case 'stomp': burst(.18, .25 * v, 140, 1, 'lowpass', .5, pan); tone(55, .25, 'sine', .25 * v, 35, .4, pan); break;
     case 'beat': tone(62, .14, 'sine', .55 * v, 38, .1); tone(55, .14, 'sine', .45 * v, 34, .1, 0, .2); break;

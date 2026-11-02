@@ -1,6 +1,7 @@
 // Night Hunt client (3D): menu, networking glue, input (keyboard/mouse/touch), HUD and the three.js world.
 import { World, S } from './js/render3d.js';
-import { audio, sfx, setAmbience, setRotor } from './js/audio.js';
+import { audio, sfx, setAmbience, setRotor, staticHiss } from './js/audio.js';
+import { oldWallpaper } from './js/textures.js';
 import { initTouch } from './js/touch.js';
 import { initLocker } from './js/locker.js';
 const $ = id => document.getElementById(id);
@@ -56,7 +57,7 @@ NET.detect().then(info => {
   if (info && params.has('desktop')) { const d = document.createElement('div'); d.className = 'help';
     d.innerHTML = `<b>Desktop app:</b> "Online" lets friends anywhere join with your code. "Wi-Fi" mode uses this computer as the server: friends on the same Wi-Fi open <b>${info.lan.map(a => `http://${a}:${info.port}`).join(' or ') || `http://localhost:${info.port}`}</b>.`; $('menu').appendChild(d); }
 });
-function showMenu(err) { ['darkover', 'hallucover', 'sleepover', 'locustover', 'scareover'].forEach(i => $(i).classList.add('hide')); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); room = null; snap = null; map = null; $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('overlay').classList.add('hide'); document.body.classList.remove('ingame'); $('merr').textContent = err || ''; setAmbience(null); setRotor(0); clearEnd(); }
+function showMenu(err) { ['darkover', 'staticover', 'hallucover', 'sleepover', 'locustover', 'scareover'].forEach(i => $(i).classList.add('hide')); staticHiss(false); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); room = null; snap = null; map = null; $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('overlay').classList.add('hide'); document.body.classList.remove('ingame'); $('merr').textContent = err || ''; setAmbience(null); setRotor(0); clearEnd(); }
 $('bleave').onclick = () => { NET.leave(); showMenu(); };
 $('binvite').onclick = () => { const u = location.origin + location.pathname + '?room=' + room; navigator.clipboard && navigator.clipboard.writeText(u).catch(() => { }); addEvent('Invite link copied: ' + u, 'good'); };
 $('bstart').onclick = () => send({ t: 'start' });
@@ -84,7 +85,7 @@ function onMsg(m) {
         break; }
       if (m.id !== me && world) { const md = disp[me]; const d = md ? Math.hypot(md.dx - m.x, md.dy - m.y) : 1e9; if (d < 900) { world.addWitness(m, disp); sfx('scream', { vol: Math.max(.25, 1 - d / 900), pan: md ? (m.x - md.dx) / 900 : 0 }); } } break;
     case 'fx': if (world) world.addFx(m); if (m.kind === 'siren') world.shake = .6; fxSound(m); break;
-    case 'sfx': { const pan = posPan(m); if (m.kind === 'sirenhead') sfx('siren'); else if (m.kind === 'heli') sfx('heli'); else if (['open', 'down', 'dry', 'eat', 'drink', 'hit', 'pickup', 'laugh', 'dark', 'portal', 'inject', 'dream', 'buzz', 'stretch', 'sleep', 'sonlaugh', 'quake', 'shift', 'paranoia', 'wave', 'tentacle', 'thunder', 'whirl', 'nessie', 'roar', 'screech', 'fire', 'drain', 'bats', 'fester', 'boat'].includes(m.kind)) sfx(m.kind, m.kind === 'laugh' || m.kind === 'dark' || m.kind === 'sonlaugh' ? {} : pan); else sfx('ability'); break; }
+    case 'sfx': { const pan = posPan(m); if (m.kind === 'sirenhead') sfx('siren'); else if (m.kind === 'heli') sfx('heli'); else if (['open', 'down', 'dry', 'eat', 'drink', 'hit', 'pickup', 'laugh', 'dark', 'portal', 'inject', 'dream', 'buzz', 'stretch', 'sleep', 'sonlaugh', 'quake', 'shift', 'paranoia', 'wave', 'tentacle', 'thunder', 'whirl', 'nessie', 'roar', 'screech', 'fire', 'drain', 'bats', 'fester', 'boat', 'static', 'crack', 'mimic', 'skitter', 'trexroar', 'spinoroar'].includes(m.kind)) sfx(m.kind, m.kind === 'laugh' || m.kind === 'dark' || m.kind === 'sonlaugh' || m.kind === 'static' ? {} : m.idle ? { ...pan, vol: (pan.vol ?? 1) * .55 } : pan); else sfx('ability'); break; }
     case 'locust': locustSlam(); break;
     case 'kitused': if (locker) { locker.kitUsed(m.k); addEvent(`🎒 Your store supplies were packed: ${m.k.map(k => ITEMS[k] ? ITEMS[k].icon + ' ' + ITEMS[k].name : k).join(', ')}`, 'good'); } break;
     case 'pickup': { const I = ITEMS[m.k]; sfx('pickup'); if (I) addEvent(`Picked up ${I.icon} ${I.name}${m.n > 1 ? ' ×' + m.n : ''}`, 'good'); break; }
@@ -341,13 +342,17 @@ let locust = null;
 // figure standing there, a friendly child-like voice), then it slams into the glass and breaks out: cracks, scream, warning.
 const LOC_SLAM = 1.4;
 let _wall = null;
-function wallpaper() {
-  if (_wall) return _wall; const c = document.createElement('canvas'); c.width = 512; c.height = 384; const g = c.getContext('2d');
-  g.fillStyle = '#9c8f5c'; g.fillRect(0, 0, 512, 384);
-  for (let x = 0; x < 512; x += 64) { g.fillStyle = '#b0a36c'; g.fillRect(x + 8, 0, 22, 384); }
-  for (let y = 0; y < 384; y += 48) for (let x = (y / 48 % 2) * 32; x < 512; x += 64) { g.fillStyle = '#7d5a40'; for (let k = 0; k < 5; k++) { const a = k * 1.2566; g.beginPath(); g.ellipse(x + 40 + Math.cos(a) * 6, y + 20 + Math.sin(a) * 6, 5, 3, a, 0, 6.283); g.fill(); } g.fillStyle = '#c9a050'; g.beginPath(); g.arc(x + 40, y + 20, 3, 0, 6.283); g.fill(); }
-  const gr = g.createRadialGradient(256, 192, 60, 256, 192, 330); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(20,10,0,.75)'); g.fillStyle = gr; g.fillRect(0, 0, 512, 384); // stains / vignette
-  return (_wall = c);
+// Boisvert's dead channel: the whole screen becomes opaque, animated TV snow with a roaring hiss
+let stc = null;
+function drawStatic(on) {
+  const el = $('staticover'); el.classList.toggle('hide', !on); staticHiss(on); if (!on) return;
+  if (!stc) { el.width = 320; el.height = 180; stc = { g: el.getContext('2d'), im: null }; stc.im = stc.g.createImageData(320, 180); }
+  const d = stc.im.data, roll = (performance.now() / 9) % 180 | 0;
+  for (let y = 0; y < 180; y++) { const band = Math.abs(y - roll) < 6 ? 40 : 0, line = y % 2 ? .82 : 1; for (let x = 0; x < 320; x++) { const i = (y * 320 + x) * 4, n = Math.min(255, (Math.random() * 255 * line + band) | 0); d[i] = d[i + 1] = d[i + 2] = n; d[i + 3] = 255; } }
+  stc.g.putImageData(stc.im, 0, 0);
+}
+function wallpaper() { // old faded beige floral wallpaper with brownish water smears (as in the Locust broadcast)
+  if (_wall) return _wall; const c = document.createElement('canvas'); c.width = 512; c.height = 384; const g = c.getContext('2d'); oldWallpaper(g, 512, 384, 1); return (_wall = c);
 }
 function locustFigure(g) { // the tall black figure with a stretched pale face, hollow eyes and tubes around head/neck
   g.fillStyle = '#060607'; g.beginPath(); g.moveTo(-34, 260); g.lineTo(-26, 40); g.quadraticCurveTo(0, 18, 26, 40); g.lineTo(34, 260); g.fill();
@@ -402,6 +407,7 @@ function drawLocust(now) {
 function overlays(mp, ghost, now) {
   const alive = snap.state === 'playing' && !ghost && mp.role === 'survivor';
   $('darkover').classList.toggle('hide', !(alive && mp.st.dark));
+  drawStatic(!!(alive && mp.st.static));
   const hal = !!(alive && mp.st.halluc); $('hallucover').classList.toggle('hide', !hal); document.body.classList.toggle('halluc', hal);
   $('sleepover').classList.toggle('hide', !(alive && mp.st.sleep));
   if (locust) drawLocust(now);
@@ -410,12 +416,12 @@ requestAnimationFrame(frame);
 if (params.has('desktop') && $('dlwin')) $('dlwin').remove();
 
 // ---------- jumpscares: one per monster, then a cut to black at impact (with optional teen-level blood splatter) ----------
-const IMPACT = { sirenhead: 2.0, cartooncat: 1.9, monochrome: 2.0, locust: 1.9, megalodon: 2.95, kraken: 2.05, cthulhu: 2.25, leviathan: 2.05, mosasaurus: 1.65, nessie: 2.15, spinosaurus: 2.05, trex: 2.05, quetzalcoatlus: 2.15, dragon: 2.15, yeti: 2.0, bigfoot: 2.0, chupacabra: 1.65, vampire: 2.0, gargoyle: 1.6, fester: 2.1 };
+const IMPACT = { sirenhead: 2.0, cartooncat: 1.9, boisvert: 2.0, locust: 1.9, megalodon: 2.95, kraken: 2.05, cthulhu: 2.25, leviathan: 2.05, mosasaurus: 1.65, nessie: 2.15, spinosaurus: 2.05, trex: 2.05, quetzalcoatlus: 2.15, dragon: 2.15, yeti: 2.0, bigfoot: 2.0, chupacabra: 1.65, vampire: 2.0, gargoyle: 1.6, fester: 2.1, wendigo: 1.55 };
 const impactOf = (type, fm) => type === 'megalodon' && fm === 1 ? 1.25 : IMPACT[type] || 1.55;
 const scareLen = (type, fm) => Math.max(2.6, impactOf(type, fm) + 1.05);
 let scareShown = false, splats = null, killcam = null, killSplats = null;
 const KILL_LEN = 2.4;
-function scareSound(k) { const x = { trex: 'roar', spinosaurus: 'roar', yeti: 'roar', bigfoot: 'roar', dragon: 'fire', quetzalcoatlus: 'screech', gargoyle: 'screech', vampire: 'bats', fester: 'fester', cthulhu: 'thunder', kraken: 'tentacle', leviathan: 'wave', nessie: 'nessie', megalodon: 'wave', mosasaurus: 'wave' }[k]; if (x) setTimeout(() => sfx(x), 200); return { sonicexe: 'sonlaugh', sirenhead: 'siren', locust: 'locust', monochrome: 'dark' }[k] || x ? 'scare2' : 'scare'; }
+function scareSound(k) { const x = { trex: 'trexroar', spinosaurus: 'spinoroar', wendigo: 'crack', yeti: 'roar', bigfoot: 'roar', dragon: 'fire', quetzalcoatlus: 'screech', gargoyle: 'screech', vampire: 'bats', fester: 'fester', cthulhu: 'thunder', kraken: 'tentacle', leviathan: 'wave', nessie: 'nessie', megalodon: 'wave', mosasaurus: 'wave' }[k]; if (x) setTimeout(() => sfx(x), 200); return { sonicexe: 'sonlaugh', sirenhead: 'siren', locust: 'locust', boisvert: 'static' }[k] || x ? 'scare2' : 'scare'; }
 function drawScare(type, e) {
   const c = $('scareover'); if (!scareShown) { scareShown = true; c.classList.remove('hide'); splats = null; c.width = innerWidth; c.height = innerHeight; }
   const g = c.getContext('2d'), W = c.width, H = c.height, imp = impactOf(type, jumpscare ? jumpscare.fm : 0); g.clearRect(0, 0, W, H);
@@ -424,7 +430,7 @@ function drawScare(type, e) {
       for (let i = 0; i < 14; i++) { const y = Math.random() * H, h = 4 + Math.random() * 30; g.fillStyle = `rgba(${Math.random() < .5 ? 255 : 0},${Math.random() * 80 | 0},${Math.random() < .5 ? 255 : 0},${.08 + e * .08})`; g.fillRect((Math.random() - .5) * 60, y, W, h); }
       g.fillStyle = `rgba(0,0,0,${Math.min(.5, e * .25)})`; g.fillRect(0, 0, W, H);
       for (let i = 0; i < 500; i++) { g.fillStyle = Math.random() < .5 ? '#fff3' : '#0005'; g.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
-    } else if (type === 'monochrome') { // you dissolve: grey squares eat the picture
+    } else if (type === 'boisvert') { // you dissolve: grey squares eat the picture
       const n = Math.floor(e / imp * 900), sz = Math.max(14, W / 36); g.fillStyle = '#000';
       let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       for (let i = 0; i < n; i++) { g.fillStyle = i % 3 ? '#000' : '#777'; g.fillRect(Math.floor(rnd() * W / sz) * sz, Math.floor(rnd() * H / sz) * sz, sz, sz); }

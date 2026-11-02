@@ -284,11 +284,15 @@ return function(L)
 			for f = -2, 2 do seg(P, Vector3.new(x * 2.4, 1, -1.2), Vector3.new(x * 2.5 + f * 0.18, -1.4, -1.9), 0.14, pale) end
 		end
 		seg(P, Vector3.new(0, 6, 0), Vector3.new(0, 7.2, -0.2), 0.7, pale)
-		P(Vector3.new(1.8, 2.6, 1.8), at(0, 8.4, -0.2), pale, { name = "Head" })
-		P(Vector3.new(0.55, 0.7, 0.2), at(-0.42, 8.8, -1.1), rgb(5, 5, 5)); P(Vector3.new(0.55, 0.7, 0.2), at(0.42, 8.8, -1.1), rgb(5, 5, 5))
-		P(Vector3.new(0.16, 0.16, 0.1), at(-0.42, 8.8, -1.22), rgb(255, 255, 255), { mat = NEON, name = "Pupil" }); P(Vector3.new(0.16, 0.16, 0.1), at(0.42, 8.8, -1.22), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
-		P(Vector3.new(1.5, 0.35, 0.15), at(0, 7.7, -1.12), rgb(60, 8, 10))
-		teeth(P, at(0, 7.75, -1.18), 7, 1.4, nil)
+		-- v1.5.1: egg-shaped head, hollow black eyes, a very long drooping jaw lined with thin teeth
+		P(Vector3.new(1.9, 2.8, 2), at(0, 8.6, -0.2), pale, { shape = BALL, name = "Head" })
+		P(Vector3.new(0.6, 0.8, 0.3), at(-0.42, 8.9, -1.08), rgb(5, 5, 5), { shape = BALL }); P(Vector3.new(0.6, 0.8, 0.3), at(0.42, 8.9, -1.08), rgb(5, 5, 5), { shape = BALL })
+		P(Vector3.new(0.14, 0.14, 0.1), at(-0.42, 8.9, -1.24), rgb(255, 255, 255), { mat = NEON, name = "Pupil" }); P(Vector3.new(0.14, 0.14, 0.1), at(0.42, 8.9, -1.24), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
+		P(Vector3.new(1.3, 2.2, 0.3), at(0, 6.8, -1.0, -8, 0, 0), rgb(74, 20, 22), { name = "Jaw" })          -- gaping mouth
+		P(Vector3.new(1.4, 0.4, 0.9), at(0, 5.7, -0.95, -8, 0, 0), pale, { name = "Jaw" })                     -- drooping chin
+		for k = 0, 9 do local x = -0.55 + k * 0.122
+			P(Vector3.new(0.07, 0.45, 0.07), at(x, 7.75, -1.18), rgb(235, 228, 205)); P(Vector3.new(0.07, 0.45, 0.07), at(x, 5.95, -1.22), rgb(235, 228, 205))
+		end
 		P(Vector3.new(2.4, 0.3, 2.4), at(0, 9.8, -0.2), robe, { name = "Hat" })
 		P(Vector3.new(1.6, 1.4, 1.6), at(0, 10.6, -0.2), robe, { name = "Hat" })
 		-- escalation stage parts (hidden until he grows stronger)
@@ -297,6 +301,89 @@ return function(L)
 			seg(P, Vector3.new(x * 1, 3.2, 0.6), Vector3.new(x * 3.4, 6.6, 1.4), 0.4, robe, { name = "Stage5" })
 		end
 		P(Vector3.new(4.6, 11, 4.6), at(0, 2.4, 0.4), rgb(120, 0, 0), { mat = Enum.Material.ForceField, name = "Stage6", transp = 1 })
+	end
+	-- v1.5.1 Doctor Nowhere forms, Boisvert and the Wendigo
+	B.dn_conezone = function(P) -- Cone Zone: a charcoal, fuzzy long-legged spider
+		local fur = rgb(38, 36, 36)
+		P(Vector3.new(3.2, 2.2, 3.6), at(0, -0.2, 0.6), fur, { shape = BALL, mat = Enum.Material.Carpet })     -- abdomen
+		P(Vector3.new(2, 1.6, 2), at(0, -0.4, -1.6), fur, { shape = BALL, mat = Enum.Material.Carpet })         -- head
+		for _, x in ipairs({ -1, 1 }) do
+			for k = 0, 3 do local z = -1.6 + k * 0.9
+				seg(P, Vector3.new(x * 0.8, -0.2, z), Vector3.new(x * 3, 1.6, z + (k - 1.5) * 0.9), 0.3, fur, { mat = Enum.Material.Carpet })
+				seg(P, Vector3.new(x * 3, 1.6, z + (k - 1.5) * 0.9), Vector3.new(x * 4.2, -3, z + (k - 1.5) * 1.4), 0.24, fur, { mat = Enum.Material.Carpet })
+			end
+			P(Vector3.new(0.3, 0.3, 0.3), at(x * 0.4, -0.1, -2.55), rgb(10, 10, 10), { shape = BALL, mat = Enum.Material.Glass })
+			P(Vector3.new(0.2, 0.2, 0.2), at(x * 0.7, 0.2, -2.45), rgb(10, 10, 10), { shape = BALL, mat = Enum.Material.Glass })
+		end
+	end
+	B.dn_guilt = function(P) -- Guilt: a tall white figure whose face is a flat plate
+		local white = rgb(236, 234, 228)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.5, 2, 0), Vector3.new(x * 0.55, -3, 0), 0.5, white)
+			seg(P, Vector3.new(x * 1.2, 6, 0), Vector3.new(x * 1.6, 0.4, -0.6), 0.38, white)
+		end
+		P(Vector3.new(1.9, 4.6, 1.1), at(0, 4.1, 0), white)
+		seg(P, Vector3.new(0, 6.4, 0), Vector3.new(0, 7.6, -0.1), 0.5, white)
+		P(Vector3.new(1.7, 2.2, 1.7), at(0, 8.5, 0), white, { shape = BALL, name = "Head" })
+		P(Vector3.new(1.5, 1.9, 0.18), at(0, 8.5, -0.85), rgb(250, 250, 248), { mat = Enum.Material.SmoothPlastic })  -- the face plate
+		P(Vector3.new(0.22, 0.08, 0.05), at(-0.35, 8.8, -0.95), rgb(20, 20, 20)); P(Vector3.new(0.22, 0.08, 0.05), at(0.35, 8.8, -0.95), rgb(20, 20, 20))
+	end
+	B.boisvert = function(P) -- black anvil head, tiny white eyes, grainy static aura
+		local blk = rgb(12, 12, 14)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.55, 0, 0), Vector3.new(x * 0.6, -3, 0), 0.6, blk)
+			seg(P, Vector3.new(x * 1.3, 2.6, 0), Vector3.new(x * 1.6, -0.6, -0.3), 0.45, blk)
+		end
+		P(Vector3.new(2.2, 3, 1.3), at(0, 1.4, 0), blk)
+		P(Vector3.new(3.6, 0.9, 1.6), at(0, 4.1, 0), blk, { name = "Head" })        -- anvil face
+		P(Vector3.new(1.4, 1.1, 1.2), at(0, 3.3, 0), blk)                            -- waist of the anvil
+		P(Vector3.new(1.2, 0.6, 1.0), at(2.1, 4.25, 0, 0, 0, -12), blk)             -- horn
+		P(Vector3.new(0.12, 0.12, 0.05), at(-0.35, 4.15, -0.82), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
+		P(Vector3.new(0.12, 0.12, 0.05), at(0.35, 4.15, -0.82), rgb(255, 255, 255), { mat = NEON, name = "Pupil" })
+		for k = 1, 16 do P(Vector3.new(0.18, 0.18, 0.18), at(math.sin(k * 2.7) * 1.8, 0.4 + (k % 8) * 0.55, math.cos(k * 1.9) * 1), rgb(90 + (k * 37) % 160, 90 + (k * 37) % 160, 90 + (k * 37) % 160), { mat = NEON, transp = 0.45, noShadow = true }) end -- static grain
+	end
+	local function antlers(P, y, bone)
+		for _, x in ipairs({ -1, 1 }) do
+			local a, b = Vector3.new(x * 0.5, y, 0), Vector3.new(x * 1.8, y + 2.2, 0.3)
+			seg(P, a, b, 0.22, bone); seg(P, b, Vector3.new(x * 2.6, y + 3.6, 0.1), 0.18, bone)
+			seg(P, Vector3.new(x * 1.2, y + 1.3, 0.2), Vector3.new(x * 1.0, y + 2.6, -0.4), 0.15, bone)
+			seg(P, b, Vector3.new(x * 1.5, y + 3.4, -0.3), 0.15, bone)
+		end
+	end
+	B.wendigo = function(P) -- deer form: gaunt furred beast, deer skull, antlers, exposed ribs
+		local fur, bone = rgb(74, 52, 36), rgb(216, 204, 176)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.6, 1.2, 0.6), Vector3.new(x * 0.7, -0.8, 1.3), 0.6, fur, { mat = Enum.Material.Carpet })
+			seg(P, Vector3.new(x * 0.7, -0.8, 1.3), Vector3.new(x * 0.65, -3, 0.9), 0.32, fur)
+			seg(P, Vector3.new(x * 1.1, 5, -0.4), Vector3.new(x * 1.7, 0.6, -1.4), 0.35, fur, { mat = Enum.Material.Carpet })
+			for f = -1, 1 do seg(P, Vector3.new(x * 1.7, 0.6, -1.4), Vector3.new(x * 1.8 + f * 0.15, -0.5, -1.9), 0.08, bone) end
+		end
+		P(Vector3.new(2, 4.2, 1.3), at(0, 3.4, -0.2, -12, 0, 0), fur, { mat = Enum.Material.Carpet })
+		for k = 0, 4 do P(Vector3.new(1.7, 0.12, 0.15), at(0, 2.4 + k * 0.5, -0.95, -12, 0, 0), bone) end   -- ribs
+		seg(P, Vector3.new(0, 5.4, -0.5), Vector3.new(0, 6.3, -1.1), 0.5, fur)
+		P(Vector3.new(0.9, 1.0, 1.9), at(0, 6.6, -1.6, 10, 0, 0), bone, { name = "Head" })                   -- deer skull
+		P(Vector3.new(0.28, 0.3, 0.2), at(-0.28, 6.75, -2.2), rgb(0, 0, 0), { shape = BALL }); P(Vector3.new(0.28, 0.3, 0.2), at(0.28, 6.75, -2.2), rgb(0, 0, 0), { shape = BALL })
+		P(Vector3.new(0.1, 0.1, 0.05), at(-0.28, 6.75, -2.32), rgb(255, 255, 255), { mat = NEON }); P(Vector3.new(0.1, 0.1, 0.05), at(0.28, 6.75, -2.32), rgb(255, 255, 255), { mat = NEON })
+		P(Vector3.new(0.7, 0.25, 1.2), at(0, 6.0, -1.9, 22, 0, 0), bone, { name = "Jaw" })
+		antlers(P, 7.1, bone)
+	end
+	B.wendigo_h = function(P) -- human form: crouched, pale, gaunt, bone & bead chest plate, screaming
+		local skin, stain, bone = rgb(200, 196, 188), rgb(122, 20, 20), rgb(216, 204, 176)
+		for _, x in ipairs({ -1, 1 }) do
+			seg(P, Vector3.new(x * 0.5, 0.4, 0), Vector3.new(x * 0.9, -1.2, -0.9), 0.5, skin)
+			seg(P, Vector3.new(x * 0.9, -1.2, -0.9), Vector3.new(x * 0.7, -3, 0), 0.4, skin)
+			seg(P, Vector3.new(x * 0.9, 2.6, -0.3), Vector3.new(x * 1.5, -1.8, -1.2), 0.32, skin)
+			for f = -1, 1 do seg(P, Vector3.new(x * 1.5, -1.8, -1.2), Vector3.new(x * 1.6 + f * 0.12, -2.8, -1.4), 0.07, stain) end
+		end
+		P(Vector3.new(1.6, 2.6, 0.9), at(0, 1.6, -0.3, -25, 0, 0), skin)
+		P(Vector3.new(1.5, 1.4, 0.15), at(0, 1.9, -0.85, -25, 0, 0), bone)                                   -- bone & bead chest plate
+		for k = 0, 5 do P(Vector3.new(0.14, 0.14, 0.14), at(-0.55 + k * 0.22, 1.2, -0.95), rgb(160, 40, 30), { shape = BALL }) end
+		P(Vector3.new(1.4, 0.7, 1), at(0, 0.1, 0), rgb(58, 90, 42), { mat = FABRIC })                         -- loincloth
+		P(Vector3.new(1.2, 1.5, 1.2), at(0, 3.5, -0.9), skin, { shape = BALL, name = "Head" })
+		P(Vector3.new(0.3, 0.4, 0.2), at(-0.25, 3.7, -1.45), rgb(0, 0, 0), { shape = BALL }); P(Vector3.new(0.3, 0.4, 0.2), at(0.25, 3.7, -1.45), rgb(0, 0, 0), { shape = BALL })
+		P(Vector3.new(0.5, 0.9, 0.2), at(0, 2.9, -1.4), rgb(40, 6, 8), { name = "Jaw" })                      -- screaming mouth
+		P(Vector3.new(0.6, 0.2, 0.3), at(0, 2.4, -1.25), stain)                                               -- teen-level blood smear
+		antlers(P, 4.1, bone)
 	end
 	return B
 end
