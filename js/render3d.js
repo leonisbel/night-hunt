@@ -1,7 +1,7 @@
 // Night Hunt 3D renderer (three.js): level building, lighting, characters, particles, post-processing.
 import * as THREE from '../vendor/three.module.min.js';
 import { tex, glowTex, softTex, beamTex, textSprite } from './textures.js';
-import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet } from './models.js';
+import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet, realSetup, lodTick } from './models.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 
 export const S = 1 / 20; // simulation pixels -> metres
@@ -132,6 +132,7 @@ export class World {
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.outputColorSpace = THREE.LinearSRGBColorSpace; r.toneMapping = THREE.NoToneMapping;
+    realSetup(r, this.mobile); // v1.5 PBR environment for monster skin/scale/fur materials
     const halfOK = r.extensions.has('EXT_color_buffer_half_float') || r.extensions.has('EXT_color_buffer_float');
     this.rt = new THREE.WebGLRenderTarget(4, 4, { type: halfOK ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: this.mobile ? 0 : 4 });
     this.post = new THREE.ShaderMaterial({ vertexShader: POST_VS, fragmentShader: POST_FS, depthTest: false, depthWrite: false,
@@ -567,6 +568,7 @@ export class World {
       const wet = !p.bt && (this.map.islands || this.map.pools) && inWaterC(this.map, d.dx, d.dy);
       if (o.userData.anim) animTick(o, dt, wet && o.userData.sea ? 'swim' : c.speed > 4.5 ? 'run' : c.speed > .6 ? 'walk' : 'idle', Math.max(.6, Math.min(1.8, c.speed / 4)));
       if (o.userData.wiggle && o.userData.wiggle.length) wiggleTick(o, t + p.id);
+      if (o.userData.shells) lodTick(o, this.camera.position.distanceTo(o.position));
       if (o.userData.dirty) { o.userData.dirty = false; c.op = -1; }
       if (p.bt) o.position.y = .55 + Math.sin(t * 1.6 + p.bt) * .12;
       else if (wet) o.position.y = p.role === 'monster' && st !== 'lobby' ? -monsterHeight(modelKey(p.mt, p.fm)) * .3 : -.85 + Math.sin(t * 2 + p.id) * .05;
@@ -929,7 +931,7 @@ export class World {
   // every monster has its own animated jumpscare; game.js cuts to black (optional blood splatter) at the impact moment
   renderScare(dt, t, sc) {
     const key = modelKey(sc.type, sc.fm);
-    if (this.scareKind !== key) { if (this.scareModel) this.scareScene.remove(this.scareModel); this.scareModel = buildMonster(key); this.scareScene.add(this.scareModel); this.scareKind = key; }
+    if (this.scareKind !== key) { if (this.scareModel) this.scareScene.remove(this.scareModel); this.scareModel = buildMonster(key); lodTick(this.scareModel, 0); this.scareScene.add(this.scareModel); this.scareKind = key; }
     const M = this.scareModel, p = M.userData.parts, e = sc.elapsed, cam = this.scareCam, k = sc.type;
     M.position.set(0, 0, 0); M.rotation.set(0, 0, 0); M.scale.set(1, 1, 1); M.visible = true; this.scareRed.color.set('#ff1010'); const big = P2.has(k); this.scareScene.fog.far = big ? 45 : 14; this.scareLight.distance = big ? 40 : 12; this.scareRed.distance = big ? 40 : 12;
     const hp = new THREE.Vector3(); M.updateMatrixWorld(true); (p.head || M).getWorldPosition(hp);

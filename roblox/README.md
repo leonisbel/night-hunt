@@ -1,4 +1,4 @@
-# Night Hunt: Roblox version (fan-made, v1.4.1, rated 13+)
+# Night Hunt: Roblox version (fan-made, v1.5.0, rated 13+)
 
 A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out together and land in a generated map; the main one is a dense power-line forest. Every player has a random chance to be a monster. Survivors loot chests and bags, fight back and get to the extraction helicopter.
 
@@ -46,6 +46,16 @@ A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out 
 - The six-armed Doctor: Paranoia makes nearby survivors hallucinate and reveals them to you.
 
 Every jumpscare cuts to black at the moment of impact. With **Blood effects** on (the default), it adds teen-level red splatter and drips; there is no dismemberment and no detailed gore. You can turn this off in the menu (browser) or with the top-left button (Roblox). Players near the catch see the victim lifted, stretched, dissolved or dragged away, and hear the scream.
+
+## New in v1.5.0
+- **More realistic monsters:**
+  - Fur monsters (Yeti, Bigfoot) use Carpet.
+  - Dried skin and slick skin (Siren Head, Demogorgon, Quetzalcoatlus) use Leather.
+  - The gargoyle uses Basalt.
+  - Sea creatures and the Demogorgon get a wet reflectance.
+  - Every Neon eye now casts a small PointLight onto the face.
+  - Every part gets subtle per-part tone variation and casts shadows.
+- The browser and Windows versions get the full PBR, subsurface, fur-shell and anatomy upgrade. Roblox parts can't use custom normal maps without uploaded SurfaceAppearance assets.
 
 ## New in v1.4.1
 - **End screens:** after every jumpscare animation finishes, the caught survivor gets a **YOU DIED / Killed by <monster>** screen with round stats (time survived, damage dealt, knockdowns, coins) and **Spectate** (follow living players; the server streams the map around them) or **Return to Lobby** (you're already in the lobby; this closes the screen). The monster gets a fading **KILL / <survivor> eliminated** popup after its kill cam. At round end a full **results screen** lists every player's role, result, kills/damage, knockdowns and coins.

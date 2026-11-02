@@ -11,12 +11,12 @@ local FABRIC, RUST, SLATE, PLASTIC = Enum.Material.Fabric, Enum.Material.Corrode
 -- default surface material per monster (fur-like fabric for animatronics, rough skin for creatures)
 local SKIN = {
 	freddy = FABRIC, bonnie = FABRIC, chica = FABRIC, foxy = FABRIC, springtrap = FABRIC,
-	cartooncat = Enum.Material.Rubber, sirenhead = SLATE, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
-	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Pebble,
+	cartooncat = Enum.Material.Rubber, sirenhead = Enum.Material.Leather, drnowhere = FABRIC, sonicexe = FABRIC, dn_conezone = PLASTIC, dn_nightmare = Enum.Material.Slate, dn_sixarm = FABRIC,
+	locust = SLATE, monochrome = PLASTIC, demogorgon = Enum.Material.Leather,
 	megalodon = Enum.Material.SmoothPlastic, megalodon_h = Enum.Material.SmoothPlastic, kraken = Enum.Material.Rubber, cthulhu = Enum.Material.Rubber,
 	leviathan = Enum.Material.Pebble, mosasaurus = Enum.Material.Pebble, nessie = Enum.Material.Pebble, spinosaurus = Enum.Material.Pebble,
-	trex = Enum.Material.Pebble, yeti = FABRIC, bigfoot = FABRIC, chupacabra = Enum.Material.Pebble, vampire = FABRIC,
-	quetzalcoatlus = Enum.Material.Pebble, gargoyle = SLATE, dragon = Enum.Material.Pebble, fester = FABRIC,
+	trex = Enum.Material.Pebble, yeti = Enum.Material.Carpet, bigfoot = Enum.Material.Carpet, chupacabra = Enum.Material.Pebble, vampire = FABRIC,
+	quetzalcoatlus = Enum.Material.Leather, gargoyle = Enum.Material.Basalt, dragon = Enum.Material.Pebble, fester = FABRIC,
 }
 local defaultMat = PLASTIC
 
@@ -389,6 +389,37 @@ function Models.applySkin(model, skin)
 	end
 end
 
+-- v1.5 realism pass: wet sheen on sea creatures/slime, glowing eyes that actually light the face,
+-- subtle per-part tone variation so skin, fur and scales don't read as flat plastic, shadows on every part
+local WET = { megalodon = true, megalodon_h = true, kraken = true, cthulhu = true, leviathan = true, mosasaurus = true, nessie = true, demogorgon = true }
+local ROBOT = { freddy = true, bonnie = true, chica = true, foxy = true, springtrap = true, monochrome = true }
+function Models.realize(model, kind)
+	local i, lights = 0, 0
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") and p.Transparency < 1 then
+			i += 1
+			p.CastShadow = true
+			if p.Material == Enum.Material.Neon then
+				if lights < 4 and p.Size.Magnitude < 4 then
+					lights += 1
+					local l = Instance.new("PointLight")
+					l.Color = p.Color
+					l.Range = 6
+					l.Brightness = 1.4
+					l.Shadows = false
+					l.Parent = p
+				end
+			else
+				local h, sat, v = p.Color:ToHSV()
+				local jit = ROBOT[kind] and 0.03 or 0.08
+				p.Color = Color3.fromHSV(h, math.clamp(sat * (1 + ((i * 53) % 7 - 3) / 40), 0, 1), math.clamp(v * (1 - jit / 2 + ((i * 37) % 11) / 10 * jit), 0, 1))
+				if WET[kind] then p.Reflectance = 0.14 end
+				if ROBOT[kind] and p.Material == Enum.Material.CorrodedMetal then p.Reflectance = 0.05 end
+			end
+		end
+	end
+end
+
 function Models.morph(character, kind, skin)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return nil end
@@ -419,6 +450,7 @@ function Models.morph(character, kind, skin)
 	(BUILD[kind] or BUILD.freddy)(P)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
+	Models.realize(model, kind)
 	Models.applySkin(model, skin)
 	if kind == "fester" then Models.festerStage(model, 0) end
 	-- hide the player's own avatar
@@ -454,6 +486,7 @@ function Models.template(kind)
 	(BUILD[kind] or BUILD.freddy)(P)
 	defaultMat = PLASTIC
 	model.PrimaryPart = root
+	Models.realize(model, kind)
 	if kind == "fester" then Models.festerStage(model, 6) end
 	return model
 end

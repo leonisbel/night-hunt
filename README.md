@@ -1,4 +1,4 @@
-# Night Hunt 🚁👹 (v1.4.1, rated 13+)
+# Night Hunt 🚁👹 (v1.5.0, rated 13+)
 
 A fan-made multiplayer monster survival game for playing with friends. Board the helicopter, drop into a dense power-line forest, loot chests and bags, and survive the monsters.
 
@@ -26,6 +26,19 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
 
    Fight back, sleep in beds to heal, and reach the **extraction helicopter**, which lands for the last 90 seconds.
 5. **Monsters** have health. Survivors can **knock them down and stun them**; they get back up after a few seconds. Monster hits drain survivors' health, and a survivor at 0 is caught.
+
+## Realistic monsters (v1.5.0)
+- **PBR surfaces on every monster:** each body part is mapped to a real material: animatronic teddy fur and rusted endoskeletons, scaly reptile hide with pale-belly countershading, wet glossy shark and sea-monster skin with clearcoat, slick Demogorgon skin, weathered gargoyle stone, dried Siren Head flesh, rubbery Cartoon Cat ink, see-through wing membranes and glossy eyes. Each material has normal, roughness and colour-detail maps. Some are CC0 photo-scanned sets from Poly Haven; the others (scales, scutes, hide, chitin and more) are generated in code.
+- **Lighting:** a moonlit environment map adds reflections and specular highlights. Skin uses a wrap-lighting subsurface-scattering approximation, so it glows softly at the edges instead of looking like plastic. Thin wing membranes glow red when the moon is behind them. Eyes glow, and every monster casts shadows and fades into the fog.
+- **Real fur:** Yeti, Bigfoot and other furry monsters get layered shell fur (strands with gravity droop and darker roots) when the camera is close.
+- **Better anatomy:** smoother, curved (PN-triangle) silhouettes and smooth normals on the CC0 dinosaurs, sharks and dragons, and rounded joints on every limb. Bigger changes:
+  - Yeti and Bigfoot are re-sculpted as apes: sagittal crest, brow ridge, long arms, padded feet.
+  - The Demogorgon is gaunt, with a ribcage and long jointed fingers, and its petals have rows of teeth.
+  - The Spinosaurus has a crocodile-like snout and a paddle tail.
+  - The dragon has a longer neck and an adult head.
+  - Springtrap has more decay and exposed wires.
+- **Phones stay fast:** phones and touch devices automatically get lighter materials, half-size maps, no fur shells and no extra geometry detail. Use `?gfx=low` or `?gfx=high` to override. On desktop, fur shells only render within 14 m.
+- **Roblox:** fur monsters use Carpet, skin uses Leather, the gargoyle uses Basalt and sea creatures get a wet reflectance. Glowing eyes now cast light, and parts have subtle tone variation.
 
 ## End screens (v1.4.1)
 - **YOU DIED:** after a monster's jumpscare animation has fully finished, the caught survivor sees who killed them and their round stats (time survived, damage dealt, monster knockdowns, coins earned), with **Spectate** and **Return to Lobby** buttons.
