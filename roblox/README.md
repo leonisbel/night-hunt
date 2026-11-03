@@ -1,4 +1,4 @@
-# Night Hunt: Roblox version (fan-made, v1.5.1, rated 13+)
+# Night Hunt: Roblox version (fan-made, v1.6.0, rated 13+)
 
 A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out together and land in a generated map; the main one is a dense power-line forest. Every player has a random chance to be a monster. Survivors loot chests and bags, fight back and get to the extraction helicopter.
 
@@ -46,6 +46,12 @@ A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out 
 - The six-armed Doctor: Paranoia makes nearby survivors hallucinate and reveals them to you.
 
 Every jumpscare cuts to black at the moment of impact. With **Blood effects** on (the default), it adds teen-level red splatter and drips; there is no dismemberment and no detailed gore. You can turn this off in the menu (browser) or with the top-left button (Roblox). Players near the catch see the victim lifted, stretched, dissolved or dragged away, and hear the scream.
+
+## New in v1.6.0 (realism)
+- Future lighting with a moonlit star sky (Sky with stars and a moon), animated Clouds, an Atmosphere with haze and a colour grade (ColorCorrection) per map, bloom, distance depth of field and softer shadows.
+- Wet look in the rain: the Stormy Ocean and Rainforest Swamp raise the environment specular, so surfaces catch the moon.
+- Animated terrain grass decoration where Studio allows it.
+- Roblox does not let the game use custom shaders or the browser version's volumetric fog. Photo-scanned textures would need SurfaceAppearance uploads, which this build does not do, so it uses Roblox's built-in materials instead.
 
 ## New in v1.5.1
 - **Boisvert** (formerly Monochrome) is remodeled with a black anvil head and tiny white eyes. Dead Channel fills every survivor's screen with full opaque, animated TV static (a ScreenGui grid that is re-randomized every frame) plus a looping hiss for 10 s. The cooldown is 20 s.

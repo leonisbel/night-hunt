@@ -2,15 +2,16 @@
 // wet clearcoat for sea creatures, glossy eyes, countershading, shell fur and distance LOD.
 // Photo-scanned surfaces are CC0 Poly Haven textures (models/tex); the rest are generated here at load.
 import * as THREE from '../vendor/three.module.min.js';
+import { TIER } from './gfx.js';
 
 const DOC = typeof document !== 'undefined';
 let LOW = false, ENV = null; const PENDING = new Set();
 const qs = DOC ? new URLSearchParams(location.search) : new URLSearchParams();
-if (DOC) LOW = qs.get('gfx') === 'low' || (qs.get('gfx') !== 'high' && (matchMedia('(pointer:coarse)').matches || navigator.maxTouchPoints > 0));
+if (DOC) LOW = TIER === 'low' || TIER === 'med'; // v1.6 quality tiers (gfx.js): low / med use the lighter monster materials
 export const isLow = () => LOW;
 // called once by the renderer: phone flag + a soft moonlit environment for reflections (eyes, wet skin, rust)
 export function realSetup(renderer, mobile) {
-  if (mobile != null) LOW = qs.get('gfx') === 'high' ? false : qs.get('gfx') === 'low' ? true : !!mobile;
+  if (DOC) LOW = TIER === 'low' || TIER === 'med';
   if (ENV || !renderer) return ENV;
   const s = new THREE.Scene(), sky = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false,
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
@@ -134,6 +135,10 @@ const S = {
   membrane: { t: 'ph:leather', d: 1.2, ns: 1.3, r: .65, sss: '#c04020', env: .3, trans: 1 },
   wool: { t: 'ph:wool', d: 3, ns: 1, r: 1, sh: .6, shr: .6, env: .1 },
   cotton: { t: 'ph:wool', d: 5, ns: .5, r: .9, sh: .3, shr: .5, env: .1 },
+  face: { t: 'skin', d: 9, ns: .28, r: .55, sh: .25, shr: .35, sss: '#d04a30', env: .3 },
+  lips: { t: 'skin', d: 9, ns: .2, r: .5, sss: '#c03030', env: .25 },
+  denim: { t: 'ph:wool', d: 9, ns: .8, r: .95, sh: .2, shr: .6, env: .08 },
+  canvas: { t: 'ph:wool', d: 7, ns: .9, r: .95, sh: .15, shr: .7, env: .08 },
   leather: { t: 'ph:leather', d: 3, ns: 1, r: .45, cc: .4, ccr: .3, env: .5 },
   rock: { t: 'ph:rock', d: .9, ns: 1.6, r: 1, env: .15, keepCol: true },
   claw: { t: 'horn', d: 6, ns: .8, r: .35, cc: .5, ccr: .2, env: .6 },
@@ -265,6 +270,7 @@ function makeMat(src, name, span, o) {
   const s = S[name], P = LOW ? THREE.MeshStandardMaterial : THREE.MeshPhysicalMaterial;
   const m = new P({ color: src.color.clone(), roughness: s.r ?? src.roughness, metalness: s.metal ?? src.metalness, side: src.side, transparent: src.transparent, opacity: src.opacity, depthWrite: src.depthWrite });
   if (src.emissive) { m.emissive.copy(src.emissive); m.emissiveIntensity = src.emissiveIntensity; } if (src.emissiveMap) m.emissiveMap = src.emissiveMap;
+  if (name === 'eye') m.emissiveIntensity = (src.emissiveIntensity || 1) * 1.8; // v1.6 eye shine: HDR-bright eyes bloom in the dark
   const set = !s.t ? null : s.t.startsWith('ph:') ? phSet(s.t.slice(3)) : genSet(s.t);
   const [ux, uy] = span; let rx = ux * (s.d || 1), ry = uy * (s.d || 1);
   if (o.isSkinnedMesh && o.geometry.userData.boxUV) { rx = ry = (o.userData.lenM || 8) * (s.d || 1); }
@@ -303,6 +309,14 @@ export function realize(root, sub = root) {
       for (const sm of mats) { const sh = new THREE.Mesh(o.geometry, sm); sh.userData.shell = 1; sh.visible = false; sh.castShadow = false; sh.receiveShadow = true; o.add(sh); (root.userData.shells || (root.userData.shells = [])).push(sh); }
     }
   }
+}
+// v1.6: survivors get the same physically based skin (subsurface) and woven cloth / leather / rubber as the monsters
+const HCACHE = new Map();
+export function realizeHuman(root) {
+  root.updateMatrixWorld(true);
+  root.traverse(o => { if (!o.isMesh || Array.isArray(o.material) || !o.material?.userData?.sv) return; const src = o.material, name = src.userData.sv; if (!S[name]) return;
+    const span = uvSpan(o), k = [name, src.color.getHexString(), Math.round(span[0] * 4), Math.round(span[1] * 4)].join('|');
+    let m = HCACHE.get(k); if (!m) { m = makeMat(src, name, span, o); m.userData.sv = name; HCACHE.set(k, m); } o.material = m; });
 }
 // distance LOD: shell fur only close up (hidden until a camera comes within 14 m) (the base surface keeps its photo fur normal map further out)
 export function lodTick(root, dist) { const s = root.userData.shells; if (!s) return; const v = dist < 14; if (root.userData.lodV === v) return; root.userData.lodV = v; for (const m of s) m.visible = v; }

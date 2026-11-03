@@ -1155,6 +1155,26 @@ local atmosphere = effect("Atmosphere", "NH_Atmosphere")
 local grade = effect("ColorCorrectionEffect", "NH_Grade")
 local bloom = effect("BloomEffect", "NH_Bloom")
 local rays = effect("SunRaysEffect", "NH_SunRays")
+-- v1.6 realism: depth of field, a moonlit star sky with clouds, per-map colour grades, wet specular in the rain
+local dof = effect("DepthOfFieldEffect", "NH_DOF")
+dof.NearIntensity, dof.FocusDistance, dof.InFocusRadius = 0, 40, 70
+local nightSky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
+nightSky.Name = "NH_Sky"; nightSky.StarCount = 3000; nightSky.MoonAngularSize = 13; nightSky.CelestialBodiesShown = true; nightSky.Parent = Lighting
+local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+clouds.Cover, clouds.Density, clouds.Color = 0.62, 0.45, Color3.fromRGB(70, 74, 88); clouds.Parent = workspace.Terrain
+pcall(function() workspace.Terrain.Decoration = true end) -- animated wind-swayed grass blades where allowed
+local GRADE = { -- tint, saturation, contrast, atmosphere haze, density, wet (rain specular), cloud cover
+	["Foggy Woods"] = { Color3.fromRGB(196, 214, 210), -0.42, 0.24, 3.2, 0.58, false, 0.7 },
+	["Powerline Forest"] = { Color3.fromRGB(200, 214, 240), -0.35, 0.22, 2.4, 0.46, false, 0.55 },
+	["Abandoned Pizzeria Town"] = { Color3.fromRGB(236, 214, 196), -0.3, 0.2, 2, 0.4, false, 0.6 },
+	["Static Fields"] = { Color3.fromRGB(214, 220, 196), -0.5, 0.26, 2.6, 0.48, false, 0.8 },
+	["Stormy Ocean"] = { Color3.fromRGB(186, 210, 230), -0.38, 0.26, 2.8, 0.52, true, 0.95 },
+	["Rainforest Swamp"] = { Color3.fromRGB(196, 222, 196), -0.25, 0.22, 3, 0.55, true, 0.85 },
+	["Snowy Mountain"] = { Color3.fromRGB(205, 225, 255), -0.3, 0.18, 2.2, 0.5, false, 0.75 },
+	["Haunted Farm"] = { Color3.fromRGB(238, 218, 190), -0.32, 0.22, 2.4, 0.46, false, 0.6 },
+	["Vampire Castle"] = { Color3.fromRGB(235, 196, 200), -0.3, 0.26, 2.2, 0.44, false, 0.7 },
+	["Fester Street"] = { Color3.fromRGB(225, 225, 200), -0.28, 0.2, 2, 0.4, false, 0.5 },
+}
 local function lerpTo(obj, prop, v, k)
 	local cur = obj[prop]
 	if typeof(cur) == "number" then obj[prop] = cur + (v - cur) * k
@@ -1173,7 +1193,7 @@ local function applyLighting()
 	local spectating = st == "Hunt" and not inMap
 	local fogColor = State:GetAttribute("FogColor") or Color3.new(0, 0, 0)
 	Lighting.GlobalShadows = true
-	Lighting.ShadowSoftness = 0.25
+	Lighting.ShadowSoftness = 0.35
 	if inMap then
 		local mon = role == "Monster"
 		Lighting.ClockTime = 0.2
@@ -1197,6 +1217,14 @@ local function applyLighting()
 		lerpTo(grade, "TintColor", mon and Color3.fromRGB(255, 200, 200) or Color3.fromRGB(205, 220, 255), k)
 		bloom.Intensity, bloom.Size, bloom.Threshold = 0.9, 28, 0.9
 		rays.Intensity = 0
+		local g = GRADE[State:GetAttribute("Theme") or ""]
+		if g then
+			if not mon then lerpTo(grade, "TintColor", g[1], k); lerpTo(grade, "Saturation", g[2], k) end
+			lerpTo(grade, "Contrast", g[3], k); lerpTo(atmosphere, "Haze", g[4], k); lerpTo(atmosphere, "Density", mon and g[5] * 0.7 or g[5], k)
+			Lighting.EnvironmentSpecularScale = g[6] and 1 or 0.6 -- wet surfaces catch the moon in the rain
+			clouds.Cover = g[7]
+		end
+		dof.FarIntensity = 0.12; dof.FocusDistance = 40
 	elseif spectating then
 		Lighting.ClockTime = 0.2
 		lerpTo(Lighting, "Brightness", 1.4, k)
@@ -1235,6 +1263,7 @@ local function applyLighting()
 		lerpTo(grade, "TintColor", Color3.fromRGB(255, 236, 225), k)
 		bloom.Intensity, bloom.Size, bloom.Threshold = 0.6, 24, 1.4
 		rays.Intensity, rays.Spread = 0.08, 0.8
+		dof.FarIntensity = 0.08; dof.FocusDistance = 60; clouds.Cover = 0.5
 	end
 end
 

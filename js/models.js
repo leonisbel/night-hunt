@@ -4,7 +4,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { tex, faceTex, glowTex, oldWallpaper } from './textures.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clone as skClone } from '../vendor/SkeletonUtils.js';
-import { realize, prepGLBGeometry, realSetup, lodTick, isLow, realReady } from './realism.js';
+import { realize, realizeHuman, prepGLBGeometry, realSetup, lodTick, isLow, realReady } from './realism.js';
 export { realSetup, lodTick, realReady };
 
 const geo = {};
@@ -1285,6 +1285,7 @@ export function buildSurvivor(color, look) {
   const jeans = mat(L.pants || ['#2c3e60', '#3a3a3a', '#4a4030', '#25303f'][h % 4], { map: 'cloth', bump: 'cloth', bs: .5, r: .92 });
   const shoe = mat('#1c1a18', { r: .6 }), sole = mat('#d8d2c4', { r: .7 }), hair = mat(HAIRS[L.hc % HAIRS.length], { map: 'fur', r: .9 });
   const strap = mat('#2a2622', { r: .7 }), pack = mat(['#3d4a2e', '#5a2a22', '#22303e', '#4a3a28'][(h >> 5) % 4], { map: 'cloth', r: .9 });
+  for (const [m, sv] of [[skin, 'face'], [jacket, 'cotton'], [jacketDark, 'cotton'], [jeans, 'denim'], [pack, 'canvas'], [shoe, 'leather'], [strap, 'leather'], [sole, 'rubber']]) m.userData.sv = sv; // v1.6 PBR cloth / skin
   const body = grp(root, [0, 0, 0], 'body');
   // legs: hip pivot -> thigh -> knee pivot -> shin -> foot
   const legs = [-.1, .1].map((x, i) => {
@@ -1316,21 +1317,22 @@ export function buildSurvivor(color, look) {
   for (let i = 0; i < 3; i++) add(vest, G.box(.09, .08, .04), mat('#2e3326', { r: .9 }), [-.11 + i * .11, .17, .17]);
   add(vest, G.box(.2, .05, .01), mat('#d8d8c8', { r: .6 }), [0, .37, .158]); // PRESS/POLICE strip
   // neck + head
-  add(torso, G.cyl(.05, .055, .1, 10), skin, [0, .56, 0]);
+  add(torso, G.cyl(.058, .066, .11, 14), skin, [0, .555, 0]);
   const head = grp(torso, [0, .66, .005], 'head');
   add(head, G.sph(.105, 20, 16), skin, [0, .02, 0], [0, 0, 0], [.92, 1.12, 1]);
   add(head, G.sph(.07, 14, 10), skin, [0, -.05, .03], [0, 0, 0], [1.05, .8, 1]); // jaw
   add(head, G.sph(.025, 8, 6), skin, [0, .0, .1], [0, 0, 0], [.8, 1, 1.1]); // nose
   for (const sx of [-.1, .1]) add(head, G.sph(.026, 8, 6), skin, [sx * .95, .01, -.005], [0, 0, 0], [.5, 1, .8]); // ears
-  const white = mat('#f4f1ea', { r: .3 }), iris = mat(['#3a2a1a', '#3a6a8a', '#4a6a3a', '#2a1a10'][(h >> 7) % 4], { r: .2 });
+  const white = mat('#f4f1ea', { r: .3 }), pupil = mat('#050505', { r: .1 }), iris = mat(['#3a2a1a', '#3a6a8a', '#4a6a3a', '#2a1a10'][(h >> 7) % 4], { r: .2 });
   for (const sx of [-.037, .037]) {
-    add(head, G.sph(.017, 10, 8), white, [sx, .035, .085]); add(head, G.sph(.009, 8, 6), iris, [sx, .035, .1]);
+    add(head, G.sph(.016, 14, 10), white, [sx, .035, .082]); add(head, G.sph(.009, 12, 8), iris, [sx, .035, .0945], [0, 0, 0], [1, 1, .5]); add(head, G.sph(.0042, 8, 6), pupil, [sx, .035, .0982], [0, 0, 0], [1, 1, .4]); // v1.6: eyes sit forward, with pupils
+    add(head, G.sph(.0175, 12, 8, 0, Math.PI * 2, 0, Math.PI * .4), skin, [sx, .036, .082], [.35, 0, 0]); // upper eyelid
     add(head, G.box(.038, .009, .012), hair, [sx, .062, .094], [0, 0, sx > 0 ? -.12 : .12]); // brows
   }
-  add(head, G.box(.04, .008, .01), mat('#8a4a40', { r: .5 }), [0, -.045, .097]); // mouth
+  { const lip = mat('#9a6058', { r: .5 }); lip.userData.sv = 'lips'; add(head, G.sph(.019, 12, 8), lip, [0, -.041, .093], [0, 0, 0], [1, .3, .4]); add(head, G.sph(.017, 12, 8), lip, [0, -.05, .091], [0, 0, 0], [1, .34, .4]); } // lips
   const style = L.hs; // 0 short, 1 long, 2 ponytail/bun, 3 buzz
-  if (style !== 3) add(head, G.sph(.112, 18, 12, 0, Math.PI * 2, 0, Math.PI * .55), hair, [0, .03, -.005], [-.15, 0, 0], [.95, 1.08, 1.04]);
-  else add(head, G.sph(.108, 18, 12, 0, Math.PI * 2, 0, Math.PI * .45), hair, [0, .03, -.005], [-.15, 0, 0], [.95, 1.08, 1.02]);
+  if (style !== 3) add(head, G.sph(.112, 24, 14, 0, Math.PI * 2, 0, Math.PI * .55), hair, [0, .03, -.008], [-.45, 0, 0], [.95, 1.08, 1.04]);
+  else add(head, G.sph(.108, 24, 14, 0, Math.PI * 2, 0, Math.PI * .45), hair, [0, .03, -.008], [-.45, 0, 0], [.95, 1.08, 1.02]); // v1.6: hairline sits above the brows
   if (style === 1) { add(head, G.sph(.09, 12, 10), hair, [0, -.04, -.07], [0, 0, 0], [1.2, 1.5, .8]); for (const sx of [-.09, .09]) add(head, G.cap(.03, .12), hair, [sx, -.06, -.02]); }
   if (style === 2) { add(head, G.sph(.05, 10, 8), hair, [0, .08, -.12]); add(head, G.cap(.025, .1), hair, [0, -.02, -.15], [.3, 0, 0]); }
   // hats & accessories (lobby shop cosmetics)
@@ -1384,6 +1386,7 @@ export function buildSurvivor(color, look) {
   const fl = grp(arms[0].userData.hand, [0, -.06, .02], 'flash');
   add(fl, G.cyl(.022, .022, .18, 10), mat('#2b2b2b', { m: .7, r: .35 }), [0, -.02, 0]); add(fl, G.cyl(.032, .024, .05, 10), mat('#3a3a3a', { m: .8, r: .3 }), [0, -.13, 0]);
   const lens = add(fl, G.cyl(.03, .03, .01, 10), mat('#fff8d8', { e: '#fff3c4', ei: 4 }), [0, -.16, 0]); lens.name = 'lens';
+  vestM.userData.sv = 'canvas'; realizeHuman(root);
   root.traverse(o => { if (o.isMesh && !Array.isArray(o.material)) o.material = o.material.clone(); });
   root.userData.parts = { legL: legs[0], legR: legs[1], armL: arms[0], armR: arms[1], head, body, torso, flash: fl, handR: arms[1].userData.hand, vest, helmet: helm };
   root.userData.faceMats = [];

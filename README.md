@@ -1,4 +1,4 @@
-# Night Hunt 🚁👹 (v1.5.1, rated 13+)
+# Night Hunt 🚁👹 (v1.6.0, rated 13+)
 
 A fan-made multiplayer monster survival game for playing with friends. Board the helicopter, drop into a dense power-line forest, loot chests and bags, and survive the monsters.
 
@@ -26,6 +26,32 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
 
    Fight back, sleep in beds to heal, and reach the **extraction helicopter**, which lands for the last 90 seconds.
 5. **Monsters** have health. Survivors can **knock them down and stun them**; they get back up after a few seconds. Monster hits drain survivors' health, and a survivor at 0 is caught.
+
+## Joining a friend's server (fixed in v1.6.0)
+**What was wrong:** in the browser version, friends join over a direct peer-to-peer (WebRTC) connection. When two networks can't connect directly (strict or "symmetric" NAT, carrier-grade NAT on mobile data or hotspots, school or work Wi-Fi, or two people on the same router), the connection has to go through a TURN relay. The free relay built into PeerJS has been shut down, so those friends always got "Could not reach that server".
+
+**What changed:**
+- More STUN servers (Google, Cloudflare), plus free public TURN relays (freeTURN, Open Relay) on ports 80/443, including TLS.
+- If a direct connection still isn't open after about 9 seconds, the game switches to a relay that works anywhere normal websites work (WSS on port 443). It's slightly laggier, and you'll see a message when it's in use.
+- The relay keeps working while the host's tab is in the background.
+
+**How a friend joins:**
+1. The host opens https://leonisbel.github.io/night-hunt/, types a name, presses **Create Server** and keeps that tab open (it's the server).
+2. The host presses **Copy invite link** and sends it to the friend. Or the friend opens the same site, picks **Join with Code** and types the 5-letter code.
+3. The friend types a name and presses **Join**. It can take up to about 15 seconds on strict networks.
+4. Friends-only servers don't show up in the public list, so use the code or the invite link. Both players should refresh the page once to get the latest version.
+
+## Realism overhaul (v1.6.0)
+- **Cinematic rendering:** ACES filmic tone mapping, ambient occlusion (SSAO), bloom, depth of field on the menu and in jumpscares, film grain, vignette, slight chromatic aberration and a colour grade per map (the Vampire Castle gets a red moon).
+- **Volumetric fog and god rays:** moonlight shafts through the trees use the shadow map, and your flashlight beam lights the fog, with its own shadows. Shadows are soft (PCSS): sharp at contact and blurrier further away.
+- **Real night skies:** star-filled panoramas from Poly Haven HDRIs (clear, stormy and Milky Way), with a moon that matches the moonlight direction.
+- **Water:** the Stormy Ocean gets moving waves with Fresnel reflections of the sky, a moon glint, foam on wave crests and along the shore, and rain ripples. The swamp pools are murky and still.
+- **Photo-scanned ground and buildings:** leaf litter, mud, snow, sand, asphalt, concrete, brick, castle stone, old planks and bark are CC0 PBR scans with anti-tiling. Surfaces get wet and glossy with puddles when it rains. Houses have wallpaper inside, and facilities have concrete. Lit windows show curtains and window frames with a soft warm glow instead of flat bright panels.
+- **Dense foliage:** trees are rebuilt from alpha-card leaves and needles cut from plant scans. They sway in the wind, along with grass clumps, ferns and reeds. Scanned rocks, stumps, fallen logs and shrubs are scattered through the woods.
+- **Monsters and survivors:** monsters breathe, with chests that heave faster when they run, heads that lag the stride and scan while idle, and HDR eye shine that blooms in the dark. Survivors have subsurface skin, woven cloth, denim, leather and rubber materials, plus breathing, a counter-rotating torso and a head that steadies against the stride.
+- **Audio:** recorded CC0 ambience per map (rain, crickets, distant howls, wind, cave drips, ocean waves) under the procedural drones, and footsteps that match the surface: grass, concrete, wood floors, carpet or snow.
+- **Graphics setting:** Options → Graphics: Auto, Low (phones), Medium, High or Ultra. You can also add `?gfx=low|med|high|ultra` to the URL. Auto picks Low on phones, Medium on big tablets and High on computers. Low turns off the heavy effects, so phones stay smooth.
+- **Blood (13+):** hits leave dark-red splatter decals and drips that fade over time. There is no gore.
 
 ## Remodeled monsters (v1.5.1)
 Every monster except the Megalodon was rebuilt from reference images: furry FNAF suits with joint segments (Chica wears her LET'S EAT!!! bib and holds the cupcake), a Demogorgon whose petals stay closed until it attacks and then open red, a hovering Cartoon Cat, the Locust with hose hair and drips (its omen now shows an old floral beige wallpaper with brownish smears), a black anvil-headed Boisvert (formerly "Monochrome") and Father Fester with an egg head, hollow eyes and a very long drooping jaw (still 6 stages). Also remodeled: Siren Head, Sonic.exe (teen-level blood only), Kraken, Cthulhu, Leviathan, Mosasaurus, Nessie, Spinosaurus, T-Rex, Quetzalcoatlus, Yeti, Dragon (gold scales, blue-green wings), Chupacabra, Vampire (Nosferatu), Gargoyle and Bigfoot. The new **Wendigo** lives in the forest maps and on Snowy Mountain.

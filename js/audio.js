@@ -1,4 +1,4 @@
-// Procedural horror sound engine (Web Audio, no files): ambience, reverb, footsteps, heartbeat, rotor, screams.
+// Horror sound engine (Web Audio): procedural drones, reverb, heartbeat, rotor, screams + recorded CC0 ambience beds, footsteps and roars.
 let AC = null, master, comp, verb, verbSend, amb = null, rotor = null, muted = false;
 export const audio = {
   get ctx() { return AC; },
@@ -64,7 +64,7 @@ export function setAmbience(theme) {
     if (theme === 'Foggy Woods') { if (r < .3) for (let i = 0; i < 6; i++) tone(4200 + Math.random() * 300, .04, 'sine', .015, 0, .1, pan, i * .09); else if (r < .45) { tone(380, .35, 'sine', .04, 330, .7, pan); tone(330, .5, 'sine', .035, 300, .7, pan, .45); } else if (r < .6) burst(.25, .08, 900, 4, 'bandpass', .6, pan); }
     else if (theme === 'Static Fields') { if (r < .45) burst(.2 + Math.random() * .6, .05, 3000, .5, 'highpass', .2, pan); else if (r < .55) tone(950, .8, 'sine', .02, 0, .8, pan); }
     else if (theme === 'Abandoned Pizzeria Town') { if (r < .3) tone(70 + Math.random() * 40, 1.2, 'sawtooth', .03, 50, .8, pan); else if (r < .45) { tone(1500, .05, 'square', .02, 0, .7, pan); tone(1100, .05, 'square', .02, 0, .7, pan, .15); } else if (r < .55) burst(.6, .05, 300, 8, 'bandpass', .9, pan); }
-    else if (theme === 'Stormy Ocean') { if (r < .4) burst(2.5, .07, 500, .6, 'lowpass', .6, pan); else if (r < .5) sfx('thunder', { vol: .45, pan }); else if (r < .6) tone(1800, .3, 'sine', .02, 1500, .5, pan); }
+    else if (theme === 'Stormy Ocean') { if (r < .4) { if (!sample('wave' + (1 + (Math.random() * 3 | 0)), .5, pan)) burst(2.5, .07, 500, .6, 'lowpass', .6, pan); } else if (r < .5) sfx('thunder', { vol: .45, pan }); else if (r < .6) tone(1800, .3, 'sine', .02, 1500, .5, pan); }
     else if (theme === 'Rainforest Swamp') { if (r < .35) for (let i = 0; i < 4; i++) tone(700 + Math.random() * 200, .12, 'triangle', .025, 400, .3, pan, i * .25); else if (r < .5) burst(.4, .05, 300, 2, 'bandpass', .5, pan); }
     else if (theme === 'Snowy Mountain') { if (r < .35) burst(2.4, .06, 1100, 1.2, 'bandpass', .6, pan); else if (r < .42) tone(160, 1.5, 'sawtooth', .03, 110, .95, pan); }
     else if (theme === 'Haunted Farm') { if (r < .25) tone(500, .25, 'square', .02, 420, .6, pan); else if (r < .4) burst(.6, .05, 900, 3, 'bandpass', .6, pan); }
@@ -72,7 +72,7 @@ export function setAmbience(theme) {
     else if (theme === 'Fester Street') { if (r < .2) tone(880, .8, 'sine', .015, 860, .95, pan); else if (r < .3) burst(.15, .05, 2000, 3, 'bandpass', .4, pan); }
     else if (theme === 'lobby' && r < .2) burst(.4, .03, 600, 2, 'bandpass', .5, pan);
   }, 1700);
-  amb = { theme, gain, nodes, timer };
+  amb = { theme, gain, nodes, timer }; bed(theme, gain, nodes);
 }
 
 // --- helicopter rotor (continuous, volume set every frame) ---
@@ -103,11 +103,20 @@ function laugh(v = 1) {
 }
 // recorded roars (sound-alikes layered from CC0 / public-domain animal recordings — see vendor/LICENSES.md), with a synth fallback
 const SAMPLES = { trexroar: 'sfx/trex_roar.mp3', spinoroar: 'sfx/spino_roar.mp3' }, SBUF = {};
+// v1.6: recorded CC0 ambience beds + footsteps per surface (see vendor/LICENSES.md)
+for (const k of ['rain', 'crickets', 'howl', 'cave', 'wind']) SAMPLES['amb_' + k] = 'sfx/amb_' + k + '.mp3';
+for (const k of ['grass', 'concrete', 'snow', 'wood', 'carpet']) for (let i = 0; i < 3; i++) SAMPLES['step_' + k + i] = 'sfx/step_' + k + i + '.mp3';
+for (let i = 1; i <= 3; i++) SAMPLES['wave' + i] = 'sfx/wave' + i + '.mp3';
+const BEDS = { lobby: [['wind', .12], ['crickets', .08]], 'Abandoned Pizzeria Town': [['wind', .1], ['crickets', .1]], 'Powerline Forest': [['crickets', .22], ['wind', .08]],
+  'Foggy Woods': [['crickets', .16], ['howl', .1], ['wind', .08]], 'Static Fields': [['wind', .2]], 'Stormy Ocean': [['rain', .32], ['wind', .14]], 'Rainforest Swamp': [['rain', .26], ['crickets', .2]],
+  'Snowy Mountain': [['wind', .38], ['howl', .08]], 'Haunted Farm': [['crickets', .26], ['wind', .06]], 'Vampire Castle': [['wind', .18], ['cave', .14]], 'Fester Street': [['crickets', .18]] };
+function loadBuf(k) { if (SBUF[k]) return Promise.resolve(SBUF[k]); return fetch(SAMPLES[k]).then(r => r.arrayBuffer()).then(a => AC.decodeAudioData(a)).then(d => (SBUF[k] = d)).catch(() => { SBUF[k] = false; return null; }); }
+function bed(theme, gain, nodes) { for (const [k, v] of BEDS[theme] || []) loadBuf('amb_' + k).then(b => { if (!b || !amb || amb.gain !== gain) return; const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = b; s.loop = true; g.gain.value = v; s.connect(g).connect(gain); s.start(0, Math.random() * b.duration); nodes.push(s); }); }
 function sample(k, v = 1, pan = 0) {
   const b = SBUF[k]; if (b === undefined) { SBUF[k] = null; fetch(SAMPLES[k]).then(r => r.arrayBuffer()).then(a => AC.decodeAudioData(a)).then(d => { SBUF[k] = d; }).catch(() => { SBUF[k] = false; }); return false; }
   if (!b) return false; const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = b; s.playbackRate.value = .96 + Math.random() * .08; g.gain.value = v; s.connect(g); out(g, .45, pan); s.start(); return true;
 }
-export function preloadSamples() { if (AC) for (const k in SAMPLES) if (SBUF[k] === undefined) sample(k, 0); }
+export function preloadSamples() { if (AC) for (const k in SAMPLES) if (SBUF[k] === undefined && !k.startsWith('amb_')) sample(k, 0); }
 // Boisvert's dead channel: a looping roaring TV static hiss while the survivor's screen is full of snow
 let hiss = null;
 export function staticHiss(on) {
@@ -124,7 +133,7 @@ export function sfx(k, o = {}) {
     case 'crack': for (let i = 0; i < 7; i++) { burst(.035, .45 * v, 1800 + Math.random() * 2500, 3, 'bandpass', .3, pan, i * (.06 + Math.random() * .08)); tone(160 + Math.random() * 120, .05, 'square', .12 * v, 60, .2, pan, i * .09); } tone(90, .9, 'sawtooth', .15 * v, 45, .6, pan, .1); break;
     case 'mimic': { for (const [f, d] of [[420, 0], [520, .22], [380, .5], [470, .9], [560, 1.1]]) tone(f, .28, 'triangle', .14 * v, f * .8, .9, pan, d); tone(300, 1.4, 'sawtooth', .04 * v, 200, .9, pan, 1.5); break; } // "help me… over here…" in a voice that is almost right
     case 'skitter': for (let i = 0; i < 18; i++) burst(.02, .2 * v, 3000 + Math.random() * 2000, 4, 'bandpass', .2, pan, i * .045); break;
-    case 'step': burst(.07, .05 * v, 500 + Math.random() * 300, 1, 'lowpass', .1, pan); break;
+    case 'step': if (!(o.surf && sample('step_' + o.surf + (Math.random() * 3 | 0), (o.surf === 'carpet' ? .5 : .35) * v, pan))) burst(.07, .05 * v, 500 + Math.random() * 300, 1, 'lowpass', .1, pan); break;
     case 'stomp': burst(.18, .25 * v, 140, 1, 'lowpass', .5, pan); tone(55, .25, 'sine', .25 * v, 35, .4, pan); break;
     case 'beat': tone(62, .14, 'sine', .55 * v, 38, .1); tone(55, .14, 'sine', .45 * v, 34, .1, 0, .2); break;
     case 'scare': {

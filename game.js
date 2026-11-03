@@ -1,5 +1,6 @@
 // Night Hunt client (3D): menu, networking glue, input (keyboard/mouse/touch), HUD and the three.js world.
 import { World, S } from './js/render3d.js';
+import { GFX, AUTO as GFX_AUTO, setTier } from './js/gfx.js';
 import { audio, sfx, setAmbience, setRotor, staticHiss } from './js/audio.js';
 import { oldWallpaper } from './js/textures.js';
 import { initTouch } from './js/touch.js';
@@ -23,7 +24,8 @@ $('pname').value = localStorage.nhName || '';
 // content warning (13+): must be accepted with Continue every time before the menu appears
 $('bwarn').onclick = () => { $('warn').classList.add('hide'); $('menu').classList.remove('hide'); };
 const opt = { blood: localStorage.nhBlood !== '0' };
-$('optblood').checked = opt.blood; $('optblood').onchange = () => { opt.blood = $('optblood').checked; localStorage.nhBlood = opt.blood ? '1' : '0'; };
+{ const gs = $('optgfx'); if (gs) { gs.value = GFX_AUTO ? 'auto' : GFX.tier; gs.onchange = () => { setTier(gs.value); const q = new URLSearchParams(location.search); q.delete('gfx'); location.search = q.toString(); }; } }
+$('optblood').checked = opt.blood; $('optblood').onchange = () => { opt.blood = $('optblood').checked; localStorage.nhBlood = opt.blood ? '1' : '0'; if (world) world.blood = opt.blood; }; if (world) world.blood = opt.blood;
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.tab').forEach(x => x.classList.add('hide')); $('tab-' + b.dataset.tab).classList.remove('hide');
@@ -57,6 +59,15 @@ NET.detect().then(info => {
   if (info && params.has('desktop')) { const d = document.createElement('div'); d.className = 'help';
     d.innerHTML = `<b>Desktop app:</b> "Online" lets friends anywhere join with your code. "Wi-Fi" mode uses this computer as the server: friends on the same Wi-Fi open <b>${info.lan.map(a => `http://${a}:${info.port}`).join(' or ') || `http://localhost:${info.port}`}</b>.`; $('menu').appendChild(d); }
 });
+// v1.6 footsteps by surface (CC0 recordings): wooden floors in houses, carpet in stores, concrete in facilities / streets, snow, grass
+function surfaceAt(x, y) {
+  if (!map) return 'grass'; const b = (map.bld || []).find(b => x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h);
+  if (b) return b.type === 'house' ? 'wood' : b.type === 'store' ? 'carpet' : 'concrete';
+  const th = map.theme; if (th === 'Snowy Mountain') return 'snow';
+  if (th === 'Helipad Lobby' || th === 'Abandoned Pizzeria Town') return 'concrete';
+  if (map.streets && map.streets.some(sy => Math.abs(y - sy) < 90)) return 'concrete';
+  return 'grass';
+}
 function showMenu(err) { ['darkover', 'staticover', 'hallucover', 'sleepover', 'locustover', 'scareover'].forEach(i => $(i).classList.add('hide')); staticHiss(false); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); room = null; snap = null; map = null; $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('overlay').classList.add('hide'); document.body.classList.remove('ingame'); $('merr').textContent = err || ''; setAmbience(null); setRotor(0); clearEnd(); }
 $('bleave').onclick = () => { NET.leave(); showMenu(); };
 $('binvite').onclick = () => { const u = location.origin + location.pathname + '?room=' + room; navigator.clipboard && navigator.clipboard.writeText(u).catch(() => { }); addEvent('Invite link copied: ' + u, 'good'); };
@@ -245,7 +256,7 @@ function frame(now) {
   overlays(mp, ghost, now);
   // footsteps + heartbeat
   const speed = prev / Math.max(dt, .001);
-  if (speed > 40 && !ghost) { stepT -= dt * (speed / 230); if (stepT <= 0) { stepT = .42; sfx(mp.role === 'monster' && snap.state !== 'lobby' ? 'stomp' : 'step', { vol: mp.role === 'monster' ? .5 : 1 }); } }
+  if (speed > 40 && !ghost) { stepT -= dt * (speed / 230); if (stepT <= 0) { stepT = .42; sfx(mp.role === 'monster' && snap.state !== 'lobby' ? 'stomp' : 'step', { vol: mp.role === 'monster' ? .5 : 1, surf: surfaceAt(md.dx, md.dy) }); } }
   for (const p of snap.ps) if (p.id !== me && p.role === 'monster' && snap.state === 'playing') { const d = disp[p.id], dd = Math.hypot(d.dx - md.dx, d.dy - md.dy); if (dd < 500 && Math.random() < dt * 2.2) sfx('stomp', { vol: (1 - dd / 500) * .7, pan: (d.dx - md.dx) / 500 }); }
   if (mp.role === 'survivor' && !ghost && snap.state === 'playing' && snap.md < 520 && now - lastBeat > (snap.md < 250 ? 420 : 850)) { lastBeat = now; sfx('beat', { vol: snap.md < 250 ? 1 : .6 }); if (navigator.vibrate && snap.md < 250) navigator.vibrate(30); }
   // edge arrows: helicopter pad in the lobby, extraction chopper during the hunt, siren reveals for monsters
