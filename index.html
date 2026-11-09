@@ -26,7 +26,8 @@
   <div id="merr" class="err"></div>
   <div id="dlwin" style="text-align:center;margin-top:12px"><a href="https://github.com/leonisbel/night-hunt/releases/latest/download/NightHunt-Windows.zip" style="display:inline-block;background:#1f6feb;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-weight:bold">⬇ Download for Windows</a></div>
   <div class="help desk"><b>Controls:</b> WASD / arrows move · Shift sprint · Click the game to lock the mouse, then move it to look around (Esc frees it) · Mouse wheel = zoom from first to third person · Click / Space = attack, shoot or eat/drink the selected item · E = open chest/bag · 1–6 = pick a hotbar slot · E near a bed = sleep (heals) · G = drop · Monsters: Space / click = ability · Tab = scoreboard · M = mute</div>
-  <div class="help mob"><b>Touch controls:</b> left thumb = joystick (move) · right side = drag to look around, pinch to zoom · ⚔️ = attack/use · 📦 = open chest/bag · tap a hotbar slot to select it · 🏃 = sprint · ⚡ = monster ability · 📋 = players</div>
+  <div class="help mob"><b>Touch controls:</b> left thumb = joystick (move) · right side = drag to look around, pinch to zoom · ⚔️ = attack/use · 📦 = open chest/bag · tap a hotbar slot to select it · 🏃 = sprint · ⚡ = monster ability · 💃 = emote wheel · 📋 = players</div>
+  <p class="help"><button type="button" id="badmin">Owner admin</button> <small>Locked unless a server verifies the owner. Hosting or a display name does not grant it.</small></p>
 </div>
 <div id="hud" class="hide">
   <div id="topbar"><span id="hcode"></span><button id="binvite">Copy invite link</button><span id="hcount"></span></div>
@@ -38,6 +39,7 @@
   <div id="prompt" class="hide"></div>
   <div class="storebar lobbyonly" id="blocker2"><span class="sbt">🏬 SHOPS</span><button class="blocker" data-tab="look">🪞<b>Dressing Room</b></button><button class="blocker" data-tab="monster">👹<b>Monster</b></button><button class="blocker" data-tab="weapons">🔫<b>Weapons</b></button><button class="blocker" data-tab="food">🍔<b>Food</b></button><button class="blocker" data-tab="pets">🐾<b>Pets</b></button><button class="blocker" data-tab="crate">🎁<b>Crates</b></button><button id="bemote" title="Play your emote (B)">💃<b>Emote</b></button><button class="blocker" data-tab="skins">✨<b>Skins</b></button><span class="coinpill">🪙 <b class="coinv">0</b></span></div>
   <div id="ability"></div>
+  <div id="gearbar" class="hide"></div>
   <div id="hostbox" class="hide"><b>Host controls</b><div><button id="bstart" class="big">🚁 Take off!</button></div>
     <div><button id="baddbot">+ Bot</button><button id="bkick">− Bot</button></div>
     <label>Round <select id="hround"><option value="300">5 min</option><option value="420">7 min</option><option value="600">10 min</option></select></label>
@@ -53,12 +55,18 @@
 <div id="specbar" class="hide"><button id="specprev">◀</button><span id="specname">Spectating</span><button id="specnext">▶</button><button id="specstats">📊 Stats</button><button id="speclobby">🏠 Lobby</button></div>
 <div id="darkover" class="fxo hide"><span>BLACKOUT</span></div><canvas id="staticover" class="fxo hide"></canvas><div id="hallucover" class="fxo hide"></div><canvas id="scareover" class="fxo hide"></canvas><div id="sleepover" class="fxo hide"><span>Zzz… sleeping (healing)<br><small>move or press open to wake up</small></span></div><canvas id="locustover" class="fxo hide"></canvas>
 <div id="locker" class="panel hide"><div class="lhead"><b>Locker</b><span class="coinpill">🪙 <b id="coins">0</b></span><button id="lclose">✕</button></div><div id="lbody"></div></div>
+<div id="emotewheel" class="hide"></div>
+<div id="admin" class="panel hide"><h2>Owner admin</h2><p id="adminstate">Locked. Night Hunt does not grant admin because you host a room or because your name is Leo. There is no password in this build. To turn it on, run your own authoritative server, verify Leo with an identity provider you control, and set <b>globalThis.NH_OWNER_CHECK</b> on that server to a function that returns true only after the check. The site and the Windows wrapper do not set that function, so commands stay off.</p><p class="muted">Commands that exist behind that check: kick a player, end the round, grant a small coin amount. They do nothing while the check is missing.</p><button id="adminclose" class="big">Close</button></div>
 <div id="flightcard" class="hide"></div>
 <div id="arrows"></div>
 <div id="touch">
   <div id="joyzone"><div id="joybase"><div id="joyknob"></div></div><span class="zl">MOVE</span></div>
   <div id="aimzone"><div id="aimring"><b></b></div><span class="zl">LOOK · PINCH ZOOM</span></div>
   <button id="tsprint" class="tb">🏃<small>SPRINT</small></button>
+  <button id="temote" class="tb sm">💃<small>EMOTE</small></button>
+  <button id="tspeed" class="tb sm gear hide">🌀</button>
+  <button id="tgrav" class="tb sm gear hide">🌙</button>
+  <button id="tinvis" class="tb sm gear hide">👻</button>
   <button id="tability" class="tb hide">⚡<small>ABILITY</small></button>
   <button id="tattack" class="tb hide">⚔️<small>ATTACK</small></button>
   <button id="topen" class="tb hide">📦<small>OPEN</small></button>

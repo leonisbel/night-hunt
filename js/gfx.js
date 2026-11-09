@@ -17,8 +17,8 @@ export const TIER = pickTier();
 export const AUTO = DOC && !new URLSearchParams(location.search).get('gfx') && !(() => { try { return localStorage.getItem('nh_gfx'); } catch (e) { return null; } })();
 const PRESETS = {
   //       pixel ratio cap, MSAA, moon shadow map, flashlight shadow, SSAO taps, volumetric steps (+shadowed shafts), bloom mips, DOF, foliage density, PCSS
-  low:   { pr: 1.25, msaa: 0, shadow: 0,    flashShadow: 512,  ssao: 0,  vol: 0,  volShadow: false, bloom: 3, dof: false, fol: .45, pcss: false, aniso: 2,  realFol: false },
-  med:   { pr: 1.5,  msaa: 0, shadow: 1024, flashShadow: 512,  ssao: 0,  vol: 8,  volShadow: false, bloom: 4, dof: true,  fol: .7,  pcss: false, aniso: 4,  realFol: false },
+  low:   { pr: 1,    msaa: 0, shadow: 0,    flashShadow: 256,  ssao: 0,  vol: 0,  volShadow: false, bloom: 0, dof: false, fol: .28, pcss: false, aniso: 1,  realFol: false },
+  med:   { pr: 1.25, msaa: 0, shadow: 1024, flashShadow: 512,  ssao: 0,  vol: 8,  volShadow: false, bloom: 3, dof: false, fol: .55, pcss: false, aniso: 2,  realFol: false },
   high:  { pr: 1.75, msaa: 4, shadow: 2048, flashShadow: 1024, ssao: 10, vol: 18, volShadow: true,  bloom: 5, dof: true,  fol: 1,   pcss: true,  aniso: 8,  realFol: true },
   ultra: { pr: 2,    msaa: 4, shadow: 4096, flashShadow: 2048, ssao: 16, vol: 28, volShadow: true,  bloom: 6, dof: true,  fol: 1.5, pcss: true,  aniso: 16, realFol: true },
 };

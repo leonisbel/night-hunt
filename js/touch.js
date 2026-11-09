@@ -39,6 +39,11 @@ export function initTouch(o) {
     a.addEventListener('pointerup', up); a.addEventListener('pointercancel', up); }
   btn('tboard', () => o.onBoard && o.onBoard());
   btn('tmute', () => { const m = o.onMute && o.onMute(); $('tmute').textContent = m ? '🔇' : '🔊'; });
+  const em = $('temote'); if (em) em.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); o.onEmote && o.onEmote(); });
+  for (const [id, k] of [['tspeed', 'speed'], ['tgrav', 'grav'], ['tinvis', 'invis']]) { const n = $(id); if (n) n.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); n.classList.add('press'); o.onGear && o.onGear(k); setTimeout(() => n.classList.remove('press'), 140); }); }
+  document.addEventListener('touchmove', e => { if (document.body.classList.contains('ingame') && !e.target.closest('#locker, .showcase, #emotewheel, #admin, .panel')) e.preventDefault(); }, { passive: false });
+  if (window.visualViewport) visualViewport.addEventListener('resize', () => o.onResize && o.onResize());
+  addEventListener('orientationchange', () => setTimeout(() => o.onResize && o.onResize(), 250));
   T.setSprint = setSprint; T.root = root;
   // block page gestures (pinch zoom / double-tap / scroll) during play
   for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, e => e.preventDefault());

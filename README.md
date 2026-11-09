@@ -1,4 +1,9 @@
-# Night Hunt 🚁👹 (v1.6.0, rated 13+)
+# Night Hunt 🚁👹 (v1.7.0, rated 13+)
+
+v1.7 replaces the shopping street with a city and a mall, adds a 3D item showcase, original emotes, survivor coils, and a one-time 10,000 coin grant. The browser build is the one exercised here. It is not deployed until this branch is merged and GitHub Pages publishes it. Paid coin packs stay disabled.
+
+## Owner admin
+Admin is off in this build. Hosting a room, or naming yourself Leo, does not grant it, and there is no password or key in the client. To enable it, run an authoritative server you control, verify Leo with an identity provider on that server, and set `globalThis.NH_OWNER_CHECK` to a function that returns true only after that check. The function is not set by the Pages site or the Windows wrapper. Behind it, the server accepts kick, end, and a small coin grant. Until then the admin panel only explains the lock.
 
 A fan-made multiplayer monster survival game for playing with friends. Board the helicopter, drop into a dense power-line forest, loot chests and bags, and survive the monsters.
 
@@ -9,7 +14,7 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
    - **max players** (2-15);
    - **privacy**: friends only (code or link) or public (listed in the server browser);
    - **round length**: 5, 7 or 10 minutes (7 by default).
-2. In the lobby, walk down the **Shopping Street** next to the helipad. It has **nine walk-in stores**, each with its own sign, themed displays and a counter (walk up and press **E** to open that store). Everything costs in-game coins you earn in rounds; there is no real money. Your choices are saved.
+2. In the lobby, the helipad sits on a city avenue. Walk east into the **Night Mall**. The nine shops are stalls inside it (walk up and press **E**). A separate **coin kiosk** outside the door only offers a labeled free daily reward. Paid coin packs stay disabled. New profiles start with 10,000 coins. An older save is topped up to 10,000 once if it had less, and is never reset again. Tap an item to open the 3D showcase. Buying and equipping are separate.
    - **Skin Shop:** survivor skins, hats and accessories.
    - **Weapon Shop:** knife, bat, crowbar, axe, pistol, shotgun and ammo. **Armor Shop:** bulletproof vest and helmet. **Food & Drinks:** snacks, drinks and medkits. Up to **3 round supplies** from these shops are handed to you at the start of your next round.
    - **Monster Skins:** monster skins shown on statues, plus your **preferred monster** (the round usually goes to that monster's home map).

@@ -1,4 +1,6 @@
-# Night Hunt: Roblox version (fan-made, v1.6.0, rated 13+)
+# Night Hunt: Roblox version (fan-made, v1.6 lobby, v1.7 coin grant, rated 13+)
+
+v1.7 in Roblox is only the one-time 10,000 coin migration (`coinMig` on the DataStore profile). The city mall, 3D showcase, emote wheel, survivor coils, and helicopter interior are browser-only in this pass. Roblox still uses the shopping-street lobby and the list locker. Admin is not granted by display name or by being the host. There is no owner-admin remote.
 
 A Roblox Studio port of Night Hunt. Players meet in a helicopter lobby, fly out together and land in a generated map; the main one is a dense power-line forest. Every player has a random chance to be a monster. Survivors loot chests and bags, fight back and get to the extraction helicopter.
 
