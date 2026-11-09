@@ -90,7 +90,15 @@ const HATS = ['none', 'cap', 'beanie', 'cowboy', 'headphones', 'crown', 'hardhat
 const OUTFITS = ['none', 'ranger', 'hazmat', 'hunter', 'scout', 'diver', 'ninja', 'astronaut', 'knight', 'pajamas', 'ghostbuster'];
 const SUPPLIES = ['water', 'soda', 'energy', 'chips', 'choco', 'beans', 'medkit', 'knife', 'bat', 'crowbar', 'axe', 'pistol', 'shotgun', 'ammo_light', 'ammo_shells', 'vest', 'helmet'], KIT_MAX = 3; // v1.4.1: weapon / armor / food shops
 const PETS = ['none', 'puppy', 'kitty', 'bat', 'ghost', 'dragon', 'slime', 'owl', 'pumpkin'], TRAILS = ['none', 'fire', 'ice', 'toxic', 'rainbow', 'shadow', 'stars', 'blood'];
-const EMOTES = ['wave', 'dance', 'spin', 'jump', 'flex', 'floss', 'zombie', 'scream']; // 'wave' is free
+const EMOTES = ['wave', 'groove', 'spin', 'jacks', 'flex', 'pendulum', 'robot', 'bow', 'cheer', 'shuffle', 'zombie', 'scream']; // 'wave' is free
+const EMOTE_ALIAS = { floss: 'pendulum', dance: 'groove', jump: 'jacks' };
+const EMOTE_LEN = { wave: 2.6, groove: 4.2, spin: 3.2, jacks: 3.4, flex: 3, pendulum: 4, robot: 4, bow: 2.8, cheer: 2.8, shuffle: 4.4, zombie: 4, scream: 2.2 };
+const GEAR = {
+  speed: { name: 'Speed Coil', dur: 8, cd: 20, mult: 1.58 },
+  grav: { name: 'Gravity Coil', dur: 6, cd: 20, mult: 1.22 },
+  invis: { name: 'Invisibility', dur: 5, cd: 20 },
+};
+const GEAR_KEYS = Object.keys(GEAR);
 const MSKINS = ['classic', 'shadow', 'golden', 'toxic', 'frost', 'blood', 'lava', 'neon', 'ghost', 'zombie', 'abyss'];
 const HEX = /^#[0-9a-f]{6}$/i;
 function cleanLook(l) { l = l || {}; const n = (v, m) => Math.max(0, Math.min(m, parseInt(v) || 0)); return { sk: n(l.sk, 5), hc: n(l.hc, 5), hs: n(l.hs, 3), top: HEX.test(l.top) ? l.top : null, pants: HEX.test(l.pants) ? l.pants : null, hat: HATS.includes(l.hat) ? l.hat : 'none', acc: ACCS.includes(l.acc) ? l.acc : 'none', of: OUTFITS.includes(l.of) ? l.of : 'none', pet: PETS.includes(l.pet) ? l.pet : 'none', tr: TRAILS.includes(l.tr) ? l.tr : 'none' }; }
@@ -113,15 +121,10 @@ function code() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s; do { s = 
 function clean(s, n) { return String(s || '').replace(/[^\w \-!?.']/g, '').trim().slice(0, n); }
 
 // ---------- maps ----------
-const LOBBY = { w: 2600, h: 1200, walls: [], trees: [], bushes: [], vents: [], poles: [], lines: [], loot: [], bld: [], props: [], theme: 'Helipad Lobby',
-  heli: { x: 700, y: 420, r: 110 } };
-LOBBY.walls = [{ x: 0, y: 0, w: 2600, h: 30 }, { x: 0, y: 1170, w: 2600, h: 30 }, { x: 0, y: 0, w: 30, h: 1200 }, { x: 2570, y: 0, w: 30, h: 1200 }];
-LOBBY.trees = [{ x: 200, y: 200, r: 40 }, { x: 1200, y: 200, r: 40 }, { x: 200, y: 950, r: 40 }, { x: 1200, y: 1000, r: 40 }];
-// v1.4.1: the lobby is a SHOPPING STREET east of the helipad: nine walk-in store buildings on both sides of a lit street.
-// Every store has its own neon sign, themed props and a counter; walk up to the counter to open that shop (coins only, never real money).
+// v1.7: a city block and one decorated mall. The nine shops are stalls inside the mall. The coin kiosk is outside, on its own.
 const STORES = [
   { k: 'skinshop', name: 'SKIN SHOP', sub: 'SURVIVOR SKINS', c: '#ff9af0', ic: '🧍' },
-  { k: 'weapons', name: 'WEAPON SHOP', sub: 'MELEE • GUNS • AMMO', c: '#ff5a3a', ic: '🔫' },
+  { k: 'weapons', name: 'WEAPON SHOP', sub: 'MELEE • GUNS • COILS', c: '#ff5a3a', ic: '🔫' },
   { k: 'armor', name: 'ARMOR SHOP', sub: 'VESTS • HELMETS', c: '#7ab8ff', ic: '🛡️' },
   { k: 'food', name: 'FOOD & DRINKS', sub: 'SNACKS • DRINKS • MEDKITS', c: '#8aff6a', ic: '🍔' },
   { k: 'monskins', name: 'MONSTER SKINS', sub: 'SKINS • PICK YOUR MONSTER', c: '#ff3a3a', ic: '👹' },
@@ -130,38 +133,55 @@ const STORES = [
   { k: 'clothing', name: 'DRESSING ROOM', sub: 'CLOTHING • HATS • MIRROR', c: '#9ad8ff', ic: '🪞' },
   { k: 'crate', name: 'MYSTERY CRATES', sub: 'WIN A RANDOM ITEM', c: '#c08aff', ic: '🎁' },
 ];
-{ const L = LOBBY; L.w = 3700; L.h = 2000; L.zones = []; L.stores = [];
-  L.walls = [{ x: 0, y: 0, w: L.w, h: 30 }, { x: 0, y: L.h - 30, w: L.w, h: 30 }, { x: 0, y: 0, w: 30, h: L.h }, { x: L.w - 30, y: 0, w: 30, h: L.h }];
-  L.trees = [{ x: 200, y: 200, r: 40 }, { x: 1150, y: 160, r: 40 }, { x: 200, y: 950, r: 40 }, { x: 1150, y: 1500, r: 40 }, { x: 300, y: 1800, r: 40 }, { x: 900, y: 1850, r: 40 }];
-  L.road = { x: 1240, y: 960, w: L.w - 1270, h: 170 };
-  const W = 380, H = 440, T = 22, DOOR = 130;
-  const P = (k, x, y, w, h, extra = {}) => L.props.push(Object.assign({ k, x: Math.round(x), y: Math.round(y), w, h, solid: true }, extra));
-  STORES.forEach((st, i) => {
-    const north = i < 5, X = north ? 1320 + i * 440 : 1540 + (i - 5) * 440, Y = north ? 480 : 1180;
-    const dx = X + W / 2 - DOOR / 2, frontY = north ? Y + H - T : Y, backY = north ? Y : Y + H - T;
-    L.bld.push({ x: X, y: Y, w: W, h: H, type: 'store', kind: 'store', floors: 1, light: 'warm', store: st.k, name: st.name, c: st.c, door: { x: X + W / 2, y: north ? Y + H : Y }, north });
-    L.walls.push({ x: X, y: backY, w: W, h: T }, { x: X, y: Y, w: T, h: H }, { x: X + W - T, y: Y, w: T, h: H },
-      { x: X, y: frontY, w: dx - X, h: T }, { x: dx + DOOR, y: frontY, w: X + W - dx - DOOR, h: T }); // front wall with a wide door facing the street
-    const cy = north ? Y + 100 : Y + H - 100 - 40, zy = north ? Y + T : Y + H - 240;
-    P('counter', X + 90, cy, 200, 40); P('register', X + 175, cy + 6, 30, 26, { solid: false });
-    L.zones.push({ k: st.k, name: st.name, x: X + T, y: zy, w: W - 2 * T, h: 240 - T, c: st.c, ic: st.ic });
-    P('storesign', X + W / 2 - 90, north ? Y + H + 12 : Y - 32, 180, 20, { solid: false, t: st.name, s: st.sub, c: st.c, a: north ? 0 : Math.PI });
-    // themed props along the shop floor (the half near the door stays open)
-    const fy = north ? Y + H - 150 : Y + 90, side = (x, k, w, h, ex) => P(k, x, fy, w, h, ex);
-    // props stay along the side walls so the aisle from the door to the counter is always clear
-    const Lx = X + T + 6, Rx = X + W - T - 6;
-    if (st.k === 'skinshop') { side(Lx, 'mannequin', 45, 45); side(Lx + 50, 'mannequin', 45, 45); side(Rx - 95, 'mannequin', 45, 45); side(Rx - 45, 'mannequin', 45, 45); }
-    if (st.k === 'weapons') { side(Lx, 'display', 95, 40, { items: ['knife', 'bat', 'crowbar', 'axe'] }); side(Rx - 95, 'display', 95, 40, { items: ['pistol', 'shotgun', 'rifle'] }); }
-    if (st.k === 'armor') { side(Lx, 'display', 90, 40, { items: ['vest', 'helmet'] }); side(Rx - 95, 'mannequin', 45, 45); side(Rx - 45, 'mannequin', 45, 45); }
-    if (st.k === 'food') { side(Lx, 'fridge', 45, 40); side(Lx + 50, 'fridge', 45, 40); side(Rx - 100, 'display', 100, 40, { items: ['soda', 'chips', 'choco', 'water', 'medkit'] }); }
-    if (st.k === 'monskins') ['trex', 'kraken', 'dragon', 'freddy'].forEach((m, q) => side(q < 2 ? Lx + q * 50 : Rx - 95 + (q - 2) * 50, 'pedestal', 45, 45, { m }));
-    if (st.k === 'emotes') P('dancefloor', X + 70, fy - 30, 240, 120, { solid: false });
-    if (st.k === 'pets') ['puppy', 'kitty', 'ghost', 'dragon'].forEach((pet, q) => side(q < 2 ? Lx + q * 50 : Rx - 95 + (q - 2) * 50, 'petbed', 45, 40, { pet }));
-    if (st.k === 'clothing') { side(Lx, 'rack', 95, 30); side(Rx - 90, 'booth', 90, 90); P('mirror', X + W - T - 75, north ? Y + T + 4 : Y + H - T - 20, 60, 16, { a: north ? 0 : Math.PI }); }
-    if (st.k === 'crate') { side(Lx, 'crate', 42, 42); side(Lx + 50, 'crate', 42, 42); side(Rx - 92, 'crate', 42, 42); side(Rx - 42, 'crate', 42, 42); }
+const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], poles: [], lines: [], loot: [], bld: [], props: [], theme: 'Helipad Lobby',
+  heli: { x: 780, y: 1460, r: 150, board: 88 }, spawn: { x: 1100, y: 1500 }, zones: [], stores: STORES, roads: [] };
+{ const L = LOBBY, T = 28;
+  L.walls = [{ x: 0, y: 0, w: L.w, h: T }, { x: 0, y: L.h - T, w: L.w, h: T }, { x: 0, y: 0, w: T, h: L.h }, { x: L.w - T, y: 0, w: T, h: L.h }];
+  L.roads = [{ x: 80, y: 1280, w: 2100, h: 400 }, { x: 2140, y: 1400, w: 80, h: 240 }];
+  const block = (x, y, w, h, floors) => {
+    const ht = 8 + floors * 3.1;
+    L.walls.push({ x, y, w, h: T, city: ht, light: floors % 2 ? '#ffcf7a' : '#9fd0ff' }, { x, y: y + h - T, w, h: T, city: ht, light: '#ffb35a' },
+      { x, y, w: T, h, city: ht, light: '#ffe9b0' }, { x: x + w - T, y, w: T, h, city: ht, light: floors % 3 ? '#ffcf7a' : '#7ab8ff' });
+  };
+  for (let i = 0; i < 5; i++) { const x = 140 + i * 390; block(x, 160, 300, 1000, 2 + (i % 4)); block(x, 1760, 300, 820, 1 + ((i + 2) % 4)); }
+  // mall shell. Door faces the avenue (west side, y 1400–1640).
+  const X = 2220, Y = 360, W = 2200, H = 2100, door0 = 1400, door1 = 1640;
+  L.bld.push({ x: X, y: Y, w: W, h: H, type: 'store', kind: 'mall', floors: 1, light: 'warm', store: 'mall', name: 'NIGHT MALL', c: '#ffd27a', nolight: true });
+  L.walls.push({ x: X, y: Y, w: W, h: T, mh: 8 }, { x: X, y: Y + H - T, w: W, h: T, mh: 8 }, { x: X + W - T, y: Y, w: T, h: H, mh: 8 },
+    { x: X, y: Y, w: T, h: door0 - Y, mh: 8 }, { x: X, y: door1, w: T, h: Y + H - door1, mh: 8 });
+  const P = (k, x, y, w, h, extra = {}) => L.props.push(Object.assign({ k, x: Math.round(x), y: Math.round(y), w, h, solid: extra.solid !== false }, extra));
+  const north = STORES.slice(0, 5), south = STORES.slice(5);
+  north.forEach((st, i) => {
+    const sx = X + 80 + i * 420, counterY = Y + H - 220;
+    P('counter', sx, counterY, 240, 36);
+    P('register', sx + 100, counterY + 4, 28, 24, { solid: false });
+    P('storesign', sx + 20, Y + H - 70, 200, 16, { solid: false, t: st.name, s: st.sub, c: st.c, a: Math.PI });
+    L.zones.push({ k: st.k, name: st.name, x: sx - 10, y: counterY - 200, w: 280, h: 180, c: st.c, ic: st.ic });
+    if (st.k === 'skinshop') { P('mannequin', sx, counterY - 70, 40, 40, { solid: false }); P('mannequin', sx + 190, counterY - 70, 40, 40, { solid: false }); }
+    if (st.k === 'weapons') P('display', sx + 40, counterY - 80, 160, 36, { items: ['knife', 'bat', 'axe', 'pistol'] });
+    if (st.k === 'armor') P('display', sx + 50, counterY - 80, 140, 36, { items: ['vest', 'helmet'] });
+    if (st.k === 'food') { P('fridge', sx, counterY - 70, 40, 36, { solid: false }); P('display', sx + 70, counterY - 80, 140, 36, { items: ['soda', 'chips', 'medkit'] }); }
+    if (st.k === 'monskins') ['freddy', 'trex', 'dragon'].forEach((m, q) => P('pedestal', sx + q * 70, counterY - 80, 42, 42, { m, solid: false }));
   });
-  for (let x = 1300; x < L.w - 80; x += 300) { L.props.push({ k: 'streetlight', x, y: 935, w: 16, h: 16, solid: true, a: 0 }, { k: 'streetlight', x: x + 150, y: 1140, w: 16, h: 16, solid: true, a: Math.PI }); }
-  L.props.push({ k: 'lobbysign', x: 1080, y: 1030, w: 30, h: 30, a: 0 }); }
+  south.forEach((st, i) => {
+    const sx = X + 140 + i * 500, counterY = Y + 90;
+    P('counter', sx, counterY, 240, 36);
+    P('register', sx + 100, counterY + 4, 28, 24, { solid: false });
+    P('storesign', sx + 20, Y + 40, 200, 16, { solid: false, t: st.name, s: st.sub, c: st.c, a: 0 });
+    L.zones.push({ k: st.k, name: st.name, x: sx - 10, y: counterY + 50, w: 280, h: 180, c: st.c, ic: st.ic });
+    if (st.k === 'emotes') P('dancefloor', sx + 10, counterY + 80, 220, 110, { solid: false });
+    if (st.k === 'pets') ['puppy', 'kitty', 'dragon'].forEach((pet, q) => P('petbed', sx + q * 70, counterY + 70, 42, 36, { pet, solid: false }));
+    if (st.k === 'clothing') { P('rack', sx, counterY + 70, 90, 28, { solid: false }); P('mirror', sx + 150, counterY + 60, 50, 16, { solid: false, a: Math.PI }); }
+    if (st.k === 'crate') { P('crate', sx, counterY + 70, 40, 40, { solid: false }); P('crate', sx + 160, counterY + 70, 40, 40, { solid: false }); }
+  });
+  // coin kiosk sits on the avenue, outside the mall door. It is not a paid shop.
+  P('kiosk', 1960, 1560, 70, 50);
+  P('storesign', 1880, 1640, 200, 16, { solid: false, t: 'COIN STORE', s: 'FREE REWARD · NO PAYMENTS', c: '#ffd76b', a: 0 });
+  L.zones.push({ k: 'coins', name: 'COIN STORE', x: 1860, y: 1400, w: 280, h: 150, c: '#ffd76b', ic: '🪙' });
+  for (let x = 220; x < 2000; x += 280) { P('streetlight', x, 1248, 16, 16); P('streetlight', x + 120, 1688, 16, 16, { a: Math.PI }); }
+  for (let i = 0; i < 4; i++) P('car', 260 + i * 420, i % 2 ? 1320 : 1648, 70, 32, { a: i % 2 ? 0 : Math.PI, solid: false });
+  [[400, 1500], [700, 1500], [1500, 1500], [2600, 1400], [3400, 1600], [4000, 1400]].forEach(([x, y]) => L.bushes.push({ x, y, r: 14 }));
+  L.props.push({ k: 'lobbysign', x: 1280, y: 1200, w: 30, h: 30, a: 0, solid: false }); }
 // every building is a furnished house (rooms split by an inner wall) or a facility (warehouse/lab/industrial)
 function furnish(m, b) {
   const { x, y, w, h, t, type } = b; m.bld.push({ x, y, w, h, type, kind: b.kind || (type === 'house' ? pick(['cabin', 'farmhouse', 'bungalow']) : pick(['warehouse', 'lab', 'substation'])), floors: b.floors || 1, light: b.light });
@@ -313,16 +333,16 @@ function event(r, msg, kind) { bcast(r, { t: 'event', msg, kind: kind || 'info' 
 function recolor(r) { const used = new Set(); for (const p of r.players.values()) { if (!used.has(p.color) && p.colorSet) { used.add(p.color); continue; } p.color = COLORS.find(c => !used.has(c)) || '#fff'; p.colorSet = true; used.add(p.color); } }
 function toLobby(r) {
   r.state = 'lobby'; r.map = LOBBY; r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set();
-  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100, boat: null, esc: 0 }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, { x: 700, y: 700 }, 150)); }
+  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100, boat: null, esc: 0, seated: false }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, LOBBY.spawn, 80)); }
   sendMap(r);
 }
 function sendMap(r, only) {
-  const m = r.map, o = { t: 'map', map: { w: m.w, h: m.h, theme: m.theme, walls: m.walls, trees: m.trees, bushes: m.bushes, vents: m.vents, heli: m.heli || null, poles: m.poles || [], lines: m.lines || [], loot: m.loot || [], bld: m.bld || [], props: m.props || [], islands: m.islands || null, safe: m.safe || 0, pools: m.pools || null, streets: m.streets || null, zones: m.zones || null } };
+  const m = r.map, o = { t: 'map', map: { w: m.w, h: m.h, theme: m.theme, walls: m.walls, trees: m.trees, bushes: m.bushes, vents: m.vents, heli: m.heli || null, poles: m.poles || [], lines: m.lines || [], loot: m.loot || [], bld: m.bld || [], props: m.props || [], islands: m.islands || null, safe: m.safe || 0, pools: m.pools || null, streets: m.streets || null, zones: m.zones || null, roads: m.roads || (m.road ? [m.road] : null) } };
   if (only) send(only, o); else bcast(r, o);
 }
 function addToRoom(r, p) {
   r.players.set(p.id, p); p.room = r; recolor(r);
-  if (r.state === 'lobby') Object.assign(p, freeSpot(LOBBY, 16, { x: 700, y: 700 }, 150));
+  if (r.state === 'lobby') Object.assign(p, freeSpot(LOBBY, 16, LOBBY.spawn, 80));
   else { Object.assign(p, { role: 'ghost', alive: false }); Object.assign(p, freeSpot(r.map, 16)); }
   if (p.ws) { send(p, { t: 'joined', code: r.code, name: r.name, you: p.id, host: r.host === p.id, max: r.max, isPublic: r.isPublic, roundLen: r.roundLen, monsters: MONSTERS, items: ITEMS }); sendMap(r, p); }
   event(r, `${p.name} joined (${r.players.size}/${r.max})`);
@@ -354,7 +374,7 @@ function startRound(r) {
   for (const p of mons) if (p.pref && pool.includes(p.pref)) { pool.splice(pool.indexOf(p.pref), 1); pool.push(p.pref); } // chosen monsters go to the top of the pool
   const center = { x: r.map.w / 2, y: r.map.h / 2 };
   for (const p of ps) {
-    Object.assign(p, { alive: true, escaped: false, st: {}, stamina: 100, cdUntil: 0, keys: {}, form: 0, formT: 0 }, freshKit());
+    Object.assign(p, { alive: true, escaped: false, st: {}, stamina: 100, cdUntil: 0, keys: {}, form: 0, formT: 0, seated: false, gcd: {} }, freshKit());
     if (ENV.TEST_KIT && !p.bot) { p.inv[0] = { k: 'shotgun', n: 1 }; p.inv[1] = { k: 'bat', n: 1 }; p.inv[2] = { k: 'soda', n: 2 }; p.inv[3] = { k: 'beans', n: 1 }; p.ammo.shells = 24; p.vest = 100; p.helmet = 60; } // screenshot hook only
     p.earn = 0; p.dmg = 0; p.downs = 0; p.kills = 0;
     p.kitGiven = null;
@@ -614,15 +634,96 @@ function clearLine(m, a, b) { const n = Math.ceil(dist(a, b) / 20); for (let i =
 // beds: survivors can sleep in a house bed to heal (any movement wakes them)
 function nearBed(r, p) { return (r.map.props || []).find(o => o.k === 'bed' && p.x > o.x - 40 && p.x < o.x + o.w + 40 && p.y > o.y - 40 && p.y < o.y + o.h + 40); }
 
+// ---------- lobby helicopter seats, extraction boarding, survivor coils ----------
+function nearHeliDoor(p) { const h = LOBBY.heli; return dist(p, h) < (h.board || 88); }
+function sitLobby(r, p) {
+  if (!p || r.state !== 'lobby') return false;
+  if (p.seated) {
+    p.seated = false;
+    const h = LOBBY.heli, spot = freeSpot(LOBBY, p.r, { x: h.x, y: h.y + h.r * 0.85 }, 40);
+    p.x = spot.x; p.y = spot.y;
+    send(p, { t: 'event', msg: 'You climbed out of the helicopter.', kind: 'info' });
+    return true;
+  }
+  if (!nearHeliDoor(p)) return false;
+  p.seated = true;
+  const h = LOBBY.heli, n = [...r.players.values()].filter(q => q.seated).length, a = n * 0.85;
+  p.x = h.x + Math.cos(a) * 22; p.y = h.y + Math.sin(a) * 14;
+  send(p, { t: 'event', msg: 'You are in a seat. E climbs back out. Takeoff waits until every player is seated.', kind: 'good' });
+  return true;
+}
+function tryExtract(r, s) {
+  if (!r || r.state !== 'playing' || !r.extract || s.role !== 'survivor' || !s.alive || s.escaped) return false;
+  if (dist(s, r.extract) > r.extract.r) return false;
+  s.escaped = true; s.seated = false;
+  event(r, `${s.name} boarded the extraction helicopter and got out!`, 'good');
+  checkEnd(r); return true;
+}
+function useGear(r, p, k) {
+  const G = GEAR[k];
+  if (!p || !G) return;
+  if (!p.gearOn || !p.gearOn.includes(k)) { send(p, { t: 'event', msg: `${G.name} is not equipped.`, kind: 'bad' }); return; }
+  if (!r || r.state !== 'playing' || p.role !== 'survivor' || !p.alive || p.escaped) return;
+  const t = now(); p.gcd = p.gcd || {};
+  const wait = (p.gcd[k] || 0) - t;
+  if (wait > 0) { send(p, { t: 'event', msg: `${G.name} · cooldown ${wait.toFixed(1)}s`, kind: 'bad' }); return; }
+  p.gcd[k] = t + G.cd;
+  if (k === 'speed') p.st.spd = t + G.dur;
+  else if (k === 'grav') p.st.grav = t + G.dur;
+  else if (k === 'invis') p.st.cloak = t + G.dur;
+  send(p, { t: 'event', msg: `${G.name} for ${G.dur}s · ${G.cd}s cooldown`, kind: 'good' });
+  bcast(r, { t: 'sfx', kind: 'ability', x: p.x, y: p.y });
+}
+// Owner admin stays off unless a process that already verified Leo assigns globalThis.NH_OWNER_CHECK.
+// A display name, being the room host, and any field on the client message are ignored.
+function ownerAuthorized(p) {
+  const fn = typeof globalThis !== 'undefined' ? globalThis.NH_OWNER_CHECK : null;
+  if (typeof fn !== 'function') return false;
+  try { return fn(p) === true; } catch (e) { return false; }
+}
+function adminReject(p) {
+  send(p, { t: 'admin', ok: false, locked: true, msg: 'Owner admin is locked. Hosting a room or using a display name does not grant it. Run your own authoritative server, verify Leo with an identity provider you control, then set globalThis.NH_OWNER_CHECK to a function that returns true only after that server-side check. The shipped game has no check and accepts no client secret.' });
+}
+function gearState(p, t) {
+  const o = {};
+  for (const k of p.gearOn || []) {
+    const G = GEAR[k]; if (!G) continue;
+    const cd = Math.max(0, +((((p.gcd || {})[k]) || 0) - t).toFixed(1));
+    const until = k === 'speed' ? p.st.spd : k === 'grav' ? p.st.grav : p.st.cloak;
+    o[k] = { cd, left: Math.max(0, +((until || 0) - t).toFixed(1)), dur: G.dur, max: G.cd };
+  }
+  return o;
+}
+function adminDo(r, p, m) {
+  if (!ownerAuthorized(p)) return adminReject(p);
+  const cmd = String(m.cmd || '');
+  if (cmd === 'kick') {
+    const id = parseInt(m.id, 10);
+    const target = [...r.players.values()].find(q => q.id === id && q !== p && !q.bot);
+    if (!target) return send(p, { t: 'admin', ok: false, msg: 'No such player.' });
+    send(target, { t: 'error', msg: 'Removed by the owner.' }); removeFromRoom(target);
+    return send(p, { t: 'admin', ok: true, msg: 'Removed player ' + id });
+  }
+  if (cmd === 'end') { if (r.state === 'playing') r.roundEnd = now(); return send(p, { t: 'admin', ok: true, msg: 'Round ending.' }); }
+  if (cmd === 'coins') {
+    const n = clamp(parseInt(m.n, 10) || 0, 1, 5000);
+    const id = parseInt(m.id, 10);
+    const target = r.players.get(id) || p;
+    send(target, { t: 'coins', n });
+    return send(p, { t: 'admin', ok: true, msg: `Granted ${n} coins.` });
+  }
+  send(p, { t: 'admin', ok: false, msg: 'Unknown command. Use kick, end, or coins.' });
+}
+
 // ---------- bots ----------
 const BOT_NAMES = ['Bot Noob', 'Bot Bacon', 'Bot Guest', 'Bot Builder', 'Bot Ninja', 'Bot Pizza', 'Bot Jelly', 'Bot Rocket', 'Bot Tofu', 'Bot Pickle', 'Bot Nugget', 'Bot Waffle', 'Bot Sprout', 'Bot Biscuit'];
 function botThink(r, p, t) {
   const k = { up: 0, down: 0, left: 0, right: 0, sprint: 0 };
   let tx = null, ty = null, flee = false, aimAt = null;
-  if (r.state === 'lobby') { tx = r.map.heli.x + Math.sin(p.id) * 50; ty = r.map.heli.y + Math.cos(p.id) * 40; if (dist(p, { x: tx, y: ty }) < 20) tx = null; }
+  if (r.state === 'lobby') { if (!p.seated && dist(p, r.map.heli) < (r.map.heli.board || 88)) { sitLobby(r, p); } if (!p.seated) { tx = r.map.heli.x; ty = r.map.heli.y; } }
   else if (r.state === 'playing' && p.role === 'monster' && p.st.down > t) { tx = null; }
   else if (r.state === 'playing' && p.role === 'monster') {
-    const vis = [...r.players.values()].filter(s => s.role === 'survivor' && s.alive && !s.escaped && (dist(s, p) < 500) && !(hidden(r, s) && dist(s, p) > 90 && !(s.st.reveal > t)));
+    const vis = [...r.players.values()].filter(s => s.role === 'survivor' && s.alive && !s.escaped && (dist(s, p) < 500) && !(hidden(r, s) && dist(s, p) > 90 && !(s.st.reveal > t)) && !(s.st.cloak > t && dist(s, p) > 70 && !(s.st.reveal > t)));
     const tgt = vis.sort((a, b) => dist(a, p) - dist(b, p))[0];
     if (tgt) { tx = tgt.x; ty = tgt.y; if (t > p.cdUntil && dist(tgt, p) < 220 && Math.random() < .05) { p.a = Math.atan2(ty - p.y, tx - p.x); useAbility(r, p); } }
     else { if (!p.botGoal || dist(p, p.botGoal) < 40 || t > p.botT) { const ss = [...r.players.values()].filter(s => s.role === 'survivor' && s.alive && !s.escaped).sort((a, b) => dist(a, p) - dist(b, p))[0]; p.botGoal = ss ? freeSpot(r.map, p.r, ss, 250) : freeSpot(r.map, p.r); p.botT = t + 5; } tx = p.botGoal.x; ty = p.botGoal.y; }
@@ -639,7 +740,7 @@ function botThink(r, p, t) {
       if (gi >= 0 && d < 520) { p.sel = gi; aimAt = th; }
       else if (d < 80) { if (mi >= 0) p.sel = mi; else if (p.inv[p.sel] && ITEMS[p.inv[p.sel].k].type === 'use') p.sel = p.inv.findIndex(s => !s) >= 0 ? p.inv.findIndex(s => !s) : p.sel; aimAt = th; }
     }
-    else if (r.extract) { tx = r.extract.x; ty = r.extract.y;
+    else if (r.extract) { tx = r.extract.x; ty = r.extract.y; if (dist(p, r.extract) < r.extract.r) tryExtract(r, p);
       if (r.map.islands) { const isl = q => r.map.islands.find(i => Math.hypot(i.x - q.x, i.y - q.y) < i.r + 30), ei = isl(r.extract), mi = isl(p);
         if (p.boat) { const b = boatOf(r, p); if (b && b.by === p.id && ei && Math.hypot(b.x - ei.x, b.y - ei.y) < ei.r + b.r + 60) leaveBoat(r, p); else if (b && b.by !== p.id) leaveBoat(r, p); }
         else if (ei && ei !== mi) { const b = (r.boats || []).filter(b => !b.by).sort((a, c) => dist(a, p) - dist(c, p))[0]; if (b && dist(b, p) < 1400) { tx = b.x; ty = b.y; if (dist(b, p) < b.r + p.r + 40) board(r, p); } } } }
@@ -732,8 +833,10 @@ function step() {
         if (p.boat) { const b = boatOf(r, p); sp = b && b.by === p.id ? (b.kind === 'ship' ? 230 : 300) : 0; }
         if (p.st.slow > t) sp *= .5;
         if (p.st.stun > t || p.st.root > t) sp = 0;
+        if (p.st.spd > t) sp *= GEAR.speed.mult;
+        if (p.st.grav > t && !(p.st.spd > t)) sp *= GEAR.grav.mult;
       }
-      if (r.state === 'lobby') sp = 200;
+      if (r.state === 'lobby') sp = p.seated ? 0 : 200;
       if (len && sp) {
         if ((!p.alive || p.escaped || p.role === 'ghost') && r.state === 'playing') { p.x = clamp(p.x + dx * sp * dt, 20, r.map.w - 20); p.y = clamp(p.y + dy * sp * dt, 20, r.map.h - 20); }
         else if (p.boat) driveBoat(r, p, dx, dy, sp, dt);
@@ -746,7 +849,7 @@ function step() {
         for (let i = r.items.length - 1; i >= 0; i--) { const it = r.items[i]; if (Math.hypot(it.x - p.x, it.y - p.y) < 30 && !(it.np === p.id && t < it.npUntil) && pickup(r, p, it)) r.items.splice(i, 1); }
       }
     }
-    if (r.state === 'lobby') { r.boarded = [...r.players.values()].filter(p => dist(p, LOBBY.heli) < LOBBY.heli.r).map(p => p.id); }
+    if (r.state === 'lobby') { r.boarded = [...r.players.values()].filter(p => p.seated).map(p => p.id); }
     if (r.state === 'playing') {
       const surv = [...r.players.values()].filter(p => p.role === 'survivor' && p.alive && !p.escaped);
       for (const m of r.players.values()) if (m.role === 'monster') {
@@ -760,7 +863,6 @@ function step() {
         if (!s.alive) continue;
         const ti = r.traps.findIndex(tr => Math.hypot(tr.x - s.x, tr.y - s.y) < 26);
         if (ti >= 0) { s.st.root = t + 2.2; r.traps.splice(ti, 1); send(s, { t: 'event', msg: 'You stepped in a cupcake trap!', kind: 'bad' }); }
-        if (r.extract && dist(s, r.extract) < r.extract.r) { s.escaped = true; event(r, `${s.name} escaped on the helicopter!`, 'good'); checkEnd(r); }
       }
     }
     if (tickN % SEND_EVERY === 0) snapshot(r, t);
@@ -777,19 +879,20 @@ function snapshot(r, t) {
         const pGhost = !p.alive || p.escaped || p.role === 'ghost';
         if (pGhost && !meGhost) continue;                                       // ghosts invisible to the living
         if (!meGhost && me.role === 'survivor' && p.role === 'monster' && p.st.invis > t) continue;
+        if (!meGhost && me.role === 'monster' && p.role === 'survivor' && p.st.cloak > t && dist(p, me) > 70 && !(p.st.reveal > t) && !(me.st.sight > t)) continue;
         if (!meGhost && me.role === 'survivor' && p.role === 'monster' && MONSTERS[p.mt].sea && !(p.st.surf > t) && inWater(r.map, p.x, p.y) && dist(p, me) > 280) { // submerged: only its telltale sign shows
           const d = dist(p, me); if (d < (p.mt === 'cthulhu' ? 2600 : 1800)) om.push([Math.round(p.x), Math.round(p.y), p.mt, +p.a.toFixed(2)]); continue; }
         if (!meGhost && me.role === 'monster' && p.role === 'survivor' && hidden(r, p) && dist(p, me) > 90 && !(p.st.reveal > t) && !(me.st.sight > t)) continue;
       }
       const st = {}; for (const k in p.st) if (p.st[k] > t) st[k] = 1;
       if (me.role === 'monster' && me.st.sight > t && p.role === 'survivor') st.reveal = 1;
-      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester', 'wendigo'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined };
+      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester', 'wendigo'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined, seat: p.seated ? 1 : undefined };
       if (r.state === 'playing') { q.hp = Math.round(p.hp / p.maxHp * 100); if (p.role === 'survivor') { const s = p.inv[p.sel]; q.w = s ? s.k : null; q.ar = (p.vest > 0 ? 1 : 0) | (p.helmet > 0 ? 2 : 0); } }
       ps.push(q);
     }
     const o = { t: 's', state: r.state, ps, ex: r.extract, max: r.max, boarded: r.boarded || [],
       tl: r.state === 'playing' ? Math.max(0, Math.ceil(r.roundEnd - t)) : r.state === 'flight' ? Math.ceil(r.flightEnd - t) : r.state === 'results' ? Math.ceil(r.resultsEnd - t) : 0,
-      me: { esc: me.esc || 0, fm: me.form || 0, fmT: me.formT ? Math.max(0, Math.ceil(me.formT - t)) : 0, stamina: Math.round(me.stamina), cd: Math.max(0, +(me.cdUntil - t).toFixed(1)), hp: Math.ceil(me.hp), mhp: me.maxHp, inv: me.inv.map(s => s ? [s.k, s.n] : 0), sel: me.sel, ammo: me.ammo, vest: Math.round(me.vest), helmet: Math.round(me.helmet) }, rl: r.roundLen };
+      me: { esc: me.esc || 0, fm: me.form || 0, fmT: me.formT ? Math.max(0, Math.ceil(me.formT - t)) : 0, stamina: Math.round(me.stamina), cd: Math.max(0, +(me.cdUntil - t).toFixed(1)), hp: Math.ceil(me.hp), mhp: me.maxHp, inv: me.inv.map(s => s ? [s.k, s.n] : 0), sel: me.sel, ammo: me.ammo, vest: Math.round(me.vest), helmet: Math.round(me.helmet), gear: gearState(me, t) }, rl: r.roundLen };
     if (om.length) o.om = om;
     if (r.boats && r.state === 'playing') o.bt = r.boats.filter(b => Math.abs(b.x - me.x) < 2400 && Math.abs(b.y - me.y) < 2400).map(b => [b.id, Math.round(b.x), Math.round(b.y), +b.a.toFixed(2), b.kind === 'ship' ? 1 : 0, b.by || 0]);
     if (r.state === 'playing') { o.lo = [...r.opened]; o.it = r.items.filter(i => Math.abs(i.x - me.x) < 1100 && Math.abs(i.y - me.y) < 1100).map(i => [i.id, Math.round(i.x), Math.round(i.y), i.k]); }
@@ -825,7 +928,9 @@ function handleConnection(ws) {
           if (m.f && !p.fire) p.fireEdge = true; p.fire = !!m.f;
           p.mv = Array.isArray(m.mv) && m.mv.length === 2 && m.mv.every(v => typeof v === 'number' && isFinite(v)) ? { x: Math.max(-1, Math.min(1, m.mv[0])), y: Math.max(-1, Math.min(1, m.mv[1])) } : null; } break;
         case 'ability': if (r) useAbility(r, p); break;
-        case 'open': if (r) { if (p.boat) leaveBoat(r, p); else if (p.sleeping) { wake(p); send(p, { t: 'event', msg: 'You woke up.' }); } else if (!openLoot(r, p) && !board(r, p)) toggleSleep(r, p); } break;
+        case 'open': if (r) { if (r.state === 'lobby') { if (!sitLobby(r, p)) send(p, { t: 'event', msg: 'Walk up to the helicopter door, then press E to sit down.', kind: 'info' }); } else if (p.boat) leaveBoat(r, p); else if (p.sleeping) { wake(p); send(p, { t: 'event', msg: 'You woke up.' }); } else if (tryExtract(r, p)) { /* boarded the extraction helicopter */ } else if (!openLoot(r, p) && !board(r, p)) toggleSleep(r, p); } break;
+        case 'gear': if (r && p) useGear(r, p, m.k); break;
+        case 'admin': if (r && p) adminDo(r, p, m); else if (p) adminReject(p); break;
         case 'sel': if (p && Number.isInteger(m.i) && m.i >= 0 && m.i < SLOTS) p.sel = m.i; break;
         case 'drop': if (r) dropSel(r, p); break;
         case 'start': if (r && r.host === p.id && r.state === 'lobby') {
@@ -845,14 +950,14 @@ function handleConnection(ws) {
           if (ROUND_LENS.includes(+m.roundLen)) r.roundLen = +m.roundLen;
           bcast(r, { t: 'settings', max: r.max, isPublic: r.isPublic, roundLen: r.roundLen });
         } break;
-        case 'emote': if (p && EMOTES.includes(m.e)) { p.emote = m.e; p.emoteUntil = now() + 3; } break;
-        case 'profile': if (p) { p.look = cleanLook(m.look); { const pf = m.pref === 'monochrome' ? 'boisvert' : m.pref; p.pref = MKEYS.includes(pf) ? pf : null; } p.skin = MSKINS.includes(m.skin) ? m.skin : 'classic'; p.kit = (Array.isArray(m.kit) ? m.kit : []).filter(k => SUPPLIES.includes(k)).slice(0, KIT_MAX); if (r) bcast(r, { t: 'event', msg: p.pref ? `${p.name} wants to play ${MONSTERS[p.pref].name}` : `${p.name} updated their look`, kind: '' }); } break;
+        case 'emote': if (p) { const e = EMOTE_ALIAS[m.e] || m.e; if (EMOTES.includes(e) && (e === 'wave' || (p.emotes && p.emotes.has(e)))) { p.emote = e; p.emoteUntil = now() + (EMOTE_LEN[e] || 3); } } break;
+        case 'profile': if (p) { p.look = cleanLook(m.look); { const pf = m.pref === 'monochrome' ? 'boisvert' : m.pref; p.pref = MKEYS.includes(pf) ? pf : null; } p.skin = MSKINS.includes(m.skin) ? m.skin : 'classic'; p.kit = (Array.isArray(m.kit) ? m.kit : []).filter(k => SUPPLIES.includes(k)).slice(0, KIT_MAX); p.gearOwned = (Array.isArray(m.gear) ? m.gear : []).filter(k => GEAR_KEYS.includes(k)); p.gearOn = (Array.isArray(m.gearOn) ? m.gearOn : []).filter(k => p.gearOwned.includes(k)); p.emotes = new Set(['wave']); for (const raw of (Array.isArray(m.emotes) ? m.emotes : [])) { const e = EMOTE_ALIAS[raw] || raw; if (EMOTES.includes(e)) p.emotes.add(e); } if (r) bcast(r, { t: 'event', msg: p.pref ? `${p.name} wants to play ${MONSTERS[p.pref].name}` : `${p.name} updated their look`, kind: '' }); } break;
         case 'leave': if (p) { removeFromRoom(p); p = null; } break;
       }
     },
     close() { if (p) removeFromRoom(p); p = null; }
   };
 }
-const api = { STORES, LOBBY, genMap, THEMES, inWater, DN_FORMS, WG_FORMS, useAbility, handleConnection, step, rooms, MONSTERS, ITEMS, TICK, MAX_CAP, roomInfo, ROUND_LENS, HATS, ACCS, MSKINS };
+const api = { STORES, LOBBY, genMap, THEMES, inWater, DN_FORMS, WG_FORMS, useAbility, handleConnection, step, rooms, MONSTERS, ITEMS, TICK, MAX_CAP, roomInfo, ROUND_LENS, HATS, ACCS, MSKINS, GEAR, EMOTES, ownerAuthorized };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.NightHuntCore = api;
 })(typeof self !== 'undefined' ? self : this);

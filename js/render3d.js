@@ -4,6 +4,7 @@ import { tex, glowTex, softTex, beamTex, textSprite, oldWallpaper } from './text
 import { GFX, GU, PostFX, patch, antiTile, wet, wind, pbrMat, pbrSet, pbrRep, natTex, installPCSS, makeSky, skyTex, waterMat as gfxWater } from './gfx.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet, realSetup, lodTick } from './models.js';
+import { applyEmote } from './emotes.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 const NEUTRAL_CG = [[.006, .004, .008], [1, 1, 1], [1, 1, 1], .92], NOVOL = { on: false, dens: 0, lights: [] };
 const WALLPBR = { brick: 'brick', concrete: 'concrete', wood: 'oldwood', stone: 'castle' };
@@ -15,7 +16,7 @@ const _bv = new THREE.Vector3();
 const angLerp = (a, b, k) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * k; };
 
 const THEMES = {
-  'Helipad Lobby': { ground: 'concrete', grep: 6, wall: 'concrete', fog: '#1b1d26', dens: .018, sky: '#5a6a90', gnd: '#20201c', hemi: 1.1, moon: .9, lamps: 10, tree: 'round', dust: '#c8c8ff', wisps: 6, wallH: 1.4 , pg: 'concrete', prep: 3.5, hdri: 'clear', skyT: [.32, .36, .5], vd: .014, cg: [[.012, .014, .022], [1, 1, 1.03], [1, 1.01, 1.05], .92] },
+  'Helipad Lobby': { ground: 'concrete', grep: 6, wall: 'concrete', fog: '#243044', dens: .008, sky: '#8aa0c8', gnd: '#3a342c', hemi: 2.1, moon: 1.35, lamps: 4, tree: 'round', dust: '#c8c8ff', wisps: 0, wallH: 3.2 , pg: 'concrete', prep: 4, hdri: 'clear', skyT: [.5, .55, .7], vd: .006, cg: [[.02, .02, .03], [1, 1, 1.02], [1.08, 1.05, 1.02], 1] },
   'Abandoned Pizzeria Town': { ground: 'asphalt', grep: 5, wall: 'brick', fog: '#120d0c', dens: .045, sky: '#3a3050', gnd: '#120c0a', hemi: .6, moon: .55, lamps: 16, tree: 'dead', dust: '#ffd2a0', wisps: 14, wallH: 3.6 , pg: 'asphalt', prep: 4, pg2: 'concrete', hdri: 'storm', skyT: [.3, .24, .24], vd: .055, cg: [[.02, .012, .008], [1.03, 1, .96], [1.08, .98, .86], .85] },
   'Powerline Forest': { ground: 'grass', grep: 4, ground2: 'dirt', wall: 'wood', fog: '#18201f', dens: .05, sky: '#34464c', gnd: '#0c120a', hemi: .62, moon: .6, lamps: 4, tree: 'pine', dense: true, dust: '#d8ff8a', wisps: 40, wallH: 3.2, ferns: true , pg: 'forest', prep: 3, pg2: 'trail', hdri: 'milky', skyT: [.24, .3, .3], vd: .065, cg: [[.006, .012, .01], [1, 1.02, 1], [.93, 1.03, .97], .82] },
   'Foggy Woods': { ground: 'grass', grep: 4, ground2: 'dirt', wall: 'wood', fog: '#151c1b', dens: .06, sky: '#2c3a40', gnd: '#0c120a', hemi: .55, moon: .5, lamps: 7, tree: 'pine', dust: '#d8ff8a', wisps: 34, wallH: 3.2 , pg: 'leaves', prep: 3, pg2: 'mud', hdri: 'storm', skyT: [.2, .25, .25], vd: .09, cg: [[.01, .016, .016], [1, 1.02, 1.02], [.9, 1, 1], .72] },
@@ -230,10 +231,10 @@ export class World {
     // the local player's flashlight (with shadows) and a pool for other survivors
     const mk = (shadow) => { const l = new THREE.SpotLight('#fff1d6', 0, 34, .5, .45, 1.2); if (shadow) { l.castShadow = true; l.shadow.mapSize.set(GFX.flashShadow, GFX.flashShadow); l.shadow.radius = 1; l.shadow.camera.near = .3; l.shadow.bias = -.0004; l.shadow.normalBias = .02; } s.add(l, l.target); return l; };
     this.flash = mk(true);
-    this.flashPool = [mk(false), mk(false), mk(false)];
+    this.flashPool = Array.from({ length: this.mobile ? 1 : 3 }, () => mk(false));
     this.beams = [this.flash, ...this.flashPool].map(() => { const m = new THREE.Mesh(new THREE.ConeGeometry(5.2, 18, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#fff0d0', map: beamTex(), transparent: true, opacity: .05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.geometry.translate(0, -9, 0); m.geometry.rotateX(-Math.PI / 2); m.renderOrder = 5; m.visible = false; s.add(m); return m; });
     this.sky = makeSky(); s.add(this.sky);
-    this.lampPool = Array.from({ length: this.mobile ? 3 : 5 }, () => { const l = new THREE.PointLight('#ffc070', 0, 22, 1.4); s.add(l); return l; });
+    this.lampPool = Array.from({ length: this.mobile ? 2 : 5 }, () => { const l = new THREE.PointLight('#ffc070', 0, 22, 1.4); s.add(l); return l; });
     this.selfLight = new THREE.PointLight('#ff3020', 0, 20, 1.2); s.add(this.selfLight);
     this.exSpot = new THREE.SpotLight('#cfffd8', 0, 60, .38, .5, .8); s.add(this.exSpot, this.exSpot.target);
     this.level = new THREE.Group(); s.add(this.level);
@@ -296,7 +297,8 @@ export class World {
     for (const w of map.walls) {
       const inB = (map.bld || []).find(b => w.x >= b.x - 1 && w.y >= b.y - 1 && w.x + w.w <= b.x + b.w + 1 && w.y + w.h <= b.y + b.h + 1);
       const isOuter = outer(w), two = inB && inB.floors > 1, store = inB && inB.type === 'store';
-      const hgt = isOuter ? (map.theme === 'Helipad Lobby' ? 1.4 : 4.5) : w.f ? 1.25 : w.cs ? 7.5 : store ? 3.8 : two ? 6.2 : T.wallH; w._h = hgt;
+      const cityH = w.city ? (GFX.tier === 'low' ? Math.min(w.city, 11) : w.city) : 0;
+      const hgt = w.mh || cityH || (isOuter ? (map.theme === 'Helipad Lobby' ? 2.2 : 4.5) : w.f ? 1.25 : w.cs ? 7.5 : store ? 4.2 : two ? 6.2 : T.wallH); w._h = hgt;
       const sx = w.w * S, sz = w.h * S, g = boxUV(new THREE.BoxGeometry(sx, hgt, sz), sx, hgt, sz, T.wall === 'brick' ? 3 : 2.5);
       let wm0 = w.f ? fenceMat : w.cs ? stoneMat : store ? storeMat : inB ? (inB.type === 'house' ? houseMat : facMat) : wallMat;
       if (inB && !store && !isOuter) { // inside faces: wallpaper (houses) / painted concrete (facilities)
@@ -309,6 +311,7 @@ export class World {
       if (!isOuter && T.wall !== 'wood' && !w.f && !w.cs && !inB) { const cap = own(new THREE.Mesh(boxUV(new THREE.BoxGeometry(sx + .1, .15, sz + .1), sx, .15, sz, 2), wallMat)); cap.position.set(m.position.x, hgt + .07, m.position.z); L.add(cap); }
       if (w.cs) { const long = sx > sz, n = Math.floor((long ? sx : sz) / 1.6); for (let i = 0; i < n; i++) { const mm = own(new THREE.Mesh(G.box(long ? .8 : sz + .1, .9, long ? sz + .1 : .8), stoneMat)); mm.position.set(long ? (w.x * S + .8 + i * 1.6) : m.position.x, hgt + .45, long ? m.position.z : (w.y * S + .8 + i * 1.6)); mm.castShadow = true; L.add(mm); } }
       // lit windows on the outside walls of houses (one or two storeys); every house has its own light colour
+      if (w.city && (GFX.tier !== 'low' || (w.x + w.y) % 2 < 1)) { const long = sx >= sz, c = w.light || '#ffcf7a'; const wm = own(new THREE.Mesh(G.box(long ? Math.max(.4, sx * .72) : .12, Math.max(.6, hgt * .42), long ? .12 : Math.max(.4, sz * .72)), winMat(c))); wm.position.set(m.position.x + (long ? 0 : (w.x < map.w / 2 ? .08 : -.08)), hgt * .58, m.position.z); L.add(wm); }
       if (inB && inB.type === 'house' && (w.h <= 26 || w.w <= 26)) { const long = sx > sz, len = long ? sx : sz, n = Math.floor(len / 3.2), c = inB.light || '#ffcf7a';
         const onEdge = long ? (Math.abs(w.y - inB.y) < 2 || Math.abs(w.y + w.h - inB.y - inB.h) < 2) : (Math.abs(w.x - inB.x) < 2 || Math.abs(w.x + w.w - inB.x - inB.w) < 2);
         if (onEdge && n > 0) for (let i = 0; i < n; i++) for (let fl = 0; fl < (two ? 2 : 1); fl++) { const wm = own(new THREE.Mesh(G.box(long ? 1.0 : sz + .06, 1.0, long ? sz + .06 : 1.0), winMat(c)));
@@ -402,11 +405,12 @@ export class World {
       if (o.userData.light && o.userData.lightPos) { o.updateMatrixWorld(true); const lp = o.userData.lightPos.clone().applyMatrix4(o.matrixWorld); this.lamps.push({ x: (pr.x + pr.w / 2), y: (pr.y + pr.h / 2), obj: { userData: { glow: { material: {} }, bulb: { material: {} } } }, lp, flick: R() < .3, broken: R() < .1, phase: R() * 100 }); }
     }
     // v1.4.1 lobby shopping street: per-store interior lights, a floating store name above each roof, coloured counter rugs and an asphalt street
-    if (map.road) { const rd = own(new THREE.Mesh(new THREE.PlaneGeometry(map.road.w * S, map.road.h * S), wet(pbrMat('asphalt', map.road.w * S / 4, map.road.h * S / 4, { tile: true }), true))); rd.rotation.x = -Math.PI / 2; rd.position.set((map.road.x + map.road.w / 2) * S, .02, (map.road.y + map.road.h / 2) * S); rd.receiveShadow = true; L.add(rd);
-      for (let x = map.road.x + 40; x < map.road.x + map.road.w - 60; x += 140) { const ln = new THREE.Mesh(new THREE.PlaneGeometry(3, .3), new THREE.MeshBasicMaterial({ color: '#e8d06a' })); ln.rotation.x = -Math.PI / 2; ln.position.set(x * S, .03, (map.road.y + map.road.h / 2) * S); L.add(ln); } }
+    for (const road of (map.roads || (map.road ? [map.road] : []))) { const rd = own(new THREE.Mesh(new THREE.PlaneGeometry(road.w * S, road.h * S), wet(pbrMat('asphalt', Math.max(1, road.w * S / 4), Math.max(1, road.h * S / 4), { tile: true }), true))); rd.rotation.x = -Math.PI / 2; rd.position.set((road.x + road.w / 2) * S, .02, (road.y + road.h / 2) * S); rd.receiveShadow = true; L.add(rd);
+      if (road.w > road.h) for (let x = road.x + 40; x < road.x + road.w - 60; x += 160) { const ln = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .22), new THREE.MeshBasicMaterial({ color: '#e8d06a' })); ln.rotation.x = -Math.PI / 2; ln.position.set(x * S, .035, (road.y + road.h / 2) * S); L.add(ln); } }
     for (const b of map.bld || []) if (b.type === 'store') { const many = !!b.store;
-      for (let i = 0; i < (many ? 2 : 3); i++) { const l = new THREE.PointLight(many ? b.c : '#ffe2b0', many ? 30 : 22, many ? 32 : 26, 1.1); if (many) l.color.lerp(new THREE.Color('#ffe8c8'), .6); l.position.set((b.x + b.w * (many ? (i + .5) / 2 : .62)) * S, 3.2, (b.y + b.h * (many ? .5 : (i + .5) / 3)) * S); L.add(l); }
-      const sg = textSprite(many ? b.name : '★ STORE ★', many ? b.c : '#ff4a4a', 46); sg.material.depthTest = true; if (many) sg.position.set((b.x + b.w / 2) * S, 6.4, (b.y + b.h / 2) * S); else sg.position.set(b.x * S - .2, 5.2, (b.y + b.h / 2) * S); sg.scale.set(many ? 14 : 9, many ? 2.4 : 1.7, 1); L.add(sg); }
+      if (!b.nolight && GFX.tier !== 'low') for (let i = 0; i < (many ? 1 : 2); i++) { const l = new THREE.PointLight(many ? b.c : '#ffe2b0', many ? 18 : 16, many ? 28 : 22, 1.2); if (many) l.color.lerp(new THREE.Color('#ffe8c8'), .6); l.position.set((b.x + b.w * (many ? (i + .5) : .62)) * S, 3.2, (b.y + b.h * .5) * S); L.add(l); }
+      if (b.kind === 'mall') { const n = GFX.tier === 'low' ? 1 : 3; for (let i = 0; i < n; i++) { const l = new THREE.PointLight('#ffe6c4', GFX.tier === 'low' ? 10 : 22, 36, 1.3); l.position.set((b.x + b.w * (i + 1) / (n + 1)) * S, 4.2, (b.y + b.h * .5) * S); L.add(l); } }
+      const sg = textSprite(many ? b.name : '★ STORE ★', many ? b.c : '#ff4a4a', 46); sg.material.depthTest = true; if (many) sg.position.set((b.x + b.w / 2) * S, b.kind === 'mall' ? 9.2 : 6.4, (b.y + b.h / 2) * S); else sg.position.set(b.x * S - .2, 5.2, (b.y + b.h / 2) * S); sg.scale.set(many ? (b.kind === 'mall' ? 18 : 14) : 9, many ? 2.4 : 1.7, 1); L.add(sg); }
     for (const z of (map.zones || [])) { const col = z.c || (z.k === 'shop' ? '#ffd27a' : z.k === 'mirror' ? '#9ad8ff' : '#ff9af0'); const zs = textSprite((z.ic ? z.ic + ' ' : '') + (z.c ? z.name : 'COUNTER'), col, 34); zs.material.depthTest = true; const bS = (map.bld || []).find(b => b.store === z.k), cy2 = bS ? (bS.north ? bS.y + 120 : bS.y + bS.h - 120) : z.y + z.h / 2; zs.position.set((z.x + z.w / 2) * S, 3.5, cy2 * S); zs.scale.set(z.c ? 3 : 5.5, z.c ? .56 : 1, 1); L.add(zs);
       const rug = own(new THREE.Mesh(new THREE.PlaneGeometry(z.w * S * .9, z.h * S * .85), new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(.22), roughness: .9 }))); rug.rotation.x = -Math.PI / 2; rug.position.set((z.x + z.w / 2) * S, .035, (z.y + z.h / 2) * S); L.add(rug); }
     // loot containers
@@ -429,7 +433,7 @@ export class World {
     if (map.heli) {
       const pad = own(new THREE.Mesh(new THREE.CircleGeometry(map.heli.r * S, 48), new THREE.MeshStandardMaterial({ map: tex('helipad', 1), roughness: .8 }))); pad.rotation.x = -Math.PI / 2; pad.position.set(map.heli.x * S, .03, map.heli.y * S); L.add(pad);
       const ring = own(new THREE.Mesh(new THREE.RingGeometry(map.heli.r * S - .25, map.heli.r * S, 64), new THREE.MeshBasicMaterial({ color: '#ffcc40', transparent: true, opacity: .8, blending: THREE.AdditiveBlending }))); ring.rotation.x = -Math.PI / 2; ring.position.set(map.heli.x * S, .05, map.heli.y * S); L.add(ring); this.padRing = ring;
-      const h = buildHelicopter('#2d4a34'); h.position.set(map.heli.x * S, .03, (map.heli.y - 15) * S); h.rotation.y = Math.PI / 2; L.add(h); this.lobbyHeli = h;
+      const h = buildHelicopter('#2d4a34'); h.position.set(map.heli.x * S, .08, map.heli.y * S); h.rotation.y = 0; L.add(h); this.lobbyHeli = h;
     } else this.padRing = null;
     L.traverse(o => { if (o.isMesh && o.receiveShadow === false) o.receiveShadow = true; });
     // wisps colour
@@ -748,20 +752,12 @@ export class World {
         const down = !!p.st.down; c.down = lerp(c.down || 0, down ? 1 : 0, Math.min(1, dt * 5));
         parts.body.rotation.x = -c.down * 1.45; parts.body.position.y += c.down * .25; parts.body.position.z = -c.down * .2;
       }
-      // v1.4.1: emotes (bought at EMOTES & DANCES) play a short procedural animation
-      if (p.em && c.kind.startsWith('survivor')) { const e = p.em, k2 = t * 6;
-        if (e === 'wave') { parts.armR.rotation.set(-2.8, 0, -.4 + Math.sin(k2 * 1.5) * .5); }
-        else if (e === 'dance') { parts.body.position.y = Math.abs(Math.sin(k2)) * .18; parts.body.rotation.z = Math.sin(k2) * .2; parts.armL.rotation.x = -2.4 + Math.sin(k2) * .6; parts.armR.rotation.x = -2.4 - Math.sin(k2) * .6; }
-        else if (e === 'spin') { o.rotation.y = c.yaw + t * 9; parts.armL.rotation.z = 1.3; parts.armR.rotation.z = -1.3; }
-        else if (e === 'jump') { o.position.y += Math.abs(Math.sin(k2 * .8)) * .9; parts.armL.rotation.x = parts.armR.rotation.x = -2.9; }
-        else if (e === 'flex') { parts.armL.rotation.set(-1.5, 0, 1.2); parts.armR.rotation.set(-1.5, 0, -1.2); parts.armL.userData.low.rotation.x = parts.armR.userData.low.rotation.x = -1.6 - Math.abs(Math.sin(k2)) * .4; }
-        else if (e === 'floss') { const f = Math.sin(k2 * 1.3); parts.armL.rotation.set(.2, 0, f * .9); parts.armR.rotation.set(.2, 0, f * .9); parts.body.rotation.z = -f * .15; }
-        else if (e === 'zombie') { parts.armL.rotation.set(-1.55, 0, .05); parts.armR.rotation.set(-1.55, 0, -.05); parts.body.rotation.z = Math.sin(t * 3) * .12; }
-        else if (e === 'scream') { parts.armL.rotation.set(-2.6, 0, .9); parts.armR.rotation.set(-2.6, 0, -.9); parts.body.rotation.x = -.25; if (parts.head) parts.head.rotation.x = -.4; } }
+      if (p.st && p.st.grav) o.position.y += Math.abs(Math.sin(t * 7 + p.id)) * .55;
+      if (p.em && c.kind.startsWith('survivor') && parts.armL && parts.armR) { const pose = applyEmote(parts, p.em, t); if (pose.yaw) o.rotation.y = c.yaw + pose.yaw; if (pose.hop) o.position.y += pose.hop; }
       if (p.id === me) { if (!c.selfNoShadow) { o.traverse(m => { if (m.isMesh) m.castShadow = false; }); c.selfNoShadow = true; } }
       // visibility styling
       const pGhost = playing && (!p.al || p.es || p.role === 'ghost');
-      this.setOpacity(c, pGhost ? .32 : p.st.invis ? .22 : 1, pGhost ? '#3a5a9a' : null);
+      this.setOpacity(c, pGhost ? .32 : (p.st.invis || p.st.cloak) ? (p.st.cloak && p.id === me ? .45 : .2) : 1, pGhost ? '#3a5a9a' : (p.st.cloak ? '#c9dcff' : null));
       // name tags: survivors don't see monster tags; far tags hidden
       const dist = Math.hypot(d.dx - md.dx, d.dy - md.dy) * S;
       const tagVis = p.id === me ? false : (ghost || isMon || !playing) ? dist < 40 : (p.role !== 'monster' && dist < 14);

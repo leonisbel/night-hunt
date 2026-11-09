@@ -8,15 +8,16 @@ import { realize, realizeHuman, prepGLBGeometry, realSetup, lodTick, isLow, real
 export { realSetup, lodTick, realReady };
 
 const geo = {};
+function cg(k, make) { if (geo[k]) return geo[k]; const g = make(); g.userData.shared = 1; geo[k] = g; return g; }
 // DET > 1 while a monster is being built on desktop: rounder silhouettes (more segments) for the realistic surfaces
 let DET = 1; const dq = n => DET === 1 ? n : Math.min(64, Math.round(n * DET));
 const G = {
-  box: (x, y, z) => { const k = 'b' + [x, y, z]; return geo[k] || (geo[k] = new THREE.BoxGeometry(x, y, z)); },
-  sph: (r, w = 18, h = 14, ...x) => { w = dq(w); h = dq(h); const k = 's' + [r, w, h, ...x]; return geo[k] || (geo[k] = new THREE.SphereGeometry(r, w, h, ...x)); },
-  cyl: (a, b, h, s = 14, ...x) => { s = dq(s); const k = 'c' + [a, b, h, s, ...x]; return geo[k] || (geo[k] = new THREE.CylinderGeometry(a, b, h, s, ...x)); },
-  cone: (r, h, s = 12) => { s = s <= 4 ? s : dq(s); const k = 'k' + [r, h, s]; return geo[k] || (geo[k] = new THREE.ConeGeometry(r, h, s)); },
-  cap: (r, l) => { const k = 'p' + [r, l, DET]; return geo[k] || (geo[k] = new THREE.CapsuleGeometry(r, l, dq(6), dq(12))); },
-  tor: (r, t) => { const k = 't' + [r, t]; return geo[k] || (geo[k] = new THREE.TorusGeometry(r, t, 8, 24)); },
+  box: (x, y, z) => cg('b' + [x, y, z], () => new THREE.BoxGeometry(x, y, z)),
+  sph: (r, w = 18, h = 14, ...x) => { w = dq(w); h = dq(h); return cg('s' + [r, w, h, ...x], () => new THREE.SphereGeometry(r, w, h, ...x)); },
+  cyl: (a, b, h, s = 14, ...x) => { s = dq(s); return cg('c' + [a, b, h, s, ...x], () => new THREE.CylinderGeometry(a, b, h, s, ...x)); },
+  cone: (r, h, s = 12) => { s = s <= 4 ? s : dq(s); return cg('k' + [r, h, s], () => new THREE.ConeGeometry(r, h, s)); },
+  cap: (r, l) => cg('p' + [r, l, DET], () => new THREE.CapsuleGeometry(r, l, dq(6), dq(12))),
+  tor: (r, t) => cg('t' + [r, t], () => new THREE.TorusGeometry(r, t, 8, 24)),
 };
 export { G };
 
@@ -1479,25 +1480,44 @@ export function towerBeams(H = 15) {
 }
 export function buildHelicopter(color = '#2d4a34') {
   const root = new THREE.Group();
-  const paint = mat(color, { map: 'metal', m: .55, r: .45 }), dark = mat('#1a1a1a', { m: .6, r: .4 });
-  const glass = new THREE.MeshPhysicalMaterial({ color: '#9fc9e8', roughness: .05, metalness: 0, transmission: .0, transparent: true, opacity: .45, envMapIntensity: 1 });
-  add(root, G.sph(1.6, 24, 16), paint, [0, 2.2, .3], [0, 0, 0], [1, .9, 1.7]);
-  add(root, G.sph(1.45, 24, 16), glass, [0, 2.45, 1.4], [0, 0, 0], [.92, .75, 1.05]);
-  add(root, G.cyl(.35, .22, 5.2, 12), paint, [0, 2.6, -3.6], [Math.PI / 2 + .06, 0, 0]);
-  add(root, G.box(.12, 1.4, .9), paint, [0, 3.3, -6.0], [-.25, 0, 0]);
-  add(root, G.box(1.4, .08, .5), paint, [0, 2.7, -5.6]);
-  for (const sx of [-1.15, 1.15]) {
-    add(root, G.cyl(.08, .08, 4.6, 8), dark, [sx, .2, .3], [Math.PI / 2, 0, 0]);
-    add(root, G.cyl(.06, .06, .9, 6), dark, [sx * .9, .65, 1.4], [0, 0, sx * .25]); add(root, G.cyl(.06, .06, .9, 6), dark, [sx * .9, .65, -.8], [0, 0, sx * .25]);
+  const paint = mat(color, { map: 'metal', m: .62, r: .38 }), dark = mat('#14161a', { m: .55, r: .45 }), steel = mat('#9aa3ad', { m: .85, r: .28, map: 'metal' });
+  const glass = new THREE.MeshPhysicalMaterial({ color: '#b7d4ea', roughness: .04, metalness: 0, transparent: true, opacity: .38, envMapIntensity: 1.2 });
+  const seat = mat('#3a3038', { map: 'cloth', r: .9 }), dash = mat('#1c1e22', { m: .4, r: .35 });
+  // cabin: a faceted fuselage, a glazed nose, and a visible interior (seats, cyclic, panel)
+  add(root, G.box(1.7, 1.35, 2.5), paint, [0, 1.55, .15]);
+  add(root, G.box(1.35, .9, 1.15), paint, [0, 1.45, 1.55]);
+  add(root, G.box(1.15, .7, .9), glass, [0, 1.72, 1.85]);
+  add(root, G.box(1.45, .85, .08), glass, [0, 1.7, .55]);
+  for (const sx of [-.92, .92]) add(root, G.box(.06, .7, 1.15), glass, [sx, 1.62, .2]);
+  add(root, G.box(1.2, .08, .7), dash, [0, 1.35, 1.35]);
+  for (let i = 0; i < 4; i++) add(root, G.box(.08, .05, .02), mat(i % 2 ? '#7dff9a' : '#ffd27a', { e: i % 2 ? '#7dff9a' : '#ffd27a', ei: 1.4 }), [-.35 + i * .18, 1.48, 1.68]);
+  add(root, G.cyl(.035, .035, .55, 8), steel, [.15, 1.15, .85]);
+  for (const sx of [-.38, .38]) { add(root, G.box(.42, .12, .42), seat, [sx, 1.05, -.15]); add(root, G.box(.42, .45, .08), seat, [sx, 1.28, -.38]); }
+  for (const sx of [-.38, .38]) add(root, G.box(.4, .1, .38), seat, [sx, 1.02, .55]);
+  // door outline on the right, so boarding reads as a real cabin rather than a blob
+  add(root, G.box(.04, 1.05, .04), steel, [.88, 1.35, .85]); add(root, G.box(.04, 1.05, .04), steel, [.88, 1.35, -.35]);
+  add(root, G.box(.04, .04, 1.25), steel, [.88, 1.85, .25]);
+  // tail boom, fin, stabiliser
+  add(root, G.cyl(.28, .16, 4.4, 12), paint, [0, 1.85, -3.15], [Math.PI / 2, 0, 0]);
+  add(root, G.box(.08, 1.15, .85), paint, [0, 2.35, -5.15]);
+  add(root, G.box(1.15, .06, .32), paint, [0, 2.15, -4.7]);
+  // skids
+  for (const sx of [-.7, .7]) {
+    add(root, G.cyl(.045, .045, 3.3, 8), dark, [sx, .28, .2], [Math.PI / 2, 0, 0]);
+    add(root, G.cyl(.04, .04, .7, 6), dark, [sx, .62, .85], [0, 0, sx > 0 ? .35 : -.35]);
+    add(root, G.cyl(.04, .04, .7, 6), dark, [sx, .62, -.55], [0, 0, sx > 0 ? -.3 : .3]);
   }
-  add(root, G.cyl(.25, .3, .5, 12), dark, [0, 3.8, .2]);
-  const rotor = grp(root, [0, 4.1, .2], 'rotor');
-  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; add(rotor, G.box(.32, .04, 6.2), dark, [Math.sin(a) * 3.1, 0, Math.cos(a) * 3.1], [0, a, 0]); }
-  const tail = grp(root, [.12, 3.4, -6.1], 'tailrotor');
-  add(tail, G.box(.03, 1.3, .14), dark); add(tail, G.box(.03, .14, 1.3), dark);
-  const red = glow(root, '#ff2020', [-1.5, 2.2, .5], .6), green = glow(root, '#20ff40', [1.5, 2.2, .5], .6), white = glow(root, '#ffffff', [0, 3.6, -6.4], .5);
+  add(root, G.cyl(.16, .2, .28, 12), dark, [0, 2.35, .15]);
+  const rotor = grp(root, [0, 2.55, .15], 'rotor');
+  add(rotor, G.cyl(.22, .18, .12, 12), steel, [0, .08, 0]);
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; add(rotor, G.box(.18, .035, 5.6), dark, [Math.sin(a) * 2.7, .1, Math.cos(a) * 2.7], [0.08, a, 0]); }
+  const tail = grp(root, [.28, 2.15, -5.15], 'tailrotor');
+  add(tail, G.cyl(.08, .08, .08, 10), steel);
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; add(tail, G.box(.025, .55, .08), dark, [0, Math.sin(a) * .32, Math.cos(a) * .32], [a, 0, 0]); }
+  const red = glow(root, '#ff3030', [-.95, 1.7, 1.9], .45), green = glow(root, '#30ff60', [.95, 1.7, 1.9], .45), white = glow(root, '#ffffff', [0, 2.7, -5.35], .4);
   root.userData.navs = [red, green, white];
   root.userData.rotor = rotor; root.userData.tail = tail;
+  root.userData.door = true;
   return root;
 }
 
@@ -1564,7 +1584,9 @@ export function buildProp(k, w, d, o = {}) {
     case 'petbed': { B3(w, .25, d, fab('#6a4a8a'), [0, .12, 0]); add(g, G.tor(Math.min(w, d) * .38, .09), fab('#8a6aaa'), [0, .25, 0], [Math.PI / 2, 0, 0]); const pt = buildPet(o.pet || 'puppy'); pt.scale.setScalar(1.8); pt.position.set(0, .3, 0); g.add(pt); g.userData.pet = pt; break; }
     case 'crate': { const c1 = mat('#5a2a8a', { map: 'wood', r: .6 }), gold = mat('#ffcc3a', { m: .9, r: .3 }); B3(w * .9, d * .9, d * .9, c1, [0, d * .45, 0]); B3(w * .92, .08, d * .92, gold, [0, d * .9, 0]); B3(.1, d * .91, d * .92, gold, [0, d * .45, 0]); B3(w * .92, d * .91, .1, gold, [0, d * .45, 0]);
       const q = new THREE.Mesh(new THREE.PlaneGeometry(d * .5, d * .5), new THREE.MeshBasicMaterial({ map: signTex('?', '', '#ffcc3a', '#2a0a3a'), transparent: true })); q.position.set(0, d * .5, d * .46); g.add(q); g.userData.spin = true; break; }
-    case 'lobbysign': { const sm = new THREE.MeshBasicMaterial({ map: signTex('STORE →', 'COINS BUY ITEMS & SKINS', '#ffcc3a') }); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, 0]); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, -.02], [0, Math.PI, 0]); add(g, G.cyl(.05, .05, 2, 8), dark, [0, 1, 0]); break; }
+    case 'lobbysign': { const sm = new THREE.MeshBasicMaterial({ map: signTex('MALL →', 'CITY HELIPAD · NIGHT MALL', '#ffcc3a') }); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, 0]); add(g, new THREE.PlaneGeometry(w, w * .25), sm, [0, 2.2, -.02], [0, Math.PI, 0]); add(g, G.cyl(.05, .05, 2, 8), dark, [0, 1, 0]); break; }
+    case 'car': { const body = mat(o.c || '#8a3030', { m: .45, r: .35, map: 'metal' }); B3(w * .92, .42, d * .92, body, [0, .48, 0]); B3(w * .55, .32, d * .55, mat('#c9d7e4', { r: .08, m: .1 }), [0, .78, -.02]); B3(w * .2, .28, d, dark, [0, .28, 0]); for (const [sx, sz] of [[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]]) add(g, G.cyl(d * .22, d * .22, .12, 12), mat('#111'), [sx * w * .32, .22, sz * d * .28], [0, 0, Math.PI / 2]); add(g, G.box(.08, .08, .04), mat('#fff6d0', { e: '#fff1c0', ei: 1.5 }), [w * .42, .55, d * .2]); add(g, G.box(.08, .08, .04), mat('#ff3030', { e: '#ff2020', ei: 1.2 }), [-w * .42, .55, d * .2]); break; }
+    case 'kiosk': { B3(w, 1.15, d, mat('#2a2418', { map: 'wood', r: .6 }), [0, .58, 0]); B3(w * 1.05, .08, d * 1.05, mat('#c9a15a', { m: .7, r: .3 }), [0, 1.18, 0]); B3(w * .7, .4, .04, mat('#1a1208', { e: '#ffd76b', ei: .35 }), [0, 1.45, d * .48]); const sm = new THREE.MeshBasicMaterial({ map: signTex('COINS', 'FREE REWARD', '#ffd76b', '#1a1208') }); add(g, new THREE.PlaneGeometry(w * .62, .28), sm, [0, 1.48, d * .52]); break; }
     case 'hay': add(g, G.cyl(Math.min(w, d) / 2, Math.min(w, d) / 2, w, 18), mat('#c8a050', { map: 'hay', bump: 'hay', r: 1 }), [0, Math.min(w, d) / 2, 0], [0, 0, Math.PI / 2]); break;
     case 'tractor': { const red = mat('#a8261a', { m: .3, r: .5, map: 'metal' }), tire = mat('#141414', { r: .9 }); B3(w * .55, 1.0, d * .6, red, [w * .15, 1.0, 0]); B3(w * .35, 1.2, d * .7, red, [-w * .2, 1.4, 0]); B3(w * .3, .05, d * .7, red, [-w * .2, 2.3, 0]);
       for (const sz of [-1, 1]) { add(g, G.cyl(.8, .8, .4, 18), tire, [-w * .25, .8, sz * d * .45], [Math.PI / 2, 0, 0]); add(g, G.cyl(.45, .45, .3, 14), tire, [w * .32, .45, sz * d * .4], [Math.PI / 2, 0, 0]); } add(g, G.cyl(.06, .06, 1, 8), dark, [w * .3, 1.9, 0]); break; }

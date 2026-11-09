@@ -5,6 +5,8 @@ import { audio, sfx, setAmbience, setRotor, staticHiss } from './js/audio.js';
 import { oldWallpaper } from './js/textures.js';
 import { initTouch } from './js/touch.js';
 import { initLocker } from './js/locker.js';
+import { EMOTES } from './js/emotes.js';
+import { showcaseStats, closeShowcase } from './js/showcase.js';
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const cam = { yaw: -Math.PI / 2, pitch: .55, zoom: localStorage.nhZoom != null ? +localStorage.nhZoom : .5 };
@@ -18,11 +20,14 @@ addEventListener('resize', () => world && world.resize());
 // expose state for tests/automation
 window.NH = { cam, get map() { return map; }, get killing() { return !!killcam; }, locust: () => locustSlam(), scare: (type, fm, hold) => { scareShown = false; splats = null; jumpscare = { type, fm: fm || 0, start: performance.now() - (hold || 0) * 1000, until: performance.now() + 60000, freeze: hold }; }, unscare: () => { jumpscare = null; }, die: (type, fm, stats, killer) => { scareShown = false; splats = null; const n = performance.now(); jumpscare = { type, fm: fm || 0, start: n, until: n + scareLen(type, fm || 0) * 1000, death: { by: type, fm: fm || 0, killer, stats: stats || {} } }; sfx(scareSound(type)); }, results: m => { if (endBusy()) pendingResults = m; else showResults(m); }, get spec() { return spec; }, kill: (type, x, y, name, hold) => { killcam = { start: performance.now() - (hold || 0) * 1000, type, x, y, name, zoom: cam.zoom, pitch: cam.pitch }; killSplats = null; },  get locker() { return locker; }, fire(on) { fireHeld = !!on; if (on) fireLatch = true; }, open: () => send({ t: 'open' }), sel: i => send({ t: 'sel', i }), get snap() { return snap; }, get me() { return me; }, keys, get world() { return world; }, get touch() { return touch; }, get disp() { return disp; } };
 Object.defineProperty(window, 'snap', { get: () => snap }); Object.defineProperty(window, 'me', { get: () => me }); window.keys = keys;
+window.NH.showcaseStats = showcaseStats; window.NH.closeShowcase = closeShowcase;
 
 // ---------- menu ----------
 $('pname').value = localStorage.nhName || '';
 // content warning (13+): must be accepted with Continue every time before the menu appears
 $('bwarn').onclick = () => { $('warn').classList.add('hide'); $('menu').classList.remove('hide'); };
+if ($('badmin')) $('badmin').onclick = () => $('admin').classList.remove('hide');
+if ($('adminclose')) $('adminclose').onclick = () => $('admin').classList.add('hide');
 const opt = { blood: localStorage.nhBlood !== '0' };
 { const gs = $('optgfx'); if (gs) { gs.value = GFX_AUTO ? 'auto' : GFX.tier; gs.onchange = () => { setTier(gs.value); const q = new URLSearchParams(location.search); q.delete('gfx'); location.search = q.toString(); }; } }
 $('optblood').checked = opt.blood; $('optblood').onchange = () => { opt.blood = $('optblood').checked; localStorage.nhBlood = opt.blood ? '1' : '0'; if (world) world.blood = opt.blood; }; if (world) world.blood = opt.blood;
@@ -102,7 +107,8 @@ function onMsg(m) {
     case 'pickup': { const I = ITEMS[m.k]; sfx('pickup'); if (I) addEvent(`Picked up ${I.icon} ${I.name}${m.n > 1 ? ' ×' + m.n : ''}`, 'good'); break; }
     case 'used': { const I = ITEMS[m.k]; if (I) sfx(I.drink ? 'drink' : I.type === 'armor' ? 'pickup' : 'eat'); break; }
     case 'hurt': sfx('hurt'); $('hpbar').classList.remove('hurt'); void $('hpbar').offsetWidth; $('hpbar').classList.add('hurt'); if (world) world.shake = Math.max(world.shake || 0, .35); if (navigator.vibrate) navigator.vibrate(60); break;
-    case 'coins': if (locker) locker.addCoins(m.n); sfx('coin'); addEvent(`🪙 +${m.n} coins earned this round (total ${locker ? locker.profile.coins : m.n})`, 'good'); earnedLast = m.n; const ce = $('rcoins'); if (ce) ce.textContent = `🪙 +${m.n} coins`; break;
+    case 'coins': if (locker) locker.addCoins(m.n); sfx('coin'); addEvent(`🪙 +${m.n} coins (total ${locker ? locker.profile.coins : m.n})`, 'good'); earnedLast = m.n; const ce = $('rcoins'); if (ce) ce.textContent = `🪙 +${m.n} coins`; break;
+    case 'admin': { const box = $('adminstate'); if (box) box.textContent = m.msg || ''; $('admin') && $('admin').classList.remove('hide'); break; }
     case 'results': results = m; if (endBusy()) pendingResults = m; else showResults(m); break;
   }
 }
@@ -153,9 +159,19 @@ function fxSound(m) {
   else if (m.kind === 'hit' || m.kind === 'slash') sfx('hit', o);
 }
 let earnedLast = 0;
-function sendProfile() { if (room && locker) { const P = locker.profile; send({ t: 'profile', look: P.look, pref: P.pref, skin: P.owned.includes('skin:' + P.skin) ? P.skin : 'classic', kit: P.kit }); } }
+function sendProfile() { if (room && locker) { const P = locker.profile; send({ t: 'profile', look: P.look, pref: P.pref, skin: P.owned.includes('skin:' + P.skin) ? P.skin : 'classic', kit: P.kit, gear: P.gear, gearOn: P.gearOn, emotes: P.owned.filter(id => String(id).startsWith('em:')).map(id => id.slice(3)) }); } }
 const locker = initLocker({ onChange: () => sendProfile(), monsters: () => MON, sfx, onEmote: e => playEmote(e) });
 function playEmote(e) { e = e || locker.emote(); if (!room) return; send({ t: 'emote', e }); }
+let wheelTimer = 0, wheelOn = false, wheelPick = 0;
+function wheelItems() { return EMOTES.filter(e => e.price === 0 || locker.profile.owned.includes('em:' + e.id)); }
+function showWheel(on) {
+  wheelOn = on; const el = $('emotewheel'); if (!el) return; el.classList.toggle('hide', !on); if (!on) return;
+  const items = wheelItems();
+  el.innerHTML = items.map((e, i) => `<button type="button" data-i="${i}" class="${i === wheelPick ? 'on' : ''}"><span>${e.icon}</span>${e.name}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => { b.onpointerdown = ev => { ev.preventDefault(); wheelPick = +b.dataset.i; playEmote(items[wheelPick].id); showWheel(false); }; });
+}
+function armWheel() { clearTimeout(wheelTimer); wheelTimer = setTimeout(() => showWheel(true), 280); }
+function releaseWheel() { clearTimeout(wheelTimer); if (wheelOn) { const items = wheelItems(); if (items[wheelPick]) playEmote(items[wheelPick].id); showWheel(false); } else playEmote(); }
 function showFlightCard() {
   const f = flight, M = f.mine && f.mine.role === 'monster' ? MON[f.mine.mt] : null, c = $('flightcard');
   c.classList.remove('hide'); c.classList.toggle('mon', !!M);
@@ -170,16 +186,19 @@ addEventListener('keydown', e => {
   audio.unlock();
   if (KM[e.code]) { keys[KM[e.code]] = 1; e.preventDefault(); }
   if (e.code === 'Space') { if (!e.repeat) { primary(true); } e.preventDefault(); }
-  if (e.code === 'KeyE') { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k] || z.k); else if (amSurvivor()) send({ t: 'open' }); else send({ t: 'ability' }); e.preventDefault(); }
+  if (e.code === 'KeyE') { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k] || z.k); else if (snap && (snap.state === 'lobby' || amSurvivor())) send({ t: 'open' }); else send({ t: 'ability' }); e.preventDefault(); }
+  if (e.code === 'KeyZ') send({ t: 'gear', k: 'speed' });
+  if (e.code === 'KeyX') send({ t: 'gear', k: 'grav' });
+  if (e.code === 'KeyC') send({ t: 'gear', k: 'invis' });
   if (e.code === 'KeyQ' && !amSurvivor()) send({ t: 'ability' });
   if (/^Digit[1-6]$/.test(e.code)) send({ t: 'sel', i: +e.code[5] - 1 });
   if (e.code === 'KeyG') send({ t: 'drop' });
   if (e.code === 'Tab') { e.preventDefault(); showBoard(true); }
   if (e.code === 'KeyM') muted = audio.toggleMute();
-  if (e.code === 'KeyB' && !e.repeat && snap) playEmote();
+  if (e.code === 'KeyB' && !e.repeat && snap) armWheel();
   if (spec && (e.code === 'ArrowRight' || e.code === 'KeyN')) startSpec(1); if (spec && e.code === 'ArrowLeft') startSpec(-1);
 });
-addEventListener('keyup', e => { if (KM[e.code]) keys[KM[e.code]] = 0; if (e.code === 'Space') primary(false); if (e.code === 'Tab') showBoard(false); });
+addEventListener('keyup', e => { if (KM[e.code]) keys[KM[e.code]] = 0; if (e.code === 'Space') primary(false); if (e.code === 'Tab') showBoard(false); if (e.code === 'KeyB') releaseWheel(); });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
 // camera look: pointer lock (click the game) or drag with any mouse button; wheel zooms first person <-> third person
 const locked = () => document.pointerLockElement === $('c');
@@ -198,7 +217,7 @@ $('c').addEventListener('mousedown', e => { if (touch.active && e.sourceCapabili
 addEventListener('mouseup', e => { if (e.button === 0) primary(false); });
 
 let boardOn = false;
-const touch = initTouch({ onAttack: on => primary(on), onOpen: () => { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k] || z.k); else send({ t: 'open' }); }, onAbility: () => send({ t: 'ability' }), onBoard: () => { boardOn = !boardOn; showBoard(boardOn); }, onMute: () => (muted = audio.toggleMute()), unlock: () => audio.unlock() });
+const touch = initTouch({ onAttack: on => primary(on), onOpen: () => { const z = storeZone(); if (z) locker.open(ZONE_TAB[z.k] || z.k); else send({ t: 'open' }); }, onAbility: () => send({ t: 'ability' }), onBoard: () => { boardOn = !boardOn; showBoard(boardOn); }, onMute: () => (muted = audio.toggleMute()), onEmote: () => showWheel(!wheelOn), onGear: k => send({ t: 'gear', k }), unlock: () => audio.unlock(), onResize: () => world && world.resize() });
 setInterval(() => {
   if (!room) return;
   // movement is relative to the camera: forward = where the camera looks
@@ -223,7 +242,9 @@ function updateAim(mp, md, dt) {
 }
 // ---------- frame loop ----------
 let lastT = performance.now(), lastBeat = 0, stepT = 0;
+let shotHold = false;
 function frame(now) {
+  if (shotHold) return;
   requestAnimationFrame(frame);
   const dt = Math.min(.1, (now - lastT) / 1000); lastT = now; const t = now / 1000;
   if (!world) return;
@@ -299,7 +320,11 @@ function hud(mp, ghost) {
   invHud(mp, ghost); p2Hud(mp, ghost);
   const boarded = snap.boarded.length, humans = snap.ps.filter(p => !p.b), hb = humans.filter(p => snap.boarded.includes(p.id)).length;
   $('lobbyhint').classList.toggle('hide', st !== 'lobby');
-  if (st === 'lobby') $('lobbyhint').innerHTML = `🚁 Walk onto the helicopter pad to board — ${boarded}/${snap.ps.length} boarded<br><small>${snap.ps.length < 2 ? 'Need at least 2 players. Invite friends with the code' + (isHost ? ' or add a bot' : '') : hb < humans.length ? 'Waiting for everyone to board…' : isHost ? 'Everyone is aboard — press Take off!' : 'Waiting for the host to take off…'}</small>`;
+  const nearDoor = st === 'lobby' && map && map.heli && disp[me] && Math.hypot(disp[me].dx - map.heli.x, disp[me].dy - map.heli.y) < (map.heli.board || 88);
+  const imSeated = snap.boarded.includes(me);
+  if (st === 'lobby') $('lobbyhint').innerHTML = `🚁 ${imSeated ? 'You are seated. E climbs out.' : nearDoor ? 'E — sit in the helicopter.' : 'Walk to the helicopter door, then press E to sit.'} ${boarded}/${snap.ps.length} seated<br><small>${snap.ps.length < 2 ? 'Need at least 2 players. Invite friends with the code' + (isHost ? ' or add a bot' : '') : hb < humans.length ? 'Waiting for everyone to sit down…' : isHost ? 'Everyone is seated — press Take off!' : 'Waiting for the host to take off…'}</small>`;
+  const gb = $('gearbar'); if (gb) { const g = snap.me && snap.me.gear; const showG = st === 'playing' && mp.role === 'survivor' && !ghost && g && Object.keys(g).length; gb.classList.toggle('hide', !showG); if (showG) gb.innerHTML = Object.entries(g).map(([k, s]) => `<button type="button" data-g="${k}" class="${s.left > 0 ? 'on' : ''}">${k === 'speed' ? '🌀' : k === 'grav' ? '🌙' : '👻'} ${s.left > 0 ? s.left.toFixed(1) + 's' : s.cd > 0 ? s.cd.toFixed(1) + 's' : 'READY'}</button>`).join(''); gb.querySelectorAll('button').forEach(b => b.onclick = () => send({ t: 'gear', k: b.dataset.g })); }
+  for (const [id, k] of [['tspeed', 'speed'], ['tgrav', 'grav'], ['tinvis', 'invis']]) { const n = $(id); if (!n) continue; const s = snap.me && snap.me.gear && snap.me.gear[k]; const on = st === 'playing' && mp.role === 'survivor' && !ghost && s; n.classList.toggle('hide', !on); if (on) n.innerHTML = `${k === 'speed' ? '🌀' : k === 'grav' ? '🌙' : '👻'}<small>${s.left > 0 ? s.left.toFixed(0) + 's' : s.cd > 0 ? s.cd.toFixed(0) + 's' : 'OK'}</small>`; }
 }
 // ---------- v1.4: the walk-in lobby store, boats, storm / weather overlays, Father Fester stage ----------
 const ZONE_TAB = { shop: 'food', mirror: 'clothing', skins: 'skinshop' };
@@ -332,8 +357,9 @@ function invHud(mp, ghost) {
   let near = null;
   if (sv && map.loot) { const md = disp[me], lo = new Set(snap.lo || []); let bd = 75; for (const c of map.loot) if (!lo.has(c.id)) { const d = Math.hypot(c.x - md.dx, c.y - md.dy); if (d < bd) { bd = d; near = c; } } }
   let bed = null; if (sv && !near && !mp.st.sleep && map.props) { const md = disp[me]; bed = map.props.find(o => o.k === 'bed' && md.dx > o.x - 40 && md.dx < o.x + o.w + 40 && md.dy > o.y - 40 && md.dy < o.y + o.h + 40); }
-  const bp = sv && !near && !bed ? boatPrompt(mp) : null;
-  $('prompt').classList.toggle('hide', !near && !bed && !bp); if (bp) $('prompt').textContent = bp; else if (near) $('prompt').textContent = `E — open ${near.kind === 'chest' ? 'chest 🧰' : 'bag 🎒'}`; else if (bed) $('prompt').textContent = 'E — sleep in bed 🛏️ (heals)';
+  let ex = false; if (sv && snap.ex && disp[me]) ex = Math.hypot(snap.ex.x - disp[me].dx, snap.ex.y - disp[me].dy) < snap.ex.r + 10;
+  const bp = sv && !near && !bed && !ex ? boatPrompt(mp) : null;
+  $('prompt').classList.toggle('hide', !near && !bed && !bp && !ex); if (ex) $('prompt').textContent = 'E — board the extraction helicopter 🚁'; else if (bp) $('prompt').textContent = bp; else if (near) $('prompt').textContent = `E — open ${near.kind === 'chest' ? 'chest 🧰' : 'bag 🎒'}`; else if (bed) $('prompt').textContent = 'E — sleep in bed 🛏️ (heals)';
   $('topen').classList.toggle('hide', !near && !bed && !(sv && mp.st.sleep)); $('topen').firstChild.textContent = near ? '📦' : bed ? '🛏️' : '⏰'; $('topen').querySelector('small').textContent = near ? 'OPEN' : bed ? 'SLEEP' : 'WAKE';
   if (!sv) return;
   const M = snap.me, hp = Math.max(0, M.hp), pct = hp / M.mhp * 100;
@@ -477,5 +503,25 @@ function drawKill(e) {
       for (const [x, y, r] of killSplats) { g.beginPath(); g.arc(x, y, r * k, 0, 6.283); g.fill(); for (let d = 0; d < 5; d++) { g.beginPath(); g.arc(x + Math.cos(d * 1.3 + x) * r * 1.4 * k, y + Math.sin(d * 1.3 + y) * r * 1.4 * k, r * .14, 0, 6.283); g.fill(); } }
     }
     g.fillStyle = '#ff2a2a'; g.font = `bold ${Math.round(Math.min(W, H) * .06)}px Georgia, serif`; g.textAlign = 'center'; g.fillText(`YOU CAUGHT ${String(killcam.name).toUpperCase()}`, W / 2, H * .8);
+  }
+}
+
+// Screenshot hook (?shot=city|mall|heli|emote|showcase|admin|mobile). Not used in normal play.
+if (params.has('shot')) {
+  const kind = params.get('shot');
+  $('warn').classList.add('hide'); $('menu').classList.add('hide');
+  if (kind === 'admin') { $('admin').classList.remove('hide'); window.NH.shotReady = true; }
+  else if (kind === 'showcase') {
+    locker.open('weapons');
+    setTimeout(() => { const b = document.querySelector('[data-show="knife"]'); if (b) b.click(); const wait = () => { const c = document.querySelector('.showcase canvas'); if (c && c.width > 8) window.NH.shotReady = true; else requestAnimationFrame(wait); }; wait(); }, 50);
+  } else {
+    shotHold = true; document.body.classList.add('ingame', 'inlobby'); if (kind === 'mobile') { document.body.classList.add('touchmode'); $('hud').classList.remove('hide'); }
+    const map = NightHuntCore.LOBBY; world.setMap(map);
+    const spot = kind === 'mall' ? { x: 2460, y: 2080, yaw: Math.PI / 2, pitch: 0.22, zoom: 0.55 } : kind === 'heli' ? { x: map.heli.x + 40, y: map.heli.y + 220, yaw: -Math.PI / 2, pitch: 0.22, zoom: 0.62 } : kind === 'emote' ? { x: 2480, y: 680, yaw: -Math.PI / 2, pitch: 0.2, zoom: 0.5 } : { x: 290, y: 1380, yaw: -Math.PI / 2, pitch: 0.18, zoom: 0.95 };
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0,,,cap,scarf,ranger,none,none', em: kind === 'emote' ? 'groove' : undefined }];
+    const disp = { 1: { dx: spot.x, dy: spot.y } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
+    const snapS = { state: 'lobby', ps, boarded: [], max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [0, 0, 0, 0, 0, 0], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 0 };
+    let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS }); if (++n === 12) window.NH.shotReady = true; if (n < 20) requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
   }
 }

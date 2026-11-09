@@ -1043,6 +1043,7 @@ local function cleanProfile(d)
 	local function have(cat, k) return k == "none" or k == "classic" or owned[cat .. ":" .. tostring(k)] end
 	local out = {
 		coins = math.max(0, math.floor(tonumber(d.coins) or 0)),
+		coinMig = d.coinMig == true,
 		owned = owned,
 		look = { sk = n(look.sk, #Config.SKIN_TONES), hc = n(look.hc, #Config.HAIR_COLORS), hs = n(look.hs, 4),
 			top = n(look.top, #Config.CLOTHES), pants = n(look.pants or 8, #Config.CLOTHES),
@@ -1057,6 +1058,11 @@ local function cleanProfile(d)
 	}
 	if type(d.kit) == "table" then
 		for _, k in ipairs(d.kit) do if type(k) == "string" and Config.SHOP.supply[k] and #out.kit < Config.KIT_MAX then table.insert(out.kit, k) end end
+	end
+	-- One-time starter grant. A richer balance is left alone. The flag stops later loads from topping the wallet back up.
+	if not out.coinMig then
+		if out.coins < 10000 then out.coins = 10000 end
+		out.coinMig = true
 	end
 	return out
 end
@@ -1073,7 +1079,7 @@ local function saveProfile(p)
 	if not pr or not profileStore then return end
 	local owned = {}
 	for k in pairs(pr.owned) do table.insert(owned, k) end
-	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin, kit = pr.kit }) end)
+	pcall(function() profileStore:SetAsync("u" .. p.UserId, { coins = pr.coins, coinMig = pr.coinMig == true, owned = owned, look = pr.look, pref = pr.pref, skin = pr.skin, kit = pr.kit }) end)
 end
 local function loadProfile(p)
 	local data

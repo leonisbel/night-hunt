@@ -220,3 +220,37 @@ body.inlobby #blocker2.storebar{display:flex}
 #blocker2.storebar .blocker,#bemote{font-size:17px;padding:4px 6px;min-width:52px}#blocker2.storebar .blocker b,#bemote b{font-size:10px}
 #bemote{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(#7a4aaa,#3a1a6a);border:2px solid #ffd76b;border-radius:12px;color:#fff;cursor:pointer}
 #staticover{width:100%;height:100%;image-rendering:pixelated;z-index:3}
+html,body{touch-action:none}
+button.si{color:inherit;font:inherit;cursor:pointer;width:100%;background:#0006}
+button.si small{color:#ffd76b}
+#gearbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(168px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:6}
+#gearbar button{background:#142018ee;color:#fff;border:2px solid #7dffb2;border-radius:10px;padding:6px 10px;font-weight:800}
+#gearbar button.on{border-color:#ffd76b}
+#emotewheel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:grid;grid-template-columns:repeat(3,minmax(90px,1fr));gap:8px;background:#120818f2;border:2px solid #ffd76b;border-radius:16px;padding:12px;max-width:min(420px,92vw)}
+#emotewheel button{background:#2a1844;color:#fff;border:1px solid #b08aff;border-radius:12px;padding:8px;font-size:13px}
+#emotewheel button span{display:block;font-size:22px}
+.showcase{position:fixed;inset:0;z-index:40;display:flex;background:#0c0a12f7;padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));gap:12px}
+.sc-stage{flex:1.2;min-width:0;position:relative;background:radial-gradient(circle at 50% 40%,#243044,#09080c);border-radius:16px;overflow:hidden}
+.sc-stage canvas{width:100%;height:100%;display:block;touch-action:none}
+.sc-hint{position:absolute;left:10px;bottom:10px;color:#fff8;font-size:12px}
+body.showcaseon #locker{visibility:hidden}
+.sc-panel{flex:0.8;max-width:360px;color:#fff;overflow:auto;background:#16141c;border-radius:16px;padding:14px}
+.sc-panel h2{margin:8px 0}
+.sc-blurb,.sc-meta{color:#ddd;line-height:1.4}
+.sc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.sc-actions button{padding:10px 14px;border-radius:10px;border:0;font-weight:800;cursor:pointer}
+.sc-buy{background:#ffd76b;color:#1a1208}.sc-eq{background:#2a6a4a;color:#fff}.sc-play{background:#5a3a8a;color:#fff}.sc-x{float:right;background:#0000;color:#fff;border:1px solid #fff4;border-radius:8px;padding:4px 8px}
+#temote{left:calc(18px + env(safe-area-inset-left));bottom:calc(148px + env(safe-area-inset-bottom))}
+#tspeed{left:calc(86px + env(safe-area-inset-left));bottom:calc(148px + env(safe-area-inset-bottom))}
+#tgrav{left:calc(148px + env(safe-area-inset-left));bottom:calc(148px + env(safe-area-inset-bottom))}
+#tinvis{left:calc(210px + env(safe-area-inset-left));bottom:calc(148px + env(safe-area-inset-bottom))}
+.tb.gear.hide{display:none}
+@media (max-width:800px),(max-height:500px){
+  #locker{left:0;right:0;width:auto;top:env(safe-area-inset-top);bottom:0}
+  #blocker2.storebar{flex-wrap:wrap;max-width:calc(100vw - 20px - env(safe-area-inset-left));max-height:32vh;overflow:auto}
+  .showcase{flex-direction:column}
+  .sc-stage{min-height:46vh}
+  .sc-panel{max-width:none}
+  #hostbox{max-width:calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))}
+}
+#admin .muted{color:#bbb;font-size:14px}
