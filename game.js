@@ -1,7 +1,7 @@
 // Night Hunt client (3D): menu, networking glue, input (keyboard/mouse/touch), HUD and the three.js world.
 import { World, S } from './js/render3d.js';
 import { GFX, AUTO as GFX_AUTO, setTier } from './js/gfx.js';
-import { audio, sfx, setAmbience, setRotor, staticHiss } from './js/audio.js';
+import { audio, sfx, setAmbience, setRotor, setEngine, staticHiss } from './js/audio.js';
 import { oldWallpaper } from './js/textures.js';
 import { initTouch } from './js/touch.js';
 import { initLocker } from './js/locker.js';
@@ -254,6 +254,7 @@ function frame(now) {
   if (flight && now > flight.until) { flight = null; $('flightcard').classList.add('hide'); }
   if (flight) { const s = $('flsecs'); if (s) s.textContent = '· landing in ' + Math.ceil((flight.until - now) / 1000) + 's'; }
   setRotor(flight ? .9 : snap && map && map.heli && disp[me] ? Math.max(0, .5 - Math.hypot(disp[me].dx - map.heli.x, disp[me].dy - map.heli.y) / 1400) : snap && snap.ex && disp[me] ? Math.max(0, .5 - Math.hypot(disp[me].dx - snap.ex.x, disp[me].dy - snap.ex.y) / 1600) : 0);
+  if (!snap || !snap.ps) setEngine(0, 0);
   document.body.classList.toggle('cutscene', !!(jumpscare || flight));
   document.body.classList.toggle('killcam', !!killcam);
   if (killcam) {
@@ -267,6 +268,7 @@ function frame(now) {
   if (!room || !map || !snap) { world.frame(dt, t, {}); return; }
   for (const p of snap.ps) { const d = disp[p.id] || (disp[p.id] = { dx: p.x, dy: p.y }); const k = Math.min(1, dt * 14); if (Math.hypot(p.x - d.dx, p.y - d.dy) > 300) { d.dx = p.x; d.dy = p.y; } d.dx += (p.x - d.dx) * k; d.dy += (p.y - d.dy) * k; }
   const mp = snap.ps.find(p => p.id === me), md = disp[me]; if (!mp || !md) return;
+  { const mine = snap.bt && mp.bt && snap.bt.find(b => b[0] === mp.bt); setEngine(mine && mine[5] === me ? Math.min(1, (mine[8] || 0) / 220) : 0, mine ? Math.min(1.4, (mine[8] || 0) / 180) : 0); }
   const ghost = snap.state === 'playing' && (!mp.al || mp.es || mp.role === 'ghost');
   updateAim(mp, md, dt);
   const prev = md.px != null ? Math.hypot(md.dx - md.px, md.dy - md.py) : 0; md.px = md.dx; md.py = md.dy;
@@ -344,10 +346,11 @@ function p2Hud(mp, ghost) {
   else if (live && mp.role === 'monster' && mp.mt === 'fester') warn = `Father Fester · stage ${mp.fm || 0}/6`;
   const pw = $('p2warn'); pw.classList.toggle('hide', !warn); if (warn && pw.textContent !== warn) pw.textContent = warn;
 }
+const VLABEL = ['boat', 'ship', 'pickup', 'sedan', 'SUV'];
 function boatPrompt(mp) {
-  if (!snap.bt || !snap.bt.length || mp.role !== 'survivor') return null; const md = disp[me]; if (!md) return null;
-  if (mp.bt) return 'E — get off the boat ⚓';
-  const b = snap.bt.find(b => Math.hypot(b[1] - md.dx, b[2] - md.dy) < (b[4] ? 120 : 90)); return b ? `E — board the ${b[4] ? 'ship 🚢' : 'boat 🚤'}` : null;
+  if (!snap.bt || !snap.bt.length) return null; if (snap.state === 'playing' && mp.role !== 'survivor') return null; const md = disp[me]; if (!md) return null;
+  if (mp.bt) return 'E — get out';
+  const b = snap.bt.find(b => Math.hypot(b[1] - md.dx, b[2] - md.dy) < 100); return b ? `E — ${b[5] ? 'ride' : 'drive'} the ${VLABEL[b[4]] || 'vehicle'}` : null;
 }
 let hotSig = '';
 function invHud(mp, ghost) {
@@ -358,9 +361,10 @@ function invHud(mp, ghost) {
   if (sv && map.loot) { const md = disp[me], lo = new Set(snap.lo || []); let bd = 75; for (const c of map.loot) if (!lo.has(c.id)) { const d = Math.hypot(c.x - md.dx, c.y - md.dy); if (d < bd) { bd = d; near = c; } } }
   let bed = null; if (sv && !near && !mp.st.sleep && map.props) { const md = disp[me]; bed = map.props.find(o => o.k === 'bed' && md.dx > o.x - 40 && md.dx < o.x + o.w + 40 && md.dy > o.y - 40 && md.dy < o.y + o.h + 40); }
   let ex = false; if (sv && snap.ex && disp[me]) ex = Math.hypot(snap.ex.x - disp[me].dx, snap.ex.y - disp[me].dy) < snap.ex.r + 10;
-  const bp = sv && !near && !bed && !ex ? boatPrompt(mp) : null;
+  const bp = (sv || snap.state === 'lobby') && !near && !bed && !ex ? boatPrompt(mp) : null;
   $('prompt').classList.toggle('hide', !near && !bed && !bp && !ex); if (ex) $('prompt').textContent = 'E — board the extraction helicopter 🚁'; else if (bp) $('prompt').textContent = bp; else if (near) $('prompt').textContent = `E — open ${near.kind === 'chest' ? 'chest 🧰' : 'bag 🎒'}`; else if (bed) $('prompt').textContent = 'E — sleep in bed 🛏️ (heals)';
-  $('topen').classList.toggle('hide', !near && !bed && !(sv && mp.st.sleep)); $('topen').firstChild.textContent = near ? '📦' : bed ? '🛏️' : '⏰'; $('topen').querySelector('small').textContent = near ? 'OPEN' : bed ? 'SLEEP' : 'WAKE';
+  const ride = !!(bp || (sv && mp.bt) || near || bed || (sv && mp.st.sleep));
+  $('topen').classList.toggle('hide', !ride); if ($('topen').firstChild) $('topen').firstChild.textContent = mp.bt ? '🚪' : near ? '📦' : bed ? '🛏️' : bp ? '🚗' : '⏰'; $('topen').querySelector('small').textContent = mp.bt ? 'EXIT' : near ? 'OPEN' : bed ? 'SLEEP' : bp ? 'DRIVE' : 'WAKE';
   if (!sv) return;
   const M = snap.me, hp = Math.max(0, M.hp), pct = hp / M.mhp * 100;
   $('hpbar').firstChild.style.width = pct + '%'; $('hpbar').firstChild.style.background = pct < 30 ? 'linear-gradient(#f66,#a22)' : pct < 60 ? 'linear-gradient(#fd5,#b80)' : 'linear-gradient(#5f5,#2a2)';
@@ -382,10 +386,12 @@ let _wall = null;
 // Boisvert's dead channel: the whole screen becomes opaque, animated TV snow with a roaring hiss
 let stc = null;
 function drawStatic(on) {
-  const el = $('staticover'); el.classList.toggle('hide', !on); staticHiss(on); if (!on) return;
+  const el = $('staticover'); el.classList.toggle('hide', !on); staticHiss(on); if (!on) { el.style.opacity = ''; return; }
   if (!stc) { el.width = 320; el.height = 180; stc = { g: el.getContext('2d'), im: null }; stc.im = stc.g.createImageData(320, 180); }
-  const d = stc.im.data, roll = (performance.now() / 9) % 180 | 0;
-  for (let y = 0; y < 180; y++) { const band = Math.abs(y - roll) < 6 ? 40 : 0, line = y % 2 ? .82 : 1; for (let x = 0; x < 320; x++) { const i = (y * 320 + x) * 4, n = Math.min(255, (Math.random() * 255 * line + band) | 0); d[i] = d[i + 1] = d[i + 2] = n; d[i + 3] = 255; } }
+  const flick = .34 + .1 * Math.sin(performance.now() / 80) + (Math.random() < .07 ? .12 : 0);
+  el.style.opacity = flick.toFixed(3);
+  const d = stc.im.data, roll = (performance.now() / 14) % 180 | 0;
+  for (let y = 0; y < 180; y++) { const band = Math.abs(y - roll) < 4 ? 28 : 0, line = y % 3 ? .7 : .9; for (let x = 0; x < 320; x++) { const i = (y * 320 + x) * 4, n = Math.min(210, (70 + Math.random() * 140 * line + band) | 0); d[i] = d[i + 1] = d[i + 2] = n; d[i + 3] = 90 + (Math.random() * 50 | 0); } }
   stc.g.putImageData(stc.im, 0, 0);
 }
 function wallpaper() { // old faded beige floral wallpaper with brownish water smears (as in the Locust broadcast)
@@ -444,7 +450,7 @@ function drawLocust(now) {
 function overlays(mp, ghost, now) {
   const alive = snap.state === 'playing' && !ghost && mp.role === 'survivor';
   $('darkover').classList.toggle('hide', !(alive && mp.st.dark));
-  drawStatic(!!(alive && mp.st.static));
+  drawStatic(!!(alive && mp.st.static) || window.NH.forceStatic);
   const hal = !!(alive && mp.st.halluc); $('hallucover').classList.toggle('hide', !hal); document.body.classList.toggle('halluc', hal);
   $('sleepover').classList.toggle('hide', !(alive && mp.st.sleep));
   if (locust) drawLocust(now);
@@ -511,16 +517,28 @@ if (params.has('shot')) {
   const kind = params.get('shot');
   $('warn').classList.add('hide'); $('menu').classList.add('hide');
   if (kind === 'admin') { $('admin').classList.remove('hide'); window.NH.shotReady = true; }
+  else if (kind === 'static') {
+    window.NH.forceStatic = true; $('hud').classList.add('hide'); $('menu').classList.add('hide');
+    const map = NightHuntCore.genMap('Powerline Forest'); world.setMap(map);
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: map.w / 2, y: map.h / 2, a: 0, role: 'survivor', al: 1, es: 0, st: { static: 1 }, lk: '2,1,0,,,none,none,none,none,none' }];
+    const disp = { 1: { dx: ps[0].x, dy: ps[0].y } }, camS = { yaw: 0.4, pitch: 0.35, zoom: 0.7 };
+    const snapS = { state: 'playing', ps, boarded: [], me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 90 };
+    shotHold = true;
+    const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: 0.4, cam: camS }); drawStatic(true); if (!window.NH.shotReady) window.NH.shotReady = true; requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
   else if (kind === 'showcase') {
     locker.open('weapons');
     setTimeout(() => { const b = document.querySelector('[data-show="knife"]'); if (b) b.click(); const wait = () => { const c = document.querySelector('.showcase canvas'); if (c && c.width > 8) window.NH.shotReady = true; else requestAnimationFrame(wait); }; wait(); }, 50);
   } else {
     shotHold = true; document.body.classList.add('ingame', 'inlobby'); if (kind === 'mobile') { document.body.classList.add('touchmode'); $('hud').classList.remove('hide'); }
-    const map = NightHuntCore.LOBBY; world.setMap(map);
-    const spot = kind === 'mall' ? { x: 2460, y: 2080, yaw: Math.PI / 2, pitch: 0.22, zoom: 0.55 } : kind === 'heli' ? { x: map.heli.x + 40, y: map.heli.y + 220, yaw: -Math.PI / 2, pitch: 0.22, zoom: 0.62 } : kind === 'emote' ? { x: 2480, y: 680, yaw: -Math.PI / 2, pitch: 0.2, zoom: 0.5 } : { x: 290, y: 1380, yaw: -Math.PI / 2, pitch: 0.18, zoom: 0.95 };
-    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0,,,cap,scarf,ranger,none,none', em: kind === 'emote' ? 'groove' : undefined }];
+    const map = kind === 'boats' ? NightHuntCore.genMap('Stormy Ocean') : NightHuntCore.LOBBY; world.setMap(map);
+    const isl = map.islands && map.islands[0];
+    const spot = kind === 'truck' ? { x: 1620, y: 1510, yaw: -0.9, pitch: 0.34, zoom: 0.78 } : kind === 'boats' ? { x: isl.x + isl.r + 90, y: isl.y, yaw: 0.6, pitch: 0.28, zoom: 0.62 } : kind === 'mall' ? { x: 2460, y: 2080, yaw: Math.PI / 2, pitch: 0.22, zoom: 0.55 } : kind === 'heli' ? { x: map.heli.x + 40, y: map.heli.y + 220, yaw: -Math.PI / 2, pitch: 0.22, zoom: 0.62 } : kind === 'emote' ? { x: 2480, y: 680, yaw: -Math.PI / 2, pitch: 0.2, zoom: 0.5 } : { x: 290, y: 1380, yaw: -Math.PI / 2, pitch: 0.18, zoom: 0.95 };
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: kind === 'boats' ? 'survivor' : 'lobby', al: 1, es: 0, st: {}, bt: kind === 'truck' ? 1 : undefined, lk: '2,1,0,,,cap,scarf,ranger,none,none', em: kind === 'emote' ? 'groove' : undefined }];
     const disp = { 1: { dx: spot.x, dy: spot.y } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
-    const snapS = { state: 'lobby', ps, boarded: [], max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [0, 0, 0, 0, 0, 0], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 0 };
+    const bt = kind === 'truck' ? [[1, 1540, 1420, 0.4, 2, 1, 90, 150, 30], [2, 1720, 1560, 2.2, 3, 0, 70, 100, 0], [3, 1360, 1580, -0.4, 4, 0, 80, 170, 0]] : kind === 'boats' ? [[1, spot.x - 50, spot.y + 40, 0.8, 0, 0, 70, 100, 50], [2, spot.x + 40, spot.y - 70, 2.1, 1, 0, 120, 200, 20]] : null;
+    const snapS = { state: kind === 'boats' ? 'playing' : 'lobby', ps, boarded: [], bt, max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [0, 0, 0, 0, 0, 0], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 0 };
     let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS }); if (++n === 12) window.NH.shotReady = true; if (n < 20) requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }

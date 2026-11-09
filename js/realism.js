@@ -75,7 +75,7 @@ const H = {
 const TCACHE = {};
 function heightCanvas(kind) { const key = 'h:' + kind; if (TCACHE[key]) return TCACHE[key]; const n = LOW ? 256 : 512, [c, g] = cv(n); seed = [...kind].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 11) % 2147483647 || 11; H[kind](g, n); return (TCACHE[key] = c); }
 function texOf(c, srgb) { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = LOW ? 2 : 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; return t; }
-function genSet(kind, strength = 2) {
+function genSet(kind, strength = LOW ? 1.6 : 2.8) {
   const key = 'g:' + kind; if (TCACHE[key]) return TCACHE[key];
   const src = heightCanvas(kind), n = src.width, d = src.getContext('2d').getImageData(0, 0, n, n).data, h = new Float32Array(n * n);
   for (let i = 0; i < n * n; i++) h[i] = d[i * 4] / 255;
@@ -276,7 +276,7 @@ function makeMat(src, name, span, o) {
   if (o.isSkinnedMesh && o.geometry.userData.boxUV) { rx = ry = (o.userData.lenM || 8) * (s.d || 1); }
   if (s.keepMap && src.map) { m.map = src.map; if (o.isSkinnedMesh) rx = ry = 18; }
   if (LOW) { rx *= .7; ry *= .7; } // phones: coarser, softer detail (less shimmer on small screens)
-  if (set) { m.normalMap = rep(set.nor, rx, ry); const k = (s.ns ?? 1) * (LOW ? .55 : 1); m.normalScale.set(k, k); m.roughnessMap = rep(set.rough, rx, ry); if (!m.map) m.map = rep(set.col, rx, ry); }
+  if (set) { m.normalMap = rep(set.nor, rx, ry); const k = (s.ns ?? 1) * (LOW ? .5 : 1.35); m.normalScale.set(k, k); m.roughnessMap = rep(set.rough, rx, ry); if (!m.map) m.map = rep(set.col, rx, ry); }
   if (s.wet) m.color.multiplyScalar(.82); if (s.dirt) m.color.multiplyScalar(s.dirt);
   if (!LOW) { if (s.sh) { m.sheen = s.sh; m.sheenRoughness = s.shr ?? .5; m.sheenColor = src.color.clone().lerp(new THREE.Color('#ffffff'), .35); }
     if (s.cc) { m.clearcoat = s.cc; m.clearcoatRoughness = s.ccr ?? .1; } }
@@ -304,8 +304,9 @@ export function realize(root, sub = root) {
     const span = uvSpan(o), k = [name, src.color.getHexString(), src.roughness, src.metalness, src.emissive?.getHexString(), src.emissiveIntensity, src.side, src.transparent, src.opacity, Math.round(span[0] * 2), Math.round(span[1] * 2), o.isSkinnedMesh ? src.uuid : ''].join('|');
     let m = cache.get(k); if (!m) { m = makeMat(src, name, span, o); cache.set(k, m); } o.material = m;
     const fur = S[name].fur; if (fur && !LOW && !o.isSkinnedMesh) {
+      const layers = Math.min(8, fur.n + (TIER === 'ultra' ? 2 : 1)), len = fur.len * (TIER === 'ultra' ? 1.2 : 1.08);
       const strand = rep(TCACHE['strand'] || (TCACHE['strand'] = texOf(heightCanvas('strand'))), span[0] * fur.d, span[1] * fur.d), sc = new THREE.Vector3(); o.getWorldScale(sc); const ms = (sc.x + sc.y + sc.z) / 3 || 1;
-      const sk = m.uuid + ':' + strand.uuid; const mats = SHELL[sk] || (SHELL[sk] = Array.from({ length: fur.n }, (_, i) => shellMat(m, i + 1, fur.n, fur.len / ms, strand)));
+      const sk = m.uuid + ':' + strand.uuid + ':' + layers; const mats = SHELL[sk] || (SHELL[sk] = Array.from({ length: layers }, (_, i) => shellMat(m, i + 1, layers, len / ms, strand)));
       for (const sm of mats) { const sh = new THREE.Mesh(o.geometry, sm); sh.userData.shell = 1; sh.visible = false; sh.castShadow = false; sh.receiveShadow = true; o.add(sh); (root.userData.shells || (root.userData.shells = [])).push(sh); }
     }
   }

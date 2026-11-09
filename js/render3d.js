@@ -3,7 +3,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { tex, glowTex, softTex, beamTex, textSprite, oldWallpaper } from './textures.js';
 import { GFX, GU, PostFX, patch, antiTile, wet, wind, pbrMat, pbrSet, pbrRep, natTex, installPCSS, makeSky, skyTex, waterMat as gfxWater } from './gfx.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet, realSetup, lodTick } from './models.js';
+import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet, realSetup, lodTick, buildVehicle } from './models.js';
 import { applyEmote } from './emotes.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 const NEUTRAL_CG = [[.006, .004, .008], [1, 1, 1], [1, 1, 1], .92], NOVOL = { on: false, dens: 0, lights: [] };
@@ -20,7 +20,7 @@ const THEMES = {
   'Abandoned Pizzeria Town': { ground: 'asphalt', grep: 5, wall: 'brick', fog: '#120d0c', dens: .045, sky: '#3a3050', gnd: '#120c0a', hemi: .6, moon: .55, lamps: 16, tree: 'dead', dust: '#ffd2a0', wisps: 14, wallH: 3.6 , pg: 'asphalt', prep: 4, pg2: 'concrete', hdri: 'storm', skyT: [.3, .24, .24], vd: .055, cg: [[.02, .012, .008], [1.03, 1, .96], [1.08, .98, .86], .85] },
   'Powerline Forest': { ground: 'grass', grep: 4, ground2: 'dirt', wall: 'wood', fog: '#18201f', dens: .05, sky: '#34464c', gnd: '#0c120a', hemi: .62, moon: .6, lamps: 4, tree: 'pine', dense: true, dust: '#d8ff8a', wisps: 40, wallH: 3.2, ferns: true , pg: 'forest', prep: 3, pg2: 'trail', hdri: 'milky', skyT: [.24, .3, .3], vd: .065, cg: [[.006, .012, .01], [1, 1.02, 1], [.93, 1.03, .97], .82] },
   'Foggy Woods': { ground: 'grass', grep: 4, ground2: 'dirt', wall: 'wood', fog: '#151c1b', dens: .06, sky: '#2c3a40', gnd: '#0c120a', hemi: .55, moon: .5, lamps: 7, tree: 'pine', dust: '#d8ff8a', wisps: 34, wallH: 3.2 , pg: 'leaves', prep: 3, pg2: 'mud', hdri: 'storm', skyT: [.2, .25, .25], vd: .09, cg: [[.01, .016, .016], [1, 1.02, 1.02], [.9, 1, 1], .72] },
-  'Static Fields': { ground: 'drygrass', grep: 4, wall: 'concrete', fog: '#1a1a1e', dens: .04, sky: '#404048', gnd: '#141410', hemi: .6, moon: .6, lamps: 10, tree: 'deadtall', dust: '#ffffff', wisps: 16, wallH: 3.2, staticNoise: true , pg: 'meadow', prep: 5, pgc: '#c8bc98', hdri: 'clear', skyT: [.3, .3, .32], vd: .05, cg: [[.014, .014, .014], [1, 1, 1], [1, 1, 1], .55] },
+  'Static Fields': { ground: 'drygrass', grep: 4, wall: 'concrete', fog: '#1a1a1e', dens: .04, sky: '#404048', gnd: '#141410', hemi: .6, moon: .6, lamps: 10, tree: 'deadtall', dust: '#ffffff', wisps: 16, wallH: 3.2, staticNoise: true , pg: 'meadow', prep: 5, pgc: '#c8bc98', hdri: 'clear', skyT: [.3, .3, .32], vd: .05, cg: [[.014, .014, .014], [1, 1, 1], [1, 1, 1], .7] },
   // v1.4 biomes
   'Stormy Ocean': { ground: 'sand', grep: 4, wall: 'wood', fog: '#18232b', dens: .022, sky: '#56687a', gnd: '#0e1418', hemi: .8, moon: .75, lamps: 6, tree: 'palm', wisps: 0, wallH: 3.2, ocean: true, rain: 1 , pg: 'sand', prep: 3, hdri: 'storm', skyT: [.24, .3, .36], vd: .035, wet: 1, cg: [[.006, .012, .02], [1, 1, 1.03], [.9, 1, 1.08], .8] },
   'Rainforest Swamp': { ground: 'grass', grep: 4, ground2: 'dirt', wall: 'wood', fog: '#142019', dens: .05, sky: '#3a5040', gnd: '#0a120a', hemi: .65, moon: .55, lamps: 5, tree: 'jungle', dense: true, ferns: true, wisps: 0, wallH: 3.2, rain: .5 , pg: 'swampmud', prep: 3, pg2: 'mud', hdri: 'storm', skyT: [.2, .28, .22], vd: .075, wet: .75, cg: [[.006, .014, .006], [1, 1.03, 1], [.95, 1.04, .9], .85] },
@@ -583,13 +583,29 @@ export class World {
       if (u.tiles) u.tiles.forEach((m, i) => { m.material.emissiveIntensity = .3 + 1.4 * Math.max(0, Math.sin(t * 4 + i * 1.7)); });
       if (u.pet) { u.pet.position.y = .3 + Math.abs(Math.sin(t * 3 + o.position.x)) * .08; u.pet.rotation.y = Math.sin(t * .7) * .8; } }
     if (this.flickerWins) for (const w of this.flickerWins) w.material.emissiveIntensity = Math.sin(t * 11 + w.id) + Math.sin(t * 6.3 + w.id * 2) > 1.2 ? .03 : .3;
-    // boats
+    // vehicles (boats, ships, pickups, sedans, SUVs)
+    const VNAME = ['boat', 'ship', 'pickup', 'sedan', 'suv'];
     const bts = snap.bt || [], seenB = new Set();
-    for (const b of bts) { const [id, x, y, a, ship] = b; seenB.add(id); let m = this.boats.get(id);
-      if (!m) { m = buildBoat(ship); this.dyn.add(m); this.boats.set(id, m); m.userData.p = W3(x, y); }
-      m.userData.p.lerp(W3(x, y), Math.min(1, dt * 10)); m.position.set(m.userData.p.x, -.35 + Math.sin(t * 1.6 + id) * .12, m.userData.p.z);
-      m.rotation.set(Math.sin(t * 1.3 + id) * .05, angLerp(m.rotation.y, Math.atan2(Math.cos(a), Math.sin(a)), Math.min(1, dt * 6)), Math.sin(t * 1.1 + id * 2) * .07);
-      m.visible = Math.hypot(x - md.dx, y - md.dy) < 3600; }
+    this.vLights = this.vLights || [];
+    let li = 0;
+    for (const b of bts) { const [id, x, y, a, code, , fuel, hp, spd] = b; const kind = VNAME[code] || 'sedan'; const water = kind === 'boat' || kind === 'ship'; seenB.add(id); let m = this.boats.get(id);
+      if (!m || m.userData.kind !== kind) { if (m) this.dyn.remove(m); m = buildVehicle(kind); m.userData.kind = kind; this.dyn.add(m); this.boats.set(id, m); m.userData.p = W3(x, y); }
+      m.userData.p.lerp(W3(x, y), Math.min(1, dt * 10));
+      const bob = water ? Math.sin(t * 1.7 + id) * (0.08 + Math.min(0.18, (spd || 0) / 900)) : 0;
+      m.position.set(m.userData.p.x, (water ? 0.05 : 0) + bob, m.userData.p.z);
+      const yaw = Math.atan2(Math.cos(a), Math.sin(a));
+      m.rotation.set(water ? Math.sin(t * 1.3 + id) * .06 : 0, angLerp(m.rotation.y, yaw, Math.min(1, dt * 8)), water ? Math.sin(t * 1.1 + id) * .05 : 0);
+      m.visible = Math.hypot(x - md.dx, y - md.dy) < (this.mobile ? 1800 : 3600);
+      if (m.visible && (spd || 0) > 25 && li < (this.mobile ? 2 : 6) && m.userData.lights) {
+        const head = this.vLights[li] || (this.vLights[li] = new THREE.SpotLight('#fff1cc', 0, 18, .5, .4, 1)); if (!head.parent) this.scene.add(head, head.target); 
+        const fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+        head.position.copy(m.position).add(new THREE.Vector3(0, 1.1, 0)).addScaledVector(fwd, 1.2);
+        head.target.position.copy(m.position).addScaledVector(fwd, 12);
+        head.intensity = (hp || 0) > 0 && (fuel || 0) > 0 ? (this.mobile ? 8 : 18) : 0; li++;
+        if (water && (this.wakeT = (this.wakeT || 0) - dt) < 0) { this.wakeT = this.mobile ? .12 : .05; this.sparks(m.position.clone().addScaledVector(fwd, -1.5).setY(.15), '#d5e8f2', this.mobile ? 4 : 8, 1.2); }
+      }
+    }
+    for (let i = li; i < (this.vLights || []).length; i++) this.vLights[i].intensity = 0;
     for (const [id, m] of this.boats) if (!seenB.has(id)) { this.dyn.remove(m); this.boats.delete(id); }
     // telltale signs of submerged sea monsters
     const oms = snap.om || [], seenO = new Set();
@@ -741,13 +757,15 @@ export class World {
         if (k === 'drnowhere' && parts.stat) { parts.stat.rotation.y = t * .7; parts.stat.position.y = Math.sin(t * 2) * .05; }
         if (k === 'foxy' && parts.tail) parts.tail.rotation.y = Math.sin(t * 3) * .4;
         parts.body.position.y = Math.abs(Math.sin(c.phase)) * .08 * sp;
+        if (parts.body) { parts.body.rotation.z = Math.sin(c.phase) * .07 * Math.min(1, sp); parts.body.rotation.y = (parts.body.rotation.y || 0) * .2 + Math.sin(c.phase * .5) * .1 * Math.min(1, sp); }
+        if (parts.legL) parts.legL.rotation.x = sw * 1.05; if (parts.legR) parts.legR.rotation.x = -sw * 1.05;
         { // v1.6 breathing + secondary motion: the chest heaves (faster when running), the head lags the stride and scans while idle
           const idle = 1 - Math.min(1, sp), br = Math.sin(t * (1.1 + (1 - idle) * 1.6) + p.id * 1.3), bs = .022 + (1 - idle) * .012;
           const B = parts.body, s0 = B.userData.s0 || (B.userData.s0 = B.scale.clone()); B.scale.set(s0.x * (1 + br * bs), s0.y * (1 + br * bs * .4), s0.z * (1 + br * bs * 1.2));
           const H = parts.head; if (H && k !== 'sirenhead') { const r0 = H.userData.r0 || (H.userData.r0 = H.rotation.clone()); H.rotation.x = r0.x + Math.sin(c.phase * 2 + .6) * .05 * Math.min(1, sp) + br * .02; H.rotation.y = r0.y + Math.sin(t * .4 + p.id) * .25 * idle; } }
         if (k === 'cartooncat') { const hv = c.hv || (c.hv = parts.body.getObjectByName('hover')); if (hv) hv.position.y = .35 + Math.sin(t * 1.7 + p.id) * .14; parts.body.position.y *= .2; } // floats above the ground
         // attack lunge, stagger, knocked-down pose
-        const ac = (performance.now() - c.atk) / 1000; if (ac < .45 && parts.armR) { const k = Math.sin(ac / .45 * Math.PI); parts.armR.rotation.x = -.2 - 2 * k; if (parts.armL) parts.armL.rotation.x = -.2 - 1.6 * k; }
+        const ac = (performance.now() - c.atk) / 1000; if (ac < .5 && parts.armR) { const wind = ac < .12 ? ac / .12 : 1; const k = Math.sin(Math.min(1, ac / .45) * Math.PI); parts.armR.rotation.x = -.35 * wind - 2.1 * k; if (parts.armL) parts.armL.rotation.x = -.2 * wind - 1.5 * k; if (parts.body) parts.body.rotation.x = -.28 * (ac < .16 ? ac / .16 : Math.max(0, 1 - ac)); parts.body.position.y += .12 * k; }
         if (p.st.stag) parts.body.rotation.z = Math.sin(t * 25) * .08; else parts.body.rotation.z = 0;
         const down = !!p.st.down; c.down = lerp(c.down || 0, down ? 1 : 0, Math.min(1, dt * 5));
         parts.body.rotation.x = -c.down * 1.45; parts.body.position.y += c.down * .25; parts.body.position.z = -c.down * .2;
@@ -846,7 +864,7 @@ export class World {
           if (w && w.o.parent) { w.o.getWorldPosition(this.camLook); this.camLook.y += .9; } else this.camLook.set(v.cam.target.x * S, .9, v.cam.target.y * S);
         }
       } else {
-        const z = (zoom - .08) / .92, dist = 2.6 + z * z * 13 + (mp.role === 'monster' && st !== 'lobby' ? monsterHeight(modelKey(mp.mt, mp.fm)) * .5 : 0), el = Math.max(.04, Math.min(1.42, pitch + .12));
+        const z = (zoom - .08) / .92, dist = 2.6 + z * z * 13 + (mp.bt ? 4.2 : 0) + (mp.role === 'monster' && st !== 'lobby' ? monsterHeight(modelKey(mp.mt, mp.fm)) * .5 : 0), el = Math.max(.04, Math.min(1.42, pitch + .12));
         const target = myPos.clone().add(new THREE.Vector3(0, Math.min(eye, 2.4) * .85, 0)).addScaledVector(fwd, .6 + z * 1.2);
         const want = target.clone().addScaledVector(fwd, -dist * Math.cos(el)).add(new THREE.Vector3(0, dist * Math.sin(el), 0));
         if (want.y < .4) want.y = .4;
@@ -880,7 +898,7 @@ export class World {
     const u = this.post.uniforms;
     u.uGrey.value = lerp(u.uGrey.value, mp.st.grey ? 1 : 0, Math.min(1, dt * 4));
     u.uRed.value = danger * (.25 + .2 * Math.sin(t * 9)) + (isMon && playing ? .08 : 0);
-    u.uVig.value = 1.05 + danger * .35 + (mp.st.blind ? .5 : 0); u.uGrain.value = this.theme.staticNoise ? .11 : .07; u.uAb.value = .6 + danger * 3; { const gk = (performance.now() - (this.glitchT || -1e9)) / 700; if (gk < 1) { u.uAb.value += (1 - gk) * 22 * Math.random(); u.uGrain.value += (1 - gk) * .5; } } // Doctor Nowhere's form-change glitch
+    u.uVig.value = 1.05 + danger * .35 + (mp.st.blind ? .5 : 0); u.uGrain.value = this.theme.staticNoise ? .06 : .045; u.uAb.value = .6 + danger * 3; { const gk = (performance.now() - (this.glitchT || -1e9)) / 700; if (gk < 1) { u.uAb.value += (1 - gk) * 22 * Math.random(); u.uGrain.value += (1 - gk) * .35; } } // Doctor Nowhere's form-change glitch
     u.uExp.value = st === 'lobby' ? 1.5 : 1.7; u.uFade.value = 0; u.uFlash.value = Math.max(0, u.uFlash.value - dt * 3);
     this.render(this.scene, this.camera);
     return { danger, myPos };
@@ -1123,7 +1141,7 @@ export class World {
     cam.position.set(pos.x + (Math.random() - .5) * shake, pos.y + (Math.random() - .5) * shake, pos.z); cam.lookAt(look); this.scareScene.userData.focus = Math.max(.4, cam.position.distanceTo(hp));
     this.scareLight.position.set(hp.x, hp.y - 1.2, hp.z + 1.8); this.scareLight.intensity = Math.random() < .2 ? 5 : 35; this.scareRed.position.set(hp.x + 1, hp.y + 1, hp.z + 1);
     if (p.head && !fnaf && k !== 'sirenhead' && k !== 'locust') p.head.rotation.z = Math.sin(t * 40) * .05;
-    const u = this.post.uniforms; u.uGrey.value = k === 'boisvert' ? 1 : 0; u.uRed.value = red + Math.random() * .15; u.uVig.value = 1.5; u.uGrain.value = .25; u.uAb.value = ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = e < .06 ? .5 : 0;
+    const u = this.post.uniforms; u.uGrey.value = k === 'boisvert' ? .55 : 0; u.uRed.value = red + Math.random() * .15; u.uVig.value = 1.35; u.uGrain.value = k === 'boisvert' ? .12 : .18; u.uAb.value = ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = e < .06 ? .5 : 0;
     this.render(this.scareScene, cam);
   }
   // phase 2 jumpscares: one choreography per creature (teen level: lunges, bites and cut-to-black, no gore)
