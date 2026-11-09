@@ -1,4 +1,6 @@
-# Night Hunt 🚁👹 (v1.7.0, rated 13+)
+# Night Hunt 🚁👹 (v1.8.0, rated 13+)
+
+v1.8 adds drivable pickups, sedans and SUVs, fixes ocean boats so they can actually be driven, and makes Boisvert's TV static see-through. Monster materials and motion are heavier on high graphics and stay lighter on phones. This branch is not live until it is merged.
 
 v1.7 replaces the shopping street with a city and a mall, adds a 3D item showcase, original emotes, survivor coils, and a one-time 10,000 coin grant. The browser build is the one exercised here. It is not deployed until this branch is merged and GitHub Pages publishes it. Paid coin packs stay disabled.
 

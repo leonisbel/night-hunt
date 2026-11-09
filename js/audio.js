@@ -86,6 +86,22 @@ export function setRotor(vol) {
   }
   rotor.g.gain.setTargetAtTime(Math.max(0, Math.min(1, vol)) * .6, AC.currentTime, .15);
 }
+let engine = null;
+export function setEngine(vol, rate = 1) {
+  if (!AC) return;
+  if (!engine) {
+    const s = AC.createBufferSource(); s.buffer = noiseBuffer(); s.loop = true;
+    const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 220;
+    const g = AC.createGain(); g.gain.value = 0; s.connect(f).connect(g); out(g, .12); s.start();
+    const th = AC.createOscillator(); th.type = 'sawtooth'; th.frequency.value = 48; const tg = AC.createGain(); tg.gain.value = 0; th.connect(tg).connect(g); th.start();
+    engine = { g, f, th, tg };
+  }
+  const v = Math.max(0, Math.min(1, vol));
+  engine.g.gain.setTargetAtTime(v * .22, AC.currentTime, .08);
+  engine.f.frequency.setTargetAtTime(140 + rate * 420, AC.currentTime, .08);
+  engine.th.frequency.setTargetAtTime(36 + rate * 70, AC.currentTime, .08);
+  engine.tg.gain.setTargetAtTime(v * .12, AC.currentTime, .08);
+}
 
 // original synthesized "ha… ha… ha…" laugh: a glottal sawtooth through two vowel formants, pitch sagging, drenched in reverb
 function laugh(v = 1) {
@@ -121,7 +137,7 @@ export function preloadSamples() { if (AC) for (const k in SAMPLES) if (SBUF[k] 
 let hiss = null;
 export function staticHiss(on) {
   if (!AC) return; if (on && !hiss && !muted) { const s = AC.createBufferSource(), hp = AC.createBiquadFilter(), pk = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = noiseBuffer(); s.loop = true; hp.type = 'highpass'; hp.frequency.value = 700; pk.type = 'peaking'; pk.frequency.value = 4200; pk.gain.value = 6;
-    g.gain.setValueAtTime(.0001, AC.currentTime); g.gain.exponentialRampToValueAtTime(.32, AC.currentTime + .08); s.connect(hp).connect(pk).connect(g); g.connect(master); s.start(); hiss = { s, g }; }
+    g.gain.setValueAtTime(.0001, AC.currentTime); g.gain.exponentialRampToValueAtTime(.14, AC.currentTime + .08); s.connect(hp).connect(pk).connect(g); g.connect(master); s.start(); hiss = { s, g }; }
   else if (!on && hiss) { const h = hiss; hiss = null; h.g.gain.setTargetAtTime(.0001, AC.currentTime, .08); h.s.stop(AC.currentTime + .5); }
 }
 export function sfx(k, o = {}) {

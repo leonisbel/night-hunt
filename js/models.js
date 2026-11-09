@@ -435,7 +435,10 @@ const EYE = (c, ei = 3) => mat(c, { e: c, ei, r: .2 });
 
 // --- Megalodon (sea form): CC0 shark, scaled to 15 m, scarred grey
 B.megalodon = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 1.4, 6.4], 'head');
-  glbPart(body, 'shark2', { len: 15, tint: '#55606a', mix: .3, r: .5, anims: { idle: /^Swim$/, walk: /^Swim$/, run: /Swim_Fast/, attack: /Swim_Bite/ } }); };
+  glbPart(body, 'shark2', { len: 15, tint: '#55606a', mix: .3, r: .5, anims: { idle: /^Swim$/, walk: /^Swim$/, run: /Swim_Fast/, attack: /Swim_Bite/ },
+    ready: (m, size, holder) => { const gill = mat('#2a343c', { r: .4 });
+      for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(G.box(size.x * .01, size.y * .012, size.z * .07), gill); s.position.set(sx * size.x * .18, size.y * .38, size.z * (.12 - i * .035)); s.rotation.y = sx * .5; holder.add(s); }
+    } }); };
 // --- Megalodon (land form): a giant, buff humanoid shark
 B.megalodon_h = r => {
   const grey = mat('#5b6976', { map: 'skin', bump: 'skin', bs: 1.4, r: .42 }), belly = mat('#d9d6cb', { map: 'skin', bump: 'skin', r: .5 }), dark = mat('#252c34', { r: .5 });
@@ -461,7 +464,7 @@ B.megalodon_h = r => {
   add(jaw, G.box(.78, .14, .95), grey, [0, -.06, .48]); add(jaw, G.box(.66, .05, .84), gum, [0, .03, .48]);
   teethRow(jaw, 0, .1, .4, .3, .5, 11, tooth, false, .13); teethRow(head, 0, -.3, .42, .32, .55, 12, tooth, true, .14);
   add(head, G.box(.6, .05, .7), gum, [0, -.26, .55]);
-  for (const sx of [-1, 1]) { add(head, G.sph(.07, 12, 10), eyeM, [sx * .42, .12, .55]); for (let i = 0; i < 4; i++) add(head, G.box(.02, .3, .05), dark, [sx * .5, -.12, -.05 - i * .13]); }
+  for (const sx of [-1, 1]) { add(head, G.sph(.07, 12, 10), eyeM, [sx * .42, .12, .55]); add(head, G.sph(.025, 8, 6), mat('#fff', { e: '#fff', ei: 1.2 }), [sx * .44, .15, .6]); for (let i = 0; i < 5; i++) add(head, G.box(.025, .32, .04), dark, [sx * .52, -.1, -.02 - i * .11]); add(head, G.box(.02, .02, .55), mat('#6a4038', { r: .6 }), [sx * .2, .05, .15], [0, 0, sx * .4]); }
   add(head, G.sph(.04, 8, 6), dark, [-.14, -.02, 1.18]); add(head, G.sph(.04, 8, 6), dark, [.14, -.02, 1.18]);
 };
 // --- Kraken: a colossal squid; mantle and two eyes break the surface, ten tentacles thrash
@@ -1038,8 +1041,9 @@ B.spinosaurus = r => { const body = grp(r, [0, 0, 0], 'body'); grp(body, [0, 4.6
   const sailM = mat('#8a8470', { map: 'skin', bump: 'skin', bs: 2, r: .6 }); sailM.side = THREE.DoubleSide; const ribM = mat('#6a6450', { r: .6 });
   glbPart(body, 'trex', { len: 14, tint: '#56604a', mix: .72, r: .6, eyes: '#e0a020', anims: { idle: /TRex_Idle/, walk: /TRex_Walk/, run: /TRex_Run/, attack: /TRex_Attack/ },
     ready: (m, size, holder) => { const sh = new THREE.Shape(), L = size.z * .42, H = size.y * .46; sh.moveTo(-L / 2, 0); for (let i = 0; i <= 14; i++) { const x = -L / 2 + L * i / 14; sh.lineTo(x, H * Math.pow(Math.sin(Math.PI * i / 14), .8) * (1 + (i % 2) * .06)); } sh.lineTo(L / 2, 0);
-      const s = new THREE.Mesh(new THREE.ShapeGeometry(sh, 4), sailM); s.rotation.y = -Math.PI / 2; s.position.set(0, size.y * .64, -size.z * .02); s.castShadow = true; holder.add(s); holder.userData.sail = s;
-      for (let i = 1; i < 14; i++) { const x = -L / 2 + L * i / 14, h = H * Math.pow(Math.sin(Math.PI * i / 14), .8); const b = new THREE.Mesh(G.cyl(.03, .07, +h.toFixed(2), 6), ribM); b.position.set(0, size.y * .64 + h / 2, -size.z * .02 - x); holder.add(b); }
+      const s = new THREE.Mesh(new THREE.ShapeGeometry(sh, 8), sailM); s.rotation.y = -Math.PI / 2; s.position.set(0, size.y * .64, -size.z * .02); s.castShadow = true; holder.add(s); holder.userData.sail = s;
+      for (let i = 1; i < 14; i++) { const x = -L / 2 + L * i / 14, h = H * Math.pow(Math.sin(Math.PI * i / 14), .8); const b = new THREE.Mesh(G.cyl(.03, .07, +h.toFixed(2), 6), ribM); b.position.set(0, size.y * .64 + h / 2, -size.z * .02 - x); holder.add(b);
+        const sc = new THREE.Mesh(G.box(.04, .03, .08), mat('#3e4634', { r: .45 })); sc.position.set(.06, size.y * .64 + h * .72, -size.z * .02 - x); holder.add(sc); }
       const bn = {}; m.traverse(x => { if (x.isBone) bn[x.name] = x; });
       if (bn.Head) bn.Head.scale.set(.55, 1.35, .7); if (bn.Neck) bn.Neck.scale.set(.85, 1.15, .85); if (bn.FrontUpLegR) for (const k of ['FrontUpLegR', 'FrontUpLegL']) bn[k].scale.setScalar(1.45);
       for (let i = 2; i <= 5; i++) { const t = bn['Tail' + i]; if (t) t.scale.set(.82, 1, 1.32); } if (bn.BackUpLegR) for (const k of ['BackUpLegR', 'BackUpLegL']) bn[k].scale.set(1, .85, 1); } }); };
@@ -1222,7 +1226,7 @@ B.wendigo_h = r => {
 const TEMPLATE = {};
 export function buildMonster(kind) {
   const root = new THREE.Group(); root.userData.kind = kind; const [base, arg] = String(kind).split('#');
-  WIG = []; DET = isLow() ? 1 : 1.7; try { (B[base] || B.freddy)(root, arg); } finally { DET = 1; } root.userData.wiggle = WIG; WIG = null;
+  WIG = []; DET = isLow() ? 1 : 2.05; try { (B[base] || B.freddy)(root, arg); } finally { DET = 1; } root.userData.wiggle = WIG; WIG = null;
   root.traverse(o => { if (o.isMesh && !o.userData.real && !o.userData.keep) { o.material = o.material.clone(); } });
   realize(root);
   root.userData.parts = { legL: root.getObjectByName('legL'), legR: root.getObjectByName('legR'), armL: root.getObjectByName('armL'), armR: root.getObjectByName('armR'), head: root.getObjectByName('head'), body: root.getObjectByName('body') || root.children[0] || new THREE.Group(), stat: root.getObjectByName('static'), tail: root.getObjectByName('tail') };
@@ -1519,6 +1523,40 @@ export function buildHelicopter(color = '#2d4a34') {
   root.userData.rotor = rotor; root.userData.tail = tail;
   root.userData.door = true;
   return root;
+}
+
+// Generic vehicles. No brand marks. kind: pickup, sedan, suv, boat, ship.
+export function buildVehicle(kind = 'sedan') {
+  const g = new THREE.Group();
+  const paint = mat(kind === 'pickup' ? '#6d2e24' : kind === 'suv' ? '#2c3a32' : kind === 'boat' ? '#b23a2a' : kind === 'ship' ? '#d8d2c4' : '#3a4660', { m: .45, r: .38, map: 'metal' });
+  const glass = new THREE.MeshPhysicalMaterial({ color: '#c5d6e4', roughness: .05, metalness: .05, transparent: true, opacity: .45 });
+  const dark = mat('#1a1c20', { m: .3, r: .6 }), rubber = mat('#151515', { r: .95 }), lamp = mat('#fff4d0', { e: '#fff1c4', ei: 2.2 });
+  const wheel = (x, z, rad = .38) => { add(g, G.cyl(rad, rad, .22, 14), rubber, [x, rad, z], [0, 0, Math.PI / 2]); add(g, G.cyl(rad * .45, rad * .45, .24, 10), dark, [x, rad, z], [0, 0, Math.PI / 2]); };
+  if (kind === 'boat' || kind === 'ship') {
+    const ship = kind === 'ship', L = ship ? 8.2 : 4.6, W = ship ? 2.5 : 1.55;
+    const hull = new THREE.Shape();
+    hull.moveTo(-W / 2, -L / 2); hull.lineTo(W / 2, -L / 2); hull.lineTo(W * .42, L * .28); hull.quadraticCurveTo(W * .2, L * .48, 0, L / 2); hull.quadraticCurveTo(-W * .2, L * .48, -W * .42, L * .28); hull.lineTo(-W / 2, -L / 2);
+    const geo = new THREE.ExtrudeGeometry(hull, { depth: ship ? 1.15 : .72, bevelEnabled: true, bevelSize: .08, bevelThickness: .1, bevelSegments: 2 });
+    geo.rotateX(Math.PI / 2); geo.translate(0, ship ? .7 : .42, 0); geo.userData.shared = 0;
+    const mesh = new THREE.Mesh(geo, paint); mesh.castShadow = true; g.add(mesh);
+    const deck = new THREE.Mesh(new THREE.ShapeGeometry(hull), mat('#6a5438', { map: 'wood', r: .75 })); deck.rotation.x = -Math.PI / 2; deck.position.y = ship ? .78 : .48; deck.scale.setScalar(.9); g.add(deck);
+    add(g, G.box(W * .7, .35, .08), glass, [0, ship ? 1.5 : .85, L * .28]);
+    add(g, G.box(.35, .45, .4), dark, [0, ship ? .9 : .7, -L * .42]);
+    add(g, G.box(.18, .1, .12), lamp, [W * .28, ship ? 1.1 : .7, L * .36]); add(g, G.box(.18, .1, .12), lamp, [-W * .28, ship ? 1.1 : .7, L * .36]);
+    if (ship) { add(g, G.box(1.6, 1.3, 2.2), mat('#eeeae2', { r: .5 }), [0, 1.55, -.6]); add(g, G.box(1.62, .4, 1.4), glass, [0, 1.7, -.4]); }
+    g.userData.water = 1; g.userData.lights = [[W * .28, ship ? 1.1 : .7, L * .4], [-W * .28, ship ? 1.1 : .7, L * .4]];
+    return g;
+  }
+  const suv = kind === 'suv', pickup = kind === 'pickup';
+  const L = pickup ? 4.8 : suv ? 4.3 : 4.4, H = suv ? 1.55 : pickup ? 1.45 : 1.15, W = suv ? 1.85 : 1.75;
+  add(g, G.box(W, .45, L), paint, [0, .62, 0]);
+  if (pickup) { add(g, G.box(W * .96, .35, L * .42), paint, [0, .95, -L * .22]); add(g, G.box(W * .9, H * .7, L * .38), paint, [0, 1.15, L * .12]); add(g, G.box(W * .82, .45, L * .32), glass, [0, 1.35, L * .14]); }
+  else { add(g, G.box(W * .92, H * .72, L * (suv ? .62 : .48)), paint, [0, .95 + H * .2, suv ? .05 : .15]); add(g, G.box(W * .84, H * .42, L * (suv ? .55 : .42)), glass, [0, 1.15 + H * .15, suv ? .08 : .18]); }
+  wheel(-W * .48, L * .32); wheel(W * .48, L * .32); wheel(-W * .48, -L * .32); wheel(W * .48, -L * .32);
+  add(g, G.box(.28, .12, .08), lamp, [-W * .28, .72, L * .5]); add(g, G.box(.28, .12, .08), lamp, [W * .28, .72, L * .5]);
+  add(g, G.box(.22, .08, .06), mat('#ff3030', { e: '#ff2020', ei: 1.4 }), [-W * .3, .7, -L * .5]); add(g, G.box(.22, .08, .06), mat('#ff3030', { e: '#ff2020', ei: 1.4 }), [W * .3, .7, -L * .5]);
+  g.userData.lights = [[-W * .28, .78, L * .55], [W * .28, .78, L * .55]];
+  return g;
 }
 
 // Lamp post (light is assigned from a pool by the renderer)
