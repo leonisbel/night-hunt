@@ -155,33 +155,65 @@ export function dressLobby(map, season, tier, when = new Date()) {
     grnM.emissiveIntensity = phase > 6 ? 1.8 : 0.12;
   });
 
-  // Mall floor, storefront glass, escalator, fountain.
+  // Two-floor mall: atrium hole, balcony, glass rails, skylight, escalators, themed storefronts.
   if (mall) {
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(7.5, tier === 'low' ? 16 : 28), pbrMat('planks', 3, 3, { color: '#c8b090', r: 0.8 }));
-    floor.rotation.x = -Math.PI / 2; floor.position.set(cx, 0.04, cz); group.add(floor);
     const gmat = glass();
-    const northZ = (mall.y + mall.h - 6) * S;
-    const southZ = (mall.y + 6) * S;
-    for (const z of [northZ, southZ]) {
-      const pane = new THREE.Mesh(new THREE.BoxGeometry(mall.w * S * 0.72, 2.4, 0.06), gmat);
-      pane.position.set(cx, 1.6, z); group.add(pane);
+    const info = map.mall;
+    const atr = info && info.atrium;
+    const ax = atr ? (atr.x + atr.w / 2) * S : cx;
+    const az = atr ? (atr.y + atr.h / 2) * S : cz;
+    const aw = atr ? atr.w * S : 16;
+    const ad = atr ? atr.h * S : 16;
+    const mx = mall.x * S, mz = mall.y * S, mw = mall.w * S, md = mall.h * S;
+    const deck = pbrMat('planks', 4, 4, { color: '#d7cbb6', r: 0.75 });
+    const slab = (x, y, z, w, h, d) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), deck); m.position.set(x, y, z); group.add(m); };
+    const fy = 4.2;
+    slab(mx + (ax - aw / 2 - mx) / 2, fy, mz + md / 2, ax - aw / 2 - mx, 0.22, md);
+    slab(ax + aw / 2 + (mx + mw - (ax + aw / 2)) / 2, fy, mz + md / 2, mx + mw - (ax + aw / 2), 0.22, md);
+    slab(ax, fy, mz + (az - ad / 2 - mz) / 2, aw, 0.22, az - ad / 2 - mz);
+    slab(ax, fy, az + ad / 2 + (mz + md - (az + ad / 2)) / 2, aw, 0.22, mz + md - (az + ad / 2));
+    const railMat = glass();
+    for (const [rx, rz, rw, rd] of [[ax, az - ad / 2, aw, 0.08], [ax, az + ad / 2, aw, 0.08], [ax - aw / 2, az, 0.08, ad], [ax + aw / 2, az, 0.08, ad]]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(rw, 1.05, rd), railMat);
+      rail.position.set(rx, fy + 0.7, rz); group.add(rail);
     }
-    board(group, 'NIGHT MALL', 'FOUNTAIN  ·  SHOPS  ·  HELIPAD', '#ffd27a', '#2a2418', cx, 5.4, southZ + 0.4, 6);
-    const stepN = tier === 'low' ? 6 : 10;
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < stepN; i++) {
-        const step = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.16, 0.42), std('#c5c8cc', { m: 0.35, r: 0.35 }));
-        step.position.set(cx - 22 * side, 0.1 + i * 0.16, cz - 8 + i * 0.42); group.add(step);
+    const sky = new THREE.Mesh(new THREE.BoxGeometry(mw * 0.92, 0.08, md * 0.92), new THREE.MeshPhysicalMaterial({ color: '#cfe7ff', roughness: 0.05, metalness: 0.05, transparent: true, opacity: 0.28, side: THREE.DoubleSide }));
+    sky.position.set(mx + mw / 2, 8.2, mz + md / 2); group.add(sky);
+    const beam = std('#e8e4dc', { m: 0.2, r: 0.4 });
+    for (const [bx, bz] of [[mx + 1.2, mz + 1.2], [mx + mw - 1.2, mz + 1.2], [mx + 1.2, mz + md - 1.2], [mx + mw - 1.2, mz + md - 1.2]]) {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.35, 8.2, 0.35), beam); col.position.set(bx, 4.1, bz); group.add(col);
+    }
+    board(group, 'NIGHT MALL', 'TWO FLOORS  ·  ATRIUM', '#ffd27a', '#2a2418', mx + 6, 6.2, mz + 1.2, 5);
+    const names = { weapons: 'WEAPON SHOP', armor: 'ARMOR', food: 'FOOD COURT', pets: 'PETS', skinshop: 'CLOTHING', monskins: 'MONSTER SHOP', emotes: 'ARCADE', clothing: 'DRESSING ROOM', crate: 'CRATES' };
+    for (const z of map.zones || []) {
+      if (!names[z.k]) continue;
+      const y = 1.4 + (z.fl || 0) * fy;
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(Math.max(3, z.w * S * 0.7), 2.3, 0.06), gmat);
+      pane.position.set((z.x + z.w / 2) * S, y, z.y * S); group.add(pane);
+      board(group, names[z.k], z.fl ? 'UPPER LEVEL' : 'GROUND', z.c || '#fff', '#1a140c', (z.x + z.w / 2) * S, y + 1.5, z.y * S, 2.4);
+    }
+    const stepMat = std('#c5c8cc', { m: 0.35, r: 0.35 });
+    for (const L of map.lifts || []) {
+      const lx = (L.x + L.w / 2) * S, lz = (L.y + L.h / 2) * S;
+      if (L.kind === 'elevator') {
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(L.w * S, 2.4, L.h * S), std('#8d97a3', { m: 0.55, r: 0.35 }));
+        cab.position.set(lx, 1.2, lz); group.add(cab);
+        board(group, 'ELEVATOR', 'PRESS E', '#d7e6ff', '#1a1c22', lx, 2.8, lz, 1.6);
+      } else {
+        const n = tier === 'low' ? 6 : 10;
+        for (let i = 0; i < n; i++) {
+          const step = new THREE.Mesh(new THREE.BoxGeometry(L.w * S * 0.8, 0.14, 0.36), stepMat);
+          step.position.set(lx, 0.12 + (i / n) * fy, (L.y * S) + i * (L.h * S) / n); group.add(step);
+        }
+        board(group, L.kind === 'stair' ? 'STAIRS' : 'ESCALATOR', 'WALK ON', '#ffe7a8', '#2a2418', lx, 2.2, lz, 1.8);
       }
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, stepN * 0.42), gmat);
-      rail.position.set(cx - 22 * side + 0.75, 0.9, cz - 8 + stepN * 0.2); group.add(rail);
     }
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.45, tier === 'low' ? 10 : 20), pbrMat('castle', 1, 1, { color: '#d9d4cc' }));
-    ring.position.set(cx, 0.28, cz); group.add(ring);
+    ring.position.set(ax, 0.28, az); group.add(ring);
     const water = new THREE.Mesh(new THREE.CircleGeometry(2.15, 18), new THREE.MeshPhysicalMaterial({ color: '#7eb8d4', roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.75 }));
-    water.rotation.x = -Math.PI / 2; water.position.set(cx, 0.42, cz); group.add(water);
+    water.rotation.x = -Math.PI / 2; water.position.set(ax, 0.42, az); group.add(water);
     const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.16, 1.4, 8), new THREE.MeshBasicMaterial({ color: '#e8f6ff', transparent: true, opacity: 0.65 }));
-    jet.position.set(cx, 1.1, cz); group.add(jet);
+    jet.position.set(ax, 1.1, az); group.add(jet);
     anim.push(t => { jet.scale.y = 0.85 + Math.sin(t * 3) * 0.12; jet.position.y = 1.05 + Math.sin(t * 3) * 0.05; });
   }
 

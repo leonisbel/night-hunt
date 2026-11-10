@@ -26,7 +26,8 @@ window.NH.showcaseStats = showcaseStats; window.NH.closeShowcase = closeShowcase
 // ---------- menu ----------
 $('pname').value = localStorage.nhName || '';
 // content warning (13+): must be accepted with Continue every time before the menu appears
-$('bwarn').onclick = () => { $('warn').classList.add('hide'); $('menu').classList.remove('hide'); };
+$('bwarn').onclick = () => { $('warn').classList.add('hide'); if (params.has('shot')) { $('menu').classList.remove('hide'); return; } $('intro').classList.remove('hide'); };
+if ($('intro')) $('intro').onclick = () => { audio.unlock(); sfx('sting'); $('intro').classList.add('gone'); setTimeout(() => { $('intro').classList.add('hide'); $('menu').classList.remove('hide'); }, 520); };
 if ($('badmin')) $('badmin').onclick = () => $('admin').classList.remove('hide');
 if ($('adminclose')) $('adminclose').onclick = () => $('admin').classList.add('hide');
 const opt = { blood: localStorage.nhBlood !== '0', scare: localStorage.nhScare === 'normal' ? 'normal' : 'intense', photo: localStorage.nhPhoto === '1' };
@@ -34,7 +35,7 @@ const opt = { blood: localStorage.nhBlood !== '0', scare: localStorage.nhScare =
 { const ss = $('optsky'); if (ss) { ss.innerHTML = SKIES.map(s => `<option value="${s.id}">${s.name}</option>`).join(''); ss.value = loadSky().id; ss.onchange = () => { const sky = saveSky(ss.value); if (world) world.setSky(sky.id); }; } }
 $('optblood').checked = opt.blood; $('optblood').onchange = () => { opt.blood = $('optblood').checked; localStorage.nhBlood = opt.blood ? '1' : '0'; if (world) world.blood = opt.blood; }; if (world) world.blood = opt.blood;
 if ($('optscare')) { $('optscare').value = opt.scare; $('optscare').onchange = () => { opt.scare = $('optscare').value === 'normal' ? 'normal' : 'intense'; localStorage.nhScare = opt.scare; }; }
-if ($('optphoto')) { $('optphoto').checked = opt.photo; $('optphoto').onchange = () => { opt.photo = $('optphoto').checked; localStorage.nhPhoto = opt.photo ? '1' : '0'; }; }
+if ($('optphoto')) { $('optphoto').checked = opt.photo; document.body.classList.toggle('photo', opt.photo); $('optphoto').onchange = () => { opt.photo = $('optphoto').checked; localStorage.nhPhoto = opt.photo ? '1' : '0'; document.body.classList.toggle('photo', opt.photo); }; }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.tab').forEach(x => x.classList.add('hide')); $('tab-' + b.dataset.tab).classList.remove('hide');
@@ -279,7 +280,7 @@ function frame(now) {
     if (e > KILL_LEN || !md) { cam.zoom = killcam.zoom; cam.pitch = killcam.pitch; cam.target = null; const kn = killcam.name, kt = killcam.type; killcam = null; $('scareover').classList.add('hide'); showKillPop(kn, kt); }
     else { cam.yaw = Math.atan2(killcam.y - md.dy, killcam.x - md.dx); cam.zoom = 0; cam.target = { x: killcam.x, y: killcam.y }; drawKill(e); }
   }
-  if (jumpscare) { const e = jumpscare.freeze != null ? jumpscare.freeze : (now - jumpscare.start) / 1000; world.frame(dt, t, { scare: { type: jumpscare.type, fm: jumpscare.fm, elapsed: e, intense: opt.scare !== 'normal', photo: !!opt.photo, blood: !!opt.blood } }); drawScare(jumpscare.type, e); arrows([]); return; }
+  if (jumpscare) { const e = jumpscare.freeze != null ? jumpscare.freeze : (now - jumpscare.start) / 1000; world.frame(dt, t, { scare: { type: jumpscare.type, fm: jumpscare.fm, elapsed: e, intense: opt.scare !== 'normal', photo: !!opt.photo, blood: !!opt.blood, skin: jumpscare.skin, show: jumpscare.show } }); if (!jumpscare.show) drawScare(jumpscare.type, e); arrows([]); return; }
   else if (scareShown && !killcam) { scareShown = false; $('scareover').classList.add('hide'); }
   if (flight) { world.frame(dt, t, { flight: { elapsed: (now - flight.start) / 1000, left: (flight.until - now) / 1000, monster: flight.mine && flight.mine.role === 'monster' } }); arrows([]); return; }
   if (!room || !map || !snap) { world.frame(dt, t, {}); return; }
@@ -349,6 +350,15 @@ function hud(mp, ghost) {
 const ZONE_TAB = { shop: 'food', mirror: 'clothing', skins: 'skinshop' };
 let lastZone = null;
 function storeZone() { if (!snap || snap.state !== 'lobby' || !map || !map.zones) return null; const md = disp[me]; if (!md) return null; const fl = (snap.ps.find(p => p.id === me) || {}).fl || 0; return map.zones.find(z => (z.fl || 0) === fl && md.dx > z.x && md.dx < z.x + z.w && md.dy > z.y && md.dy < z.y + z.h) || null; }
+const AURA_NAME = { shadow: 'Shadow', toxic: 'Radiation', frost: 'Frost', blood: 'Blood', lava: 'Heat', neon: 'Neon', ghost: 'Veil', zombie: 'Rot', abyss: 'Abyss', golden: 'Shine' };
+function paintAura() {
+  document.body.classList.toggle('photo', !!opt.photo);
+  const au = snap && snap.state === 'playing' && snap.me ? snap.me.au : '';
+  for (const k of Object.keys(AURA_NAME)) document.body.classList.toggle('aura-' + k, au === k);
+  const el = $('auraicon'); if (!el) return;
+  el.classList.toggle('hide', !au);
+  if (au) el.textContent = AURA_NAME[au] || au;
+}
 function paintSky(on) {
   const el = $('skypick'); if (!el) return; el.classList.toggle('hide', !on); if (!on || el.dataset.built) return; el.dataset.built = '1';
   el.innerHTML = `<b>Sky Dome</b><small>Free. Only your screen changes.</small>` + SKIES.map(s => `<button type="button" data-sky="${s.id}">${s.name}</button>`).join('');
@@ -358,6 +368,7 @@ function p2Hud(mp, ghost) {
   const z = storeZone(), zp = $('zoneprompt');
   if (z !== lastZone) { lastZone = z; if (z && z.k !== 'sky') { sfx('click'); locker.open(ZONE_TAB[z.k] || z.k); } }
   paintSky(!!(z && z.k === 'sky'));
+  paintAura();
   zp.classList.toggle('hide', !z); if (z) { zp.innerHTML = `${z.ic || '🛒'} ${z.name}<small>${z.k === 'sky' ? 'Pick a sky below. Walk out to close.' : (touch.active ? 'Tap here' : 'Press E') + ' to browse · walk out to leave'}</small>`; zp.onclick = () => { if (z.k !== 'sky') locker.open(ZONE_TAB[z.k] || z.k); }; }
   const live = snap.state === 'playing' && !ghost, S2 = mp.st || {}, ov = $('p2over');
   const cls = live ? (S2.burn ? 'burn' : S2.fog ? 'fog' : S2.snow ? 'snow' : S2.storm ? 'storm' : S2.soak ? 'soak' : '') : '';
@@ -546,6 +557,27 @@ if (params.has('shot')) {
     jumpscare.freeze = +(params.get('hold') || .5);
     jumpscare.until = performance.now() + 120000;
     setTimeout(() => { window.NH.shotReady = true; }, 400);
+  }
+  else if (kind === 'intro') {
+    $('warn').classList.add('hide'); $('menu').classList.add('hide'); $('intro').classList.remove('hide');
+    setTimeout(() => { window.NH.shotReady = true; }, 700);
+  }
+  else if (kind === 'mall') {
+    shotHold = true; document.body.classList.add('ingame', 'inlobby'); $('hud').classList.add('hide'); $('menu').classList.add('hide'); $('warn').classList.add('hide');
+    const map = NightHuntCore.LOBBY; world.setMap(map);
+    const fl = +(params.get('floor') || 0);
+    const spot = fl ? { x: 2500, y: 900, yaw: 0.55, pitch: 0.06, zoom: 0.4 } : { x: 2500, y: 1900, yaw: -0.42, pitch: 0.04, zoom: 0.48 };
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0', fl }];
+    const disp = { 1: { dx: spot.x, dy: spot.y } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
+    const snapS = { state: 'lobby', ps, boarded: [], max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {}, fl }, tl: 0 };
+    let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS }); if (++n === 10) window.NH.shotReady = true; if (n < 16) requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+  else if (kind === 'skin') {
+    $('warn').classList.add('hide'); $('menu').classList.add('hide');
+    window.NH.scare(params.get('type') || 'freddy', +(params.get('fm') || 0), 0.2);
+    jumpscare.show = true; jumpscare.skin = (params.get('skin') || 'shadow'); jumpscare.until = performance.now() + 120000;
+    setTimeout(() => { window.NH.shotReady = true; }, 500);
   }
   else if (kind === 'sky') {
     shotHold = true; document.body.classList.add('ingame'); $('hud').classList.add('hide'); $('menu').classList.add('hide'); $('warn').classList.add('hide');

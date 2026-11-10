@@ -5,6 +5,7 @@
 <div id="warn" class="panel"><h1>WARNING</h1><p class="rating"><span class="r13">13+</span> Rated 13+ (teen)</p>
   <p>Night Hunt contains <b>flashing and strobing lights</b> that may trigger seizures in people with photosensitive epilepsy. If you feel dizzy, get a headache, have blurred vision, twitching or any discomfort, <b>stop playing immediately</b>. It also contains <b>blood and gore</b>, sudden <b>jumpscares</b> and <b>loud sounds</b>. The game is rated <b>13+</b>. If this is too much for you, please leave now.</p>
   <button id="bwarn" class="big">Continue</button></div>
+<div id="intro" class="intro hide"><div class="logo">NIGHT<br>HUNT</div><p class="tap">tap to start</p></div>
 <div id="menu" class="panel hide">
   <h1>NIGHT HUNT <span class="r13" title="Rated 13+">13+</span></h1><p class="sub">a multiplayer monster survival game (fan-made, play with friends)</p>
   <label>Your name <input id="pname" maxlength="16" placeholder="Player"></label>
@@ -42,6 +43,7 @@
   <div id="prompt" class="hide"></div>
   <div class="storebar lobbyonly" id="blocker2"><span class="sbt">🏬 SHOPS</span><button class="blocker" data-tab="look">🪞<b>Dressing Room</b></button><button class="blocker" data-tab="monster">👹<b>Monster</b></button><button class="blocker" data-tab="weapons">🔫<b>Weapons</b></button><button class="blocker" data-tab="food">🍔<b>Food</b></button><button class="blocker" data-tab="pets">🐾<b>Pets</b></button><button class="blocker" data-tab="crate">🎁<b>Crates</b></button><button id="bemote" title="Play your emote (B)">💃<b>Emote</b></button><button class="blocker" data-tab="skins">✨<b>Skins</b></button><span class="coinpill">🪙 <b class="coinv">0</b></span></div>
   <div id="ability"></div>
+  <div id="auraicon" class="hide"></div>
   <div id="gearbar" class="hide"></div>
   <div id="hostbox" class="hide"><b>Host controls</b><div><button id="bstart" class="big">🚁 Take off!</button></div>
     <div><button id="baddbot">+ Bot</button><button id="bkick">− Bot</button></div>
@@ -76,4 +78,4 @@
   <button id="tboard" class="tb sm">📋</button>
   <button id="tmute" class="tb sm">🔊</button>
 </div>
-<script src="vendor/peerjs.min.js"></script><script src="vendor/nostr.bundle.js"></script><script src="core.js"></script><script src="net.js"></script><script type="module" src="game.js"></script></body></html>
+<script src="vendor/peerjs.min.js"></script><script src="vendor/nostr.bundle.js"></script><script src="js/auras.js"></script><script src="core.js"></script><script src="net.js"></script><script type="module" src="game.js"></script></body></html>
