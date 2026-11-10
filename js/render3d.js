@@ -5,6 +5,8 @@ import { GFX, GU, PostFX, patch, antiTile, wet, wind, pbrMat, pbrSet, pbrRep, na
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet, realSetup, lodTick, buildVehicle } from './models.js';
 import { applyEmote } from './emotes.js';
+import { seasonFor } from './season.js';
+import { dressLobby } from './lobbydress.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 const NEUTRAL_CG = [[.006, .004, .008], [1, 1, 1], [1, 1, 1], .92], NOVOL = { on: false, dens: 0, lights: [] };
 const WALLPBR = { brick: 'brick', concrete: 'concrete', wood: 'oldwood', stone: 'castle' };
@@ -259,7 +261,7 @@ export class World {
     this.map = map; this.theme = THEMES[map.theme] || THEMES['Foggy Woods'];
     const T = this.theme, L = this.level;
     L.traverse(o => { if (o.isMesh && o.userData.own && !o.geometry.userData.shared) o.geometry.dispose(); });
-    L.clear(); if (this.items) { for (const e of this.items.values()) this.scene.remove(e.g); this.items.clear(); } this.lamps = []; this.bushes = []; this.lobbyHeli = null; this.omens = new Map(); this.boats = new Map(); if (this.bio) { this.scene.remove(this.bio); this.bio = null; }
+    L.clear(); this.lobbyDress = null; if (this.items) { for (const e of this.items.values()) this.scene.remove(e.g); this.items.clear(); } this.lamps = []; this.bushes = []; this.lobbyHeli = null; this.omens = new Map(); this.boats = new Map(); if (this.bio) { this.scene.remove(this.bio); this.bio = null; }
     for (const c of this.chars.values()) this.dyn.remove(c.obj); this.chars.clear();
     const s = this.scene; s.fog.color.set(T.fog); s.fog.density = T.dens; s.background.set(T.fog).multiplyScalar(.6); this.natG = null;
     { // v1.6: HDRI night sky, volumetric fog density, per-map colour grade, rain wetness + wind strength
@@ -440,6 +442,15 @@ export class World {
     this.wisps.forEach((w, i) => { w.visible = i < T.wisps; w.material.color.set(T.fog).lerp(new THREE.Color('#9aa'), .5); });
     this.renderer.shadowMap.needsUpdate = true;
     // streaming LOD: level pieces far from the camera are hidden (maps are several times bigger since v1.4)
+    if (map.heli) {
+      const override = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('season') : '';
+      this.lobbyDress = dressLobby(map, seasonFor(new Date(), override), GFX.tier);
+      L.add(this.lobbyDress.group);
+      if (this.lobbyDress.night) {
+        const sk = this.sky.material.uniforms; sk.uTint.value.multiplyScalar(0.32);
+        this.hemi.intensity *= 0.4; this.moon.intensity = Math.max(this.moon.intensity, 1.6);
+      }
+    }
     this.lod = []; this.lodT = 0; const tmpS = new THREE.Sphere();
     for (const o of L.children) { if (o.isInstancedMesh || o.isLight) continue; let r = 2;
       if (o.isMesh) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); tmpS.copy(o.geometry.boundingSphere); r = tmpS.radius * Math.max(o.scale.x, o.scale.y, o.scale.z); }
@@ -574,6 +585,7 @@ export class World {
     if ((this.lodT -= dt) <= 0 && this.lod) { this.lodT = .25; const R0 = this.map.theme === 'Helipad Lobby' ? 1e9 : this.map.islands ? 150 : 115;
       for (const o of this.lod) { const dx = o.position.x - px, dz = o.position.z - pz, rr = R0 + o.userData.lr; o.visible = dx * dx + dz * dz < rr * rr; } }
     GU.uTime.value = t; this.fx.u.uTime.value = t;
+    if (this.lobbyDress) this.lobbyDress.tick(t, dt);
     { const sk = this.sky.material.uniforms; sk.uMoonDir.value.copy(this.moon.position).sub(this.moon.target.position).normalize(); sk.uMoonDir.value.y = Math.max(.32, sk.uMoonDir.value.y * .55); sk.uMoonDir.value.normalize();
       sk.uRot.value = t * .0008; // slow drift of the stars
       for (const w of this.waters || []) { const wu = w.userData.water; wu.tSky.value = sk.tSky.value; wu.uTint.value.copy(sk.uTint.value); wu.uFogC.value.copy(sk.uFogC.value); wu.uMoonDir.value.copy(sk.uMoonDir.value); wu.uMoonC.value.copy(sk.uMoonC.value); wu.uRot.value = sk.uRot.value; wu.uAmp.value = wu.uMurk.value > 0 ? .06 : 1 + (this.storm || 0) * .8; } }

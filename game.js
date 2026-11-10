@@ -530,6 +530,18 @@ if (params.has('shot')) {
   const kind = params.get('shot');
   $('warn').classList.add('hide'); $('menu').classList.add('hide');
   if (kind === 'admin') { $('admin').classList.remove('hide'); window.NH.shotReady = true; }
+  else if (kind === 'season') {
+    shotHold = true; document.body.classList.add('ingame', 'inlobby'); $('hud').classList.add('hide'); $('menu').classList.add('hide');
+    const map = NightHuntCore.LOBBY; world.setMap(map);
+    const season = params.get('season') || '';
+    const beach = season === 'summer';
+    const spot = beach ? { x: 640, y: 2660, yaw: 0.2, pitch: 0.4, zoom: 0.86 } : { x: 3320, y: 1680, yaw: -Math.PI / 2, pitch: 0.55, zoom: 0.96 };
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0,,,none,none,none,none,none' }];
+    const disp = { 1: { dx: spot.x, dy: spot.y } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
+    const snapS = { state: 'lobby', ps, boarded: [], max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 0 };
+    let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS }); if (++n === 24) window.NH.shotReady = true; if (n < 40) requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
   else if (kind === 'results') {
     $('menu').classList.add('hide'); me = 1;
     try { localStorage.setItem('nhProfile', JSON.stringify(Object.assign({}, locker.profile, { coins: 10225, coinMig: 1 }))); } catch (e) { /* private mode */ }
