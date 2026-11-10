@@ -179,11 +179,16 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
   P('storesign', 1880, 1640, 200, 16, { solid: false, t: 'COIN STORE', s: 'FREE REWARD · NO PAYMENTS', c: '#ffd76b', a: 0 });
   L.zones.push({ k: 'coins', name: 'COIN STORE', x: 1860, y: 1400, w: 280, h: 150, c: '#ffd76b', ic: '🪙' });
   for (let x = 220; x < 2000; x += 280) { P('streetlight', x, 1248, 16, 16); P('streetlight', x + 120, 1688, 16, 16, { a: Math.PI }); }
-  for (let i = 0; i < 4; i++) P('car', 260 + i * 420, i % 2 ? 1320 : 1648, 70, 32, { a: i % 2 ? 0 : Math.PI, solid: false });
+  for (let i = 0; i < 4; i++) P('car', 260 + i * 420, i % 2 ? 1210 : 1748, 70, 32, { a: i % 2 ? 0 : Math.PI, solid: false });
   [[400, 1500], [700, 1500], [1500, 1500], [2600, 1400], [3400, 1600], [4000, 1400]].forEach(([x, y]) => L.bushes.push({ x, y, r: 14 }));
   L.props.push({ k: 'lobbysign', x: 1280, y: 1200, w: 30, h: 30, a: 0, solid: false });
-  // parked on the avenue, clear of the helipad and the mall door
-  L.vehicles = [{ id: 1, x: 1480, y: 1365, a: 0, kind: 'pickup' }, { id: 2, x: 1760, y: 1595, a: Math.PI, kind: 'sedan' }, { id: 3, x: 1240, y: 1605, a: 0.4, kind: 'suv' }]; }
+  // eight drivable cars: along both curbs, and one just inside the mall door
+  L.vehicles = [
+    { id: 1, x: 360, y: 1348, a: 0, kind: 'pickup' }, { id: 2, x: 980, y: 1336, a: 0.1, kind: 'sedan' },
+    { id: 3, x: 1540, y: 1355, a: 0, kind: 'suv' }, { id: 4, x: 2060, y: 1368, a: 0.15, kind: 'pickup' },
+    { id: 5, x: 430, y: 1632, a: Math.PI, kind: 'sedan' }, { id: 6, x: 1180, y: 1644, a: Math.PI, kind: 'suv' },
+    { id: 7, x: 1720, y: 1628, a: Math.PI, kind: 'pickup' }, { id: 8, x: 2480, y: 1520, a: 1.57, kind: 'sedan' },
+  ]; }
 // every building is a furnished house (rooms split by an inner wall) or a facility (warehouse/lab/industrial)
 function furnish(m, b) {
   const { x, y, w, h, t, type } = b; m.bld.push({ x, y, w, h, type, kind: b.kind || (type === 'house' ? pick(['cabin', 'farmhouse', 'bungalow']) : pick(['warehouse', 'lab', 'substation'])), floors: b.floors || 1, light: b.light });
@@ -368,7 +373,7 @@ function removeFromRoom(p) {
 function startRound(r) {
   const ps = [...r.players.values()], n = ps.length;
   if (n < MIN_START) return 'Need at least 2 players (add a bot!)';
-  r.state = 'flight'; r.flightEnd = now() + FLIGHT_TIME; r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set(); r.itemId = 1; r.strikes = []; r.whirls = [];
+  r.state = 'flight'; r.flightEnd = now() + FLIGHT_TIME; r.roundN = (r.roundN || 0) + 1; r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set(); r.itemId = 1; r.strikes = []; r.whirls = [];
   // each player has a random chance to be a monster: 1 per ~5 players on average, at least 1, never everyone
   let chance = 0.2, mons = ps.filter(() => Math.random() < chance);
   const maxM = Math.max(1, Math.floor(n / 3));
@@ -415,10 +420,10 @@ function checkEnd(r) {
   const winner = saved > caught ? 'survivors' : caught > saved ? 'monsters' : 'tie';
   for (const p of surv) { if (p.escaped) { p.score += 2; p.earn += 60; } else p.earn += 10; }
   for (const p of mons) p.earn += 15;
-  for (const p of ps) if (!p.bot && p.earn > 0) send(p, { t: 'coins', n: p.earn });
+  for (const p of ps) if (!p.bot && p.earn > 0) send(p, { t: 'coins', n: p.earn, round: r.roundN || 0 });
   for (const p of mons) p.score += caught;
   r.state = 'results'; r.resultsEnd = t + RESULTS_TIME;
-  bcast(r, { t: 'results', secs: RESULTS_TIME, why, winner, saved, caught, players: ps.map(p => ({ id: p.id, name: p.name, role: p.role, mt: p.mt, escaped: p.escaped, alive: p.alive, score: p.score, color: p.color, kills: p.kills || 0, dmg: Math.round(p.dmg || 0), downs: p.downs || 0, earn: p.earn || 0, bot: !!p.bot })) });
+  bcast(r, { t: 'results', secs: RESULTS_TIME, round: r.roundN || 0, why, winner, saved, caught, players: ps.map(p => ({ id: p.id, name: p.name, role: p.role, mt: p.mt, escaped: p.escaped, alive: p.alive, score: p.score, color: p.color, kills: p.kills || 0, dmg: Math.round(p.dmg || 0), downs: p.downs || 0, earn: p.earn || 0, bot: !!p.bot })) });
 }
 function catchP(r, m, s) {
   s.alive = false; s.role = 'survivor'; s.caughtBy = m.mt; s.hp = 0; m.earn += 40; m.kills = (m.kills || 0) + 1; leaveBoat(r, s, true);
@@ -439,7 +444,7 @@ const VEH_DEF = {
 };
 const VEH_CODE = { boat: 0, ship: 1, pickup: 2, sedan: 3, suv: 4 };
 function vehDef(kind) { return VEH_DEF[kind] || VEH_DEF.sedan; }
-function makeVeh(v) { const d = vehDef(v.kind); return { id: v.id, x: v.x, y: v.y, a: v.a || 0, kind: v.kind in VEH_DEF ? v.kind : 'sedan', r: d.r, by: null, seats: [], spd: 0, fuel: d.fuel, hp: d.hp, maxHp: d.hp, maxFuel: d.fuel }; }
+function makeVeh(v) { const d = vehDef(v.kind); return { id: v.id, x: v.x, y: v.y, a: v.a || 0, kind: v.kind in VEH_DEF ? v.kind : 'sedan', r: d.r, by: null, seats: [], spd: 0, fuel: d.fuel, hp: d.hp, maxHp: d.hp, maxFuel: d.fuel, home: { x: v.x, y: v.y, a: v.a || 0 }, stuck: 0 }; }
 function bindVehicles(r, list) { let n = 1; r.vehicles = (list || []).map(v => makeVeh({ ...v, id: n++ })); r.boats = r.vehicles.filter(v => vehDef(v.kind).water); }
 function monForm(r, m) { if (m.mt === 'megalodon') return inWater(r.map, m.x, m.y) ? 0 : 1; if (m.mt === 'fester') return m.esc || 0; return m.form || 0; }
 function boatOf(r, p) { return p.boat && r.vehicles ? r.vehicles.find(b => b.id === p.boat) : null; }
@@ -481,10 +486,18 @@ function driveVehicle(r, p, dx, dy, dt, coast) {
     if (b.fuel > 0) { b.spd = clamp(b.spd + align * D.accel * dt - 30 * dt, 0, D.vmax * (0.4 + 0.6 * b.hp / b.maxHp)); b.fuel = Math.max(0, b.fuel - (align * 1.35 + 0.15) * dt); }
     else b.spd = Math.max(0, b.spd - 90 * dt);
   } else b.spd = Math.max(0, b.spd - 70 * dt);
-  if (b.fuel <= 0 && !coast) { /* engine is dry; the hull still coasts */ }
   const step = b.spd * dt, nx = b.x + Math.cos(b.a) * step, ny = b.y + Math.sin(b.a) * step;
   const ok = D.water ? boatWater(r.map, nx, ny, b.r) : (nx > 40 && ny > 40 && nx < r.map.w - 40 && ny < r.map.h - 40 && !collides(r.map, nx, ny, b.r * 0.55));
-  if (ok) { b.x = nx; b.y = ny; } else b.spd *= 0.35;
+  if (ok) { b.x = nx; b.y = ny; b.stuck = 0; }
+  else {
+    b.spd *= 0.35;
+    if (!D.water && b.home && !coast && (dx || dy)) b.stuck = (b.stuck || 0) + dt; else b.stuck = 0;
+    if ((b.stuck || 0) > 1.6) resetVehicle(r, b);
+  }
+}
+function resetVehicle(r, b) {
+  b.x = b.home.x; b.y = b.home.y; b.a = b.home.a; b.spd = 0; b.stuck = 0; b.hp = b.maxHp; b.fuel = b.maxFuel;
+  for (const id of b.seats) { const q = r.players.get(id); if (q) { q.x = b.x; q.y = b.y; send(q, { t: 'event', msg: `The ${vehDef(b.kind).name} was stuck and returned to its parking spot.`, kind: 'info' }); } }
 }
 function driveBoat(r, p, dx, dy, sp, dt) { driveVehicle(r, p, dx, dy, dt, false); }
 const capsize = (r, s) => { if (s.boat) { const b = boatOf(r, s); if (b) b.hp = Math.max(0, b.hp - 25); leaveBoat(r, s, true); } };

@@ -107,7 +107,7 @@ function onMsg(m) {
     case 'pickup': { const I = ITEMS[m.k]; sfx('pickup'); if (I) addEvent(`Picked up ${I.icon} ${I.name}${m.n > 1 ? ' ×' + m.n : ''}`, 'good'); break; }
     case 'used': { const I = ITEMS[m.k]; if (I) sfx(I.drink ? 'drink' : I.type === 'armor' ? 'pickup' : 'eat'); break; }
     case 'hurt': sfx('hurt'); $('hpbar').classList.remove('hurt'); void $('hpbar').offsetWidth; $('hpbar').classList.add('hurt'); if (world) world.shake = Math.max(world.shake || 0, .35); if (navigator.vibrate) navigator.vibrate(60); break;
-    case 'coins': if (locker) locker.addCoins(m.n); sfx('coin'); addEvent(`🪙 +${m.n} coins (total ${locker ? locker.profile.coins : m.n})`, 'good'); earnedLast = m.n; const ce = $('rcoins'); if (ce) ce.textContent = `🪙 +${m.n} coins`; break;
+    case 'coins': { const total = creditReward(m.round, m.n); sfx('coin'); addEvent(`🪙 +${m.n} coins (total ${total})`, 'good'); break; }
     case 'admin': { const box = $('adminstate'); if (box) box.textContent = m.msg || ''; $('admin') && $('admin').classList.remove('hide'); break; }
     case 'results': results = m; if (endBusy()) pendingResults = m; else showResults(m); break;
   }
@@ -117,7 +117,8 @@ function showResults(m) {
   pendingResults = null; $('deathscreen').classList.add('hide'); spec = null; $('specbar').classList.add('hide');
   const o = $('overlay'); o.classList.remove('hide'); o.classList.add('results');
   const win = m.winner === 'survivors' ? ['SURVIVORS WIN', '#6f6', '🚁'] : m.winner === 'monsters' ? ['MONSTER WINS', '#f44', '👹'] : ['TIE', '#ddd', '⚖️'];
-  const mine = m.players.find(p => p.id === me), myWin = mine && ((m.winner === 'survivors' && mine.role !== 'monster') || (m.winner === 'monsters' && mine.role === 'monster'));
+  const mine = m.players.find(p => p.id === me); if (mine && mine.earn) creditReward(m.round, mine.earn);
+  const myWin = mine && ((m.winner === 'survivors' && mine.role !== 'monster') || (m.winner === 'monsters' && mine.role === 'monster'));
   const rows = m.players.slice().sort((a, b) => (b.role === 'monster') - (a.role === 'monster') || b.score - a.score).map(p => {
     const role = p.role === 'monster' ? `👹 ${esc(MON[p.mt] ? MON[p.mt].name : 'Monster')}` : '🔦 Survivor';
     const stat = p.role === 'monster' ? `<b style="color:#f66">${p.kills} kill${p.kills === 1 ? '' : 's'}</b>` : p.escaped ? '<b style="color:#6f6">🚁 Escaped</b>' : p.alive ? '<b style="color:#9cf">❤ Survived</b>' : '<b style="color:#f66">💀 Caught</b>';
@@ -125,7 +126,7 @@ function showResults(m) {
   o.innerHTML = `<div class="rbox"><div class="rbanner" style="color:${win[1]};border-color:${win[1]}">${win[2]} ${win[0]}</div>${mine ? `<div class="rme ${myWin ? 'w' : 'l'}">${myWin ? 'VICTORY' : 'DEFEAT'}</div>` : ''}
     <p class="rwhy">${esc(m.why || '')}</p><div class="rsum"><span>🚁 Escaped <b>${m.saved}</b></span><span>💀 Caught <b>${m.caught}</b></span><span>👥 Players <b>${m.players.length}</b></span></div>
     <table class="rtable"><tr><th>Player</th><th>Role</th><th>Result</th><th>Kills / Dmg</th><th>Knockdowns</th><th>Coins</th><th>Score</th></tr>${rows}</table>
-    <p id="rcoins" class="rcoins">${earnedLast ? `🪙 +${earnedLast} coins earned (total ${locker.profile.coins})` : ''}</p><p><small id="rback">Back to the lobby soon…</small></p></div>`;
+    <p id="rcoins" class="rcoins">${earnedLast ? `🪙 +${earnedLast} earned this round · new total ${walletLast}` : ''}</p><p><small id="rback">Back to the lobby soon…</small></p></div>`;
   resultsEnd = performance.now() + (m.secs || 14) * 1000;
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -158,7 +159,19 @@ function fxSound(m) {
   else if (m.kind === 'swing') sfx('swing', o);
   else if (m.kind === 'hit' || m.kind === 'slash') sfx('hit', o);
 }
-let earnedLast = 0;
+let earnedLast = 0, walletLast = 0, paidRound = 0, paidLoose = 0, paidAt = 0;
+function creditReward(round, n) {
+  const amt = Math.max(0, Math.floor(Number(n) || 0));
+  if (!amt || !locker) return locker ? locker.profile.coins : 0;
+  const id = Math.floor(Number(round) || 0);
+  if (id && id === paidRound) return walletLast || locker.profile.coins;
+  if (!id && paidLoose === amt && performance.now() - paidAt < 4000) return walletLast || locker.profile.coins;
+  if (id) paidRound = id; else { paidLoose = amt; paidAt = performance.now(); }
+  walletLast = locker.addCoins(amt);
+  earnedLast = amt;
+  const ce = $('rcoins'); if (ce) ce.textContent = `🪙 +${earnedLast} earned this round · new total ${walletLast}`;
+  return walletLast;
+}
 function sendProfile() { if (room && locker) { const P = locker.profile; send({ t: 'profile', look: P.look, pref: P.pref, skin: P.owned.includes('skin:' + P.skin) ? P.skin : 'classic', kit: P.kit, gear: P.gear, gearOn: P.gearOn, emotes: P.owned.filter(id => String(id).startsWith('em:')).map(id => id.slice(3)) }); } }
 const locker = initLocker({ onChange: () => sendProfile(), monsters: () => MON, sfx, onEmote: e => playEmote(e) });
 function playEmote(e) { e = e || locker.emote(); if (!room) return; send({ t: 'emote', e }); }
@@ -517,6 +530,15 @@ if (params.has('shot')) {
   const kind = params.get('shot');
   $('warn').classList.add('hide'); $('menu').classList.add('hide');
   if (kind === 'admin') { $('admin').classList.remove('hide'); window.NH.shotReady = true; }
+  else if (kind === 'results') {
+    $('menu').classList.add('hide'); me = 1;
+    try { localStorage.setItem('nhProfile', JSON.stringify(Object.assign({}, locker.profile, { coins: 10225, coinMig: 1 }))); } catch (e) { /* private mode */ }
+    showResults({ winner: 'survivors', why: 'Time is up — the sun rises!', saved: 1, caught: 0, secs: 30, round: 2, players: [
+      { id: 1, name: 'Alex', role: 'survivor', escaped: true, alive: true, score: 4, color: '#3498db', kills: 0, dmg: 25, downs: 1, earn: 140, bot: false },
+      { id: 2, name: 'Blair', role: 'monster', mt: 'freddy', escaped: false, alive: true, score: 0, color: '#e74c3c', kills: 0, dmg: 0, downs: 0, earn: 15, bot: true },
+    ] });
+    window.NH.shotReady = true;
+  }
   else if (kind === 'static') {
     window.NH.forceStatic = true; $('hud').classList.add('hide'); $('menu').classList.add('hide');
     const map = NightHuntCore.genMap('Powerline Forest'); world.setMap(map);
@@ -534,10 +556,11 @@ if (params.has('shot')) {
     shotHold = true; document.body.classList.add('ingame', 'inlobby'); if (kind === 'mobile') { document.body.classList.add('touchmode'); $('hud').classList.remove('hide'); }
     const map = kind === 'boats' ? NightHuntCore.genMap('Stormy Ocean') : NightHuntCore.LOBBY; world.setMap(map);
     const isl = map.islands && map.islands[0];
-    const spot = kind === 'truck' ? { x: 1620, y: 1510, yaw: -0.9, pitch: 0.34, zoom: 0.78 } : kind === 'boats' ? { x: isl.x + isl.r + 90, y: isl.y, yaw: 0.6, pitch: 0.28, zoom: 0.62 } : kind === 'mall' ? { x: 2460, y: 2080, yaw: Math.PI / 2, pitch: 0.22, zoom: 0.55 } : kind === 'heli' ? { x: map.heli.x + 40, y: map.heli.y + 220, yaw: -Math.PI / 2, pitch: 0.22, zoom: 0.62 } : kind === 'emote' ? { x: 2480, y: 680, yaw: -Math.PI / 2, pitch: 0.2, zoom: 0.5 } : { x: 290, y: 1380, yaw: -Math.PI / 2, pitch: 0.18, zoom: 0.95 };
-    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: kind === 'boats' ? 'survivor' : 'lobby', al: 1, es: 0, st: {}, bt: kind === 'truck' ? 1 : undefined, lk: '2,1,0,,,cap,scarf,ranger,none,none', em: kind === 'emote' ? 'groove' : undefined }];
+    const CODE = { boat: 0, ship: 1, pickup: 2, sedan: 3, suv: 4 };
+    const spot = kind === 'truck' ? { x: 1100, y: 1490, yaw: 0.2, pitch: 0.48, zoom: 0.95 } : kind === 'boats' ? { x: isl.x + isl.r + 90, y: isl.y, yaw: 0.6, pitch: 0.28, zoom: 0.62 } : kind === 'mall' ? { x: 2460, y: 2080, yaw: Math.PI / 2, pitch: 0.22, zoom: 0.55 } : kind === 'heli' ? { x: map.heli.x + 40, y: map.heli.y + 220, yaw: -Math.PI / 2, pitch: 0.22, zoom: 0.62 } : kind === 'emote' ? { x: 2480, y: 680, yaw: -Math.PI / 2, pitch: 0.2, zoom: 0.5 } : { x: 290, y: 1380, yaw: -Math.PI / 2, pitch: 0.18, zoom: 0.95 };
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: kind === 'boats' ? 'survivor' : 'lobby', al: 1, es: 0, st: {}, bt: kind === 'truck' ? 3 : undefined, lk: '2,1,0,,,cap,scarf,ranger,none,none', em: kind === 'emote' ? 'groove' : undefined }];
     const disp = { 1: { dx: spot.x, dy: spot.y } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
-    const bt = kind === 'truck' ? [[1, 1540, 1420, 0.4, 2, 1, 90, 150, 30], [2, 1720, 1560, 2.2, 3, 0, 70, 100, 0], [3, 1360, 1580, -0.4, 4, 0, 80, 170, 0]] : kind === 'boats' ? [[1, spot.x - 50, spot.y + 40, 0.8, 0, 0, 70, 100, 50], [2, spot.x + 40, spot.y - 70, 2.1, 1, 0, 120, 200, 20]] : null;
+    const bt = kind === 'truck' ? (NightHuntCore.LOBBY.vehicles || []).map((v, i) => [i + 1, v.x, v.y, v.a, CODE[v.kind] || 2, i === 2 ? 1 : 0, 90, 150, i === 2 ? 40 : 0]) : kind === 'boats' ? [[1, spot.x - 50, spot.y + 40, 0.8, 0, 0, 70, 100, 50], [2, spot.x + 40, spot.y - 70, 2.1, 1, 0, 120, 200, 20]] : null;
     const snapS = { state: kind === 'boats' ? 'playing' : 'lobby', ps, boarded: [], bt, max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [0, 0, 0, 0, 0, 0], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 0 };
     let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS }); if (++n === 12) window.NH.shotReady = true; if (n < 20) requestAnimationFrame(loop); };
     requestAnimationFrame(loop);

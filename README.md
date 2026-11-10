@@ -1,6 +1,6 @@
-# Night Hunt 🚁👹 (v1.8.0, rated 13+)
+# Night Hunt 🚁👹 (v1.8.1, rated 13+)
 
-v1.8 adds drivable pickups, sedans and SUVs, fixes ocean boats so they can actually be driven, and makes Boisvert's TV static see-through. Monster materials and motion are heavier on high graphics and stay lighter on phones. This branch is not live until it is merged.
+v1.8.1 adds round coins onto the saved balance instead of replacing it, and parks eight drivable cars along the lobby avenue and just inside the mall door. v1.8's vehicles, boats and softer TV static are already on main.
 
 v1.7 replaces the shopping street with a city and a mall, adds a 3D item showcase, original emotes, survivor coils, and a one-time 10,000 coin grant. The browser build is the one exercised here. It is not deployed until this branch is merged and GitHub Pages publishes it. Paid coin packs stay disabled.
 
@@ -16,7 +16,7 @@ A fan-made multiplayer monster survival game for playing with friends. Board the
    - **max players** (2-15);
    - **privacy**: friends only (code or link) or public (listed in the server browser);
    - **round length**: 5, 7 or 10 minutes (7 by default).
-2. In the lobby, the helipad sits on a city avenue. Walk east into the **Night Mall**. The nine shops are stalls inside it (walk up and press **E**). A separate **coin kiosk** outside the door only offers a labeled free daily reward. Paid coin packs stay disabled. New profiles start with 10,000 coins. An older save is topped up to 10,000 once if it had less, and is never reset again. Tap an item to open the 3D showcase. Buying and equipping are separate.
+2. In the lobby, the helipad sits on a city avenue. Eight cars (pickups, sedans, SUVs) are parked along the street and just inside the mall door. Press **E** or the Drive button to get in. The first person drives; others ride. They stop at buildings, and a car that stays wedged for a moment returns to its parking spot with everyone still inside. Walk east into the **Night Mall**. The nine shops are stalls inside it (walk up and press **E**). A separate **coin kiosk** outside the door only offers a labeled free daily reward. Paid coin packs stay disabled. New profiles start with 10,000 coins. An older save is topped up to 10,000 once if it had less, and is never reset again. Tap an item to open the 3D showcase. Buying and equipping are separate.
    - **Skin Shop:** survivor skins, hats and accessories.
    - **Weapon Shop:** knife, bat, crowbar, axe, pistol, shotgun and ammo. **Armor Shop:** bulletproof vest and helmet. **Food & Drinks:** snacks, drinks and medkits. Up to **3 round supplies** from these shops are handed to you at the start of your next round.
    - **Monster Skins:** monster skins shown on statues, plus your **preferred monster** (the round usually goes to that monster's home map).

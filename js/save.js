@@ -38,6 +38,27 @@ export function migrateProfile(raw) {
   return p;
 }
 
+// Add a round reward onto the saved wallet. Never assign coins = reward.
+// A stale in-memory profile must not replace a higher balance already on disk.
+export function applyRoundReward(profile, reward, storage) {
+  const n = Math.max(0, Math.floor(Number(reward) || 0));
+  const store = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+  let disk = null;
+  if (store) { try { disk = JSON.parse(store.getItem('nhProfile') || 'null'); } catch { disk = null; } }
+  const diskCoins = disk && Number(disk.coinMig) ? Math.max(0, Math.floor(Number(disk.coins) || 0)) : null;
+  const mem = Math.max(0, Math.floor(Number(profile && profile.coins) || 0));
+  const base = diskCoins == null ? mem : Math.max(mem, diskCoins);
+  const total = base + n;
+  if (profile) { profile.coins = total; profile.coinMig = 1; }
+  if (store && profile) {
+    const saved = Object.assign({}, disk || {}, profile);
+    saved.coins = total;
+    saved.coinMig = 1;
+    store.setItem('nhProfile', JSON.stringify(saved));
+  }
+  return total;
+}
+
 // Free reward only. Callers must label it as a free reward in the UI. It is not a purchase.
 export function claimDaily(p, today) {
   const day = today || new Date().toISOString().slice(0, 10);
