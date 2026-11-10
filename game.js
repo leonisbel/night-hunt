@@ -571,9 +571,10 @@ if (params.has('shot')) {
       upper: { x: 3000, y: 1500, yaw: 0.4, pitch: 0.28, zoom: 0.62, alt: 4.2 },
       stair: { x: 3780, y: 1860, yaw: -Math.PI / 2, pitch: 0.32, zoom: 0.48, alt: 2.1 },
       escalator: { x: 2860, y: 1880, yaw: -2.2, pitch: 0.28, zoom: 0.55, alt: 0.4 },
-      front: { x: 1880, y: 1520, yaw: 0.05, pitch: 0.16, zoom: 0.72, alt: 0 },
-      side: { x: 3390, y: 140, yaw: Math.PI / 2, pitch: 0.18, zoom: 0.7, alt: 0 },
-      exterior: { x: 1200, y: 1520, yaw: 0.22, pitch: 0.08, zoom: 0.9, alt: 0 },
+      front: { x: 1500, y: 1520, yaw: 0.02, pitch: 0.28, zoom: 0.62, alt: 0 },
+      side: { x: 3390, y: 80, yaw: Math.PI / 2, pitch: 0.22, zoom: 0.62, alt: 0 },
+      exterior: { x: 1100, y: 1480, yaw: 0.18, pitch: 0.1, zoom: 0.82, alt: 0 },
+      parking: { x: 2080, y: 1020, yaw: -2.55, pitch: 0.55, zoom: 0.8, alt: 0 },
     };
     const spot = spots[view] || spots.ground;
     const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0', fl: spot.alt > 2 ? 1 : 0, alt: spot.alt }];

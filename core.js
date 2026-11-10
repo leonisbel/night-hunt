@@ -210,6 +210,13 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
   ramp('escalator', 2610, 1660, 110, 360, -1);
   ramp('stair', 3680, 1620, 200, 400, 0);
   L.lifts.push({ kind: 'elevator', x: 2300, y: 1880, w: 120, h: 120 });
+  // Plaza furniture. Hidden from the wall renderer; the 3D dressing draws them. Kept off the three door openings and the drop-off lane.
+  const furn = (x, y, w, h, mh = 1) => L.walls.push({ x, y, w, h, mh, hide: 1, fl: 0, plaza: 1 });
+  furn(2148, 1268, 16, 16, 1.05); furn(2148, 1748, 16, 16, 1.05);
+  furn(2088, 1040, 90, 26, 0.55); furn(2088, 1988, 90, 26, 0.55);
+  furn(2064, 940, 40, 40, 0.9); furn(2064, 2140, 40, 40, 0.9);
+  for (let i = 0; i < 4; i++) furn(1900, 720 + i * 96, 68, 32, 1.45);
+  for (let i = 0; i < 3; i++) furn(1900, 1888 + i * 96, 68, 32, 1.45);
   // coin kiosk sits on the avenue, outside the mall door. It is not a paid shop.
   P('kiosk', 1960, 1560, 70, 50);
   P('storesign', 1880, 1640, 200, 16, { solid: false, t: 'COIN STORE', s: 'FREE REWARD · NO PAYMENTS', c: '#ffd76b', a: 0 });

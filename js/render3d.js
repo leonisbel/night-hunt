@@ -302,6 +302,7 @@ export class World {
     const winMats = new Map(), winMat = c => { if (!winMats.has(c)) winMats.set(c, new THREE.MeshStandardMaterial({ color: '#111', map: windowTex(), emissiveMap: windowTex(), emissive: c === 'off' ? '#000' : c === 'flicker' ? '#ffd890' : c, emissiveIntensity: c === 'off' ? 0 : .3, roughness: .15, metalness: .1 })); return winMats.get(c); };
     this.flickerWins = [];
     for (const w of map.walls) {
+      if (w.hide) { w._h = (w.base || 0) + (w.mh || 1); continue; }
       const inB = (map.bld || []).find(b => w.x >= b.x - 1 && w.y >= b.y - 1 && w.x + w.w <= b.x + b.w + 1 && w.y + w.h <= b.y + b.h + 1);
       const isOuter = outer(w), two = inB && inB.floors > 1, store = inB && inB.type === 'store';
       const cityH = w.city ? (GFX.tier === 'low' ? Math.min(w.city, 11) : w.city) : 0;

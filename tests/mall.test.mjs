@@ -145,5 +145,18 @@ check('main and side entrances can be walked both ways, the balcony cannot', () 
   assert.ok(sOut.y > south.y + south.h + 10, 'could not use the south door ' + sOut.y);
 });
 
+check('plaza furniture does not block the three entrances', () => {
+  const L = Core.LOBBY;
+  const furn = L.walls.filter(w => w.plaza);
+  assert.ok(furn.length >= 8, 'plaza pieces ' + furn.length);
+  for (const e of L.mall.entrances) {
+    const hit = furn.find(w => w.x < e.x + e.w + 20 && w.x + w.w > e.x - 20 && w.y < e.y + e.h + 20 && w.y + w.h > e.y - 20);
+    assert.equal(hit, undefined, (hit && hit.x) + ' blocks ' + e.id);
+  }
+  assert.ok(L.mall.entrances.every(e => e.face && e.name));
+  assert.equal(L.lifts.filter(l => l.kind === 'escalator').length, 2);
+  assert.equal(L.lifts.filter(l => l.kind === 'stair').length, 1);
+});
+
 if (failed) process.exit(1);
 console.log('mall ramp checks passed');

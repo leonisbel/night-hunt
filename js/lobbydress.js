@@ -45,49 +45,120 @@ function put(mesh, dummy, x, y, z, sx = 1, sy = 1, sz = 1, ry = 0, rx = 0) {
 function hits(b, x, y, pad = 0) {
   return x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad && y < b.y + b.h + pad;
 }
+function letterMat(text, w = 1024, h = 256, size = 118) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = '#101218'; g.fillRect(0, 0, w, h);
+  g.shadowColor = '#ffe7b0'; g.shadowBlur = 36;
+  g.fillStyle = '#fff6df'; g.font = `bold ${size}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshStandardMaterial({ map: t, emissive: '#fff1cc', emissiveMap: t, emissiveIntensity: 1.8, roughness: 0.35, metalness: 0.08, side: THREE.DoubleSide });
+}
 function buildMallFacade(group, anim, map, mall, tier, focus) {
-  const white = new THREE.MeshStandardMaterial({ color: '#f7f7f5', roughness: 0.32, metalness: 0.02 });
-  const glow = new THREE.MeshPhysicalMaterial({ color: '#d7e7f4', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.58, emissive: '#ffd0a0', emissiveIntensity: 0.72, envMapIntensity: 1.15, side: THREE.DoubleSide });
+  const low = tier === 'low';
+  const white = new THREE.MeshStandardMaterial({ color: '#f4f5f3', roughness: 0.34, metalness: 0.04 });
+  const seam = new THREE.MeshStandardMaterial({ color: '#c8cdc8', roughness: 0.55, metalness: 0.08 });
+  const alum = new THREE.MeshStandardMaterial({ color: '#d5dbe0', roughness: 0.28, metalness: 0.72 });
+  const glow = new THREE.MeshPhysicalMaterial({ color: '#d5e6f4', roughness: 0.04, metalness: 0.18, transparent: true, opacity: 0.5, emissive: '#ffc98a', emissiveIntensity: 0.85, envMapIntensity: 1.35, side: THREE.DoubleSide });
   const ents = (map.mall && map.mall.entrances) || [];
-  const blocked = (x, y) => ents.some(e => x > e.x - 50 && x < e.x + e.w + 50 && y > e.y - 50 && y < e.y + e.h + 50);
-  const max = tier === 'low' ? 36 : 120;
-  const we = inst(new THREE.BoxGeometry(0.07, 1.2, 2.05), glow, max, group);
-  const ns = inst(new THREE.BoxGeometry(2.05, 1.2, 0.07), glow, max, group);
+  const main = ents.find(e => e.canopy) || ents[0];
   const dummy = new THREE.Object3D();
-  const step = tier === 'low' ? 180 : 96;
-  const pane = (mesh, x, y, hy) => { if (mesh.count >= max || blocked(x, y)) return; put(mesh, dummy, x * S, hy, y * S); };
-  for (let y = mall.y + 80; y < mall.y + mall.h - 80; y += step) {
-    pane(we, mall.x - 10, y, 1.65); pane(we, mall.x - 10, y, 5.7);
-    pane(we, mall.x + mall.w + 10, y, 1.65); pane(we, mall.x + mall.w + 10, y, 5.7);
+  const box = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; group.add(m); return m; };
+
+  // Stepped white massing along the avenue face: corner fins and two anchor blocks, plus a roof parapet.
+  const faceX = mall.x * S;
+  if (main) {
+    const mz = (main.y + main.h / 2) * S, span = main.h * S;
+    box(1.4, 10.6, 7.2, white, faceX - 0.7, 5.3, (mall.y + 180) * S);
+    box(1.4, 10.6, 7.2, white, faceX - 0.7, 5.3, (mall.y + mall.h - 180) * S);
+    box(0.9, 9.6, 14, white, faceX - 0.55, 4.8, mz - span * 0.95);
+    box(0.9, 9.6, 14, white, faceX - 0.55, 4.8, mz + span * 0.95);
+    box(0.45, 0.22, mall.h * S + 0.8, seam, faceX - 0.35, 9.15, (mall.y + mall.h / 2) * S);
+    const gap0 = main.y * S - 0.4, gap1 = (main.y + main.h) * S + 0.4, zLo = (mall.y + 20) * S, zHi = (mall.y + mall.h - 20) * S;
+    for (const hy of [3.05, 6.2]) {
+      if (gap0 - zLo > 1) box(0.08, 0.05, gap0 - zLo, seam, faceX - 0.08, hy, (zLo + gap0) / 2);
+      if (zHi - gap1 > 1) box(0.08, 0.05, zHi - gap1, seam, faceX - 0.08, hy, (gap1 + zHi) / 2);
+    }
+    // Double-height glass atrium in front of the doors.
+    const atrium = new THREE.Mesh(new THREE.BoxGeometry(0.12, 8.8, span + 1.2), glow);
+    atrium.position.set(faceX - 1.15, 4.45, mz); group.add(atrium);
+    const mullN = low ? 6 : 12;
+    const mulls = inst(new THREE.BoxGeometry(0.07, 8.8, 0.05), alum, mullN + 4, group);
+    for (let i = 0; i <= mullN; i++) put(mulls, dummy, faceX - 1.22, 4.45, mz - (span + 1) / 2 + i * (span + 1) / mullN);
+    mulls.instanceMatrix.needsUpdate = true;
+    for (const hy of [0.2, 3.2, 6.25, 8.85]) box(0.08, 0.06, span + 1.2, alum, faceX - 1.22, hy, mz);
+    const canopy = box(7.2, 0.18, span + 2.4, white, faceX - 4.4, 4.15, mz);
+    canopy.castShadow = true;
+    box(7.2, 0.06, span + 2.4, std('#e8edf0', { m: 0.2, r: 0.4 }), faceX - 4.4, 4.02, mz);
+    const lights = low ? 4 : 8;
+    const downs = inst(new THREE.BoxGeometry(0.28, 0.08, 0.28), std('#fff6d8', { e: '#ffe2a4', ei: 2.2, r: 0.3 }), lights, group);
+    for (let i = 0; i < lights; i++) put(downs, dummy, faceX - 2.2 - (i % 2) * 2.2, 3.92, mz - span / 2 + (i + 0.5) * span / lights);
+    downs.instanceMatrix.needsUpdate = true;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(11, 1.7), letterMat('NIGHT MALL'));
+    sign.position.set(faceX - 8.05, 5.15, mz); sign.rotation.y = -Math.PI / 2; group.add(sign);
+    for (const side of [-1, 1]) box(0.28, 4.05, 0.28, alum, faceX - 7.6, 2.05, mz + side * (span / 2 + 0.7));
+    const anchors = [{ name: 'HARBOR & CO', z: mz - span * 1.15 }, { name: 'FIELD PANTRY', z: mz + span * 1.15 }];
+    for (const a of anchors) {
+      box(0.08, 2.4, 6.5, glow, faceX - 1.05, 1.5, a.z);
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 0.7), letterMat(a.name, 1024, 180, 72));
+      s.position.set(faceX - 1.2, 3.35, a.z); s.rotation.y = -Math.PI / 2; group.add(s);
+    }
   }
-  for (let x = mall.x + 80; x < mall.x + mall.w - 80; x += step) {
-    pane(ns, x, mall.y - 10, 1.65); pane(ns, x, mall.y - 10, 5.7);
-    pane(ns, x, mall.y + mall.h + 10, 1.65); pane(ns, x, mall.y + mall.h + 10, 5.7);
+
+  // Window bands on both floors, skipping the door openings. One mesh per run, not a pane per bay.
+  const band = (x0, z0, x1, z1, hy) => {
+    const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz);
+    if (len < 2) return;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(dx) < 0.2 ? 0.06 : len, 1.15, Math.abs(dz) < 0.2 ? 0.06 : len), glow);
+    mesh.position.set((x0 + x1) / 2, hy, (z0 + z1) / 2); group.add(mesh);
+  };
+  const skipZ = (z) => ents.some(e => (e.face === 'w' || e.face === 'e') && z > e.y * S - 1 && z < (e.y + e.h) * S + 1);
+  const skipX = (x) => ents.some(e => (e.face === 'n' || e.face === 's') && x > e.x * S - 1 && x < (e.x + e.w) * S + 1);
+  const cuts = low ? 3 : 6;
+  for (const hy of [1.7, 5.85]) {
+    const z0 = (mall.y + 40) * S, z1 = (mall.y + mall.h - 40) * S;
+    let prev = z0;
+    for (let i = 1; i <= cuts; i++) {
+      const z = z0 + (z1 - z0) * i / cuts;
+      if (!skipZ((prev + z) / 2)) band(faceX - 0.2, prev, faceX - 0.2, z, hy);
+      prev = z;
+    }
+    const x0 = (mall.x + 40) * S, x1 = (mall.x + mall.w - 40) * S;
+    let px = x0;
+    for (let i = 1; i <= cuts; i++) {
+      const x = x0 + (x1 - x0) * i / cuts;
+      if (!skipX((px + x) / 2)) {
+        band(px, mall.y * S - 0.2, x, mall.y * S - 0.2, hy);
+        band(px, (mall.y + mall.h) * S + 0.2, x, (mall.y + mall.h) * S + 0.2, hy);
+      }
+      px = x;
+    }
   }
-  we.instanceMatrix.needsUpdate = true; ns.instanceMatrix.needsUpdate = true;
+
   const doors = [];
   for (const e of ents) {
     const alongZ = e.face === 'w' || e.face === 'e';
     const span = (alongZ ? e.h : e.w) * S;
-    const paneW = span * 0.46;
-    const geo = new THREE.BoxGeometry(alongZ ? 0.06 : paneW, 3.05, alongZ ? paneW : 0.06);
+    const paneW = Math.min(2.2, span * 0.42);
+    const geo = new THREE.BoxGeometry(alongZ ? 0.06 : paneW, e.canopy ? 3.15 : 2.7, alongZ ? paneW : 0.06);
     const a = new THREE.Mesh(geo, glow), b = new THREE.Mesh(geo, glow);
-    const out = e.face === 'w' ? -0.35 : e.face === 'e' ? 0.35 : 0;
-    const outZ = e.face === 'n' ? -0.35 : e.face === 's' ? 0.35 : 0;
+    const out = e.face === 'w' ? -1.05 : e.face === 'e' ? 0.4 : 0;
+    const outZ = e.face === 'n' ? -0.45 : e.face === 's' ? 0.45 : 0;
     const cx = (e.x + e.w / 2) * S + out, cz = (e.y + e.h / 2) * S + outZ;
-    a.position.set(cx, 1.55, cz); b.position.set(cx, 1.55, cz); group.add(a, b);
-    const jamb = (dx, dz) => { const j = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.25, 0.18), white); j.position.set(cx + dx, 1.62, cz + dz); group.add(j); };
-    if (alongZ) { jamb(0, -span / 2); jamb(0, span / 2); } else { jamb(-span / 2, 0); jamb(span / 2, 0); }
-    const head = new THREE.Mesh(new THREE.BoxGeometry(alongZ ? 0.22 : span + 0.2, 0.16, alongZ ? span + 0.2 : 0.22), white);
-    head.position.set(cx, 3.22, cz); group.add(head);
-    if (e.canopy) {
-      const canopy = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.14, span + 1.6), white);
-      canopy.position.set(cx + (e.face === 'w' ? -2.2 : 2.2), 3.55, cz); group.add(canopy);
-      for (const side of [-1, 1]) { const col = new THREE.Mesh(new THREE.BoxGeometry(0.26, 3.45, 0.26), white); col.position.set(cx - 3.8, 1.7, cz + side * (span * 0.5 + 0.2)); group.add(col); }
+    a.position.set(cx, e.canopy ? 1.6 : 1.4, cz); b.position.set(cx, e.canopy ? 1.6 : 1.4, cz); group.add(a, b);
+    const frame = alongZ ? [0, span / 2] : [span / 2, 0];
+    box(0.16, e.canopy ? 3.3 : 2.85, 0.16, alum, cx + (alongZ ? 0 : -frame[0]), 1.55, cz + (alongZ ? -frame[1] : 0));
+    box(0.16, e.canopy ? 3.3 : 2.85, 0.16, alum, cx + (alongZ ? 0 : frame[0]), 1.55, cz + (alongZ ? frame[1] : 0));
+    if (!e.canopy) {
+      const depth = e.face === 'n' ? -1.6 : e.face === 's' ? 1.6 : 0;
+      const slide = e.face === 'w' ? -1.6 : 0;
+      box(e.face === 'n' || e.face === 's' ? span + 1.2 : 2.4, 0.12, e.face === 'n' || e.face === 's' ? 2.2 : span + 1.2, white, cx + slide, 3.15, cz + depth * 0.4);
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(span + 0.4, 0.55), letterMat(e.name, 1024, 180, 64));
+      s.position.set(cx + slide, 3.55, cz + (e.face === 'n' ? -1.8 : e.face === 's' ? 1.8 : 0));
+      s.rotation.y = e.face === 'n' ? Math.PI : 0; group.add(s);
     }
-    const sign = board(group, e.canopy ? 'NIGHT MALL' : e.name, e.canopy ? 'MAIN ENTRANCE' : 'SIDE ENTRANCE', '#1c1e24', '#f7f7f5', cx + (e.face === 'w' ? -2.2 : e.face === 'e' ? 2.2 : 0), e.canopy ? 4.45 : 3.7, cz + (e.face === 'n' ? -0.4 : e.face === 's' ? 0.4 : 0), e.canopy ? 7 : 3.2);
-    sign.rotation.y = e.face === 'w' ? -Math.PI / 2 : e.face === 'e' ? Math.PI / 2 : e.face === 'n' ? Math.PI : 0;
-    doors.push({ a, b, alongZ, cx, cz, shut: paneW * 0.5, open: paneW * 0.98, ex: e.x + e.w / 2, ey: e.y + e.h / 2, reach: Math.max(e.w, e.h) + 180 });
+    doors.push({ a, b, alongZ, cx, cz, shut: paneW * 0.52, open: paneW * 0.96, ex: e.x + e.w / 2, ey: e.y + e.h / 2, reach: Math.max(e.w, e.h) + 220 });
   }
   anim.push(() => {
     for (const d of doors) {
@@ -97,6 +168,47 @@ function buildMallFacade(group, anim, map, mall, tier, focus) {
       else { d.a.position.x += (d.cx - target - d.a.position.x) * 0.16; d.b.position.x += (d.cx + target - d.b.position.x) * 0.16; }
     }
   });
+
+  // Sidewalk, drop-off curb, parking stalls, and repeated street furniture. Counts drop on the low tier.
+  const pave = pbrMat('concrete', 4, 4, { color: '#d9d6cf', r: 0.9 });
+  const walk = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.1, (mall.h - 80) * S), pave);
+  walk.position.set(faceX - 3.4, 0.06, (mall.y + mall.h / 2) * S); walk.receiveShadow = true; group.add(walk);
+  const curb = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, (mall.h - 80) * S), std('#eeeae2', { r: 0.8 }));
+  curb.position.set(faceX - 6.6, 0.1, (mall.y + mall.h / 2) * S); group.add(curb);
+  const nCar = low ? 2 : tier === 'med' ? 4 : 6;
+  const stalls = [[1900, 720], [1900, 816], [1900, 912], [1900, 1888], [1900, 1984], [1900, 2080]].slice(0, nCar);
+  const line = new THREE.MeshBasicMaterial({ color: '#f4f1e6' });
+  for (const [x, y] of stalls) {
+    const mark = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.08), line);
+    mark.rotation.x = -Math.PI / 2; mark.position.set((x + 34) * S, 0.04, y * S); group.add(mark);
+    const body = std(['#c23b3b', '#2f5f9a', '#d8d4cc', '#1d1f24', '#3d6b4f', '#8a6a3b'][stalls.findIndex(s => s[0] === x && s[1] === y) % 6], { r: 0.45, m: 0.35 });
+    box(3.1, 0.55, 1.45, body, (x + 30) * S, 0.55, (y + 16) * S);
+    box(1.5, 0.45, 1.35, std('#1a1c20', { r: 0.3, m: 0.5 }), (x + 30) * S, 0.95, (y + 16) * S);
+  }
+  const nTree = low ? 3 : tier === 'med' ? 6 : 8;
+  const trunks = inst(new THREE.CylinderGeometry(0.12, 0.16, 1.3, low ? 5 : 7), std('#5a4636', { r: 0.9 }), nTree, group);
+  const crowns = inst(new THREE.SphereGeometry(0.7, low ? 6 : 10, low ? 5 : 8), std('#2f6a3a', { r: 0.85 }), nTree, group);
+  const pots = inst(new THREE.CylinderGeometry(0.45, 0.38, 0.45, low ? 6 : 8), std('#cfc8bc', { r: 0.7 }), nTree, group);
+  const treeSpots = [980, 1120, 2100, 2240, 800, 2360, 1040, 2000].slice(0, nTree);
+  treeSpots.forEach((y, i) => { const x = 2080; put(pots, dummy, x * S, 0.25, y * S); put(trunks, dummy, x * S, 0.9, y * S); put(crowns, dummy, x * S, 1.7, y * S); });
+  trunks.instanceMatrix.needsUpdate = true; crowns.instanceMatrix.needsUpdate = true; pots.instanceMatrix.needsUpdate = true;
+  const nLamp = low ? 4 : 8;
+  const poles = inst(new THREE.CylinderGeometry(0.06, 0.08, 3.2, 6), alum, nLamp, group);
+  const heads = inst(new THREE.BoxGeometry(0.45, 0.12, 0.22), std('#fff4d0', { e: '#ffd9a0', ei: 2.4, r: 0.3 }), nLamp, group);
+  for (let i = 0; i < nLamp; i++) {
+    const y = mall.y + 200 + i * ((mall.h - 400) / nLamp);
+    if (main && y > main.y - 40 && y < main.y + main.h + 40) continue;
+    put(poles, dummy, 2120 * S, 1.6, y * S); put(heads, dummy, 2120 * S, 3.25, y * S);
+  }
+  poles.instanceMatrix.needsUpdate = true; heads.instanceMatrix.needsUpdate = true;
+  const nBoll = low ? 4 : 8;
+  const bolls = inst(new THREE.CylinderGeometry(0.1, 0.12, 0.85, 6), alum, nBoll, group);
+  [[2148, 1268], [2148, 1748], [2100, 1240], [2100, 1780], [2160, 1200], [2160, 1840], [2080, 1180], [2080, 1860]].slice(0, nBoll).forEach(([x, y]) => put(bolls, dummy, x * S, 0.42, y * S));
+  bolls.instanceMatrix.needsUpdate = true;
+  for (const y of [1040, 1988]) {
+    box(2.2, 0.42, 0.55, std('#6d4c38', { r: 0.7 }), 2100 * S, 0.35, (y + 13) * S);
+    box(0.4, 0.7, 0.4, std('#3a3d42', { m: 0.4, r: 0.45 }), 2064 * S, 0.4, y * S);
+  }
 }
 function buildMallInterior(group, anim, map, mall, tier, cx, cz, focus) {
   const info = map.mall, atr = info && info.atrium;
