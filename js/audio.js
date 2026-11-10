@@ -176,6 +176,7 @@ export function sfx(k, o = {}) {
     case 'kill': [880, 660].forEach((f, i) => tone(f, .25, 'square', .06, f, .25, 0, i * .1)); break;
     case 'escape': [523, 659, 784, 1046].forEach((f, i) => tone(f, .5, 'triangle', .1, 0, .5, 0, i * .12)); break;
     case 'click': tone(900, .04, 'square', .05, 0, 0); break;
+    case 'sting': tone(98, .7, 'sawtooth', .12 * v, 40, .4); tone(196, .9, 'triangle', .1 * v, 80, .5, 0, .12); burst(.4, .08 * v, 1800, .5, 'highpass', .1); break;
     case 'whisper': burst(1.4, .05 * v, 2200, 6, 'bandpass', .9, pan); break;
     case 'gun': burst(.12, .5 * v, 1800, .6, 'lowpass', .12, pan); tone(140, .1, 'square', .2 * v, 50, .1, pan); break;
     case 'shotgun': burst(.3, .7 * v, 1100, .5, 'lowpass', .3, pan); tone(80, .2, 'sawtooth', .25 * v, 35, .2, pan); break;

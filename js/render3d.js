@@ -4,6 +4,7 @@ import { tex, glowTex, softTex, beamTex, textSprite, oldWallpaper } from './text
 import { GFX, GU, PostFX, patch, antiTile, wet, wind, pbrMat, pbrSet, pbrRep, natTex, installPCSS, makeSky, skyTex, waterMat as gfxWater } from './gfx.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet, realSetup, lodTick, buildVehicle } from './models.js';
+import { tickSkinFx } from './skinfx.js';
 import { applyEmote } from './emotes.js';
 import { seasonFor } from './season.js';
 import { loadSky, skyById } from './skies.js';
@@ -714,7 +715,9 @@ export class World {
       const moved = c.last ? Math.hypot(x - c.last.x, z - c.last.z) : 0; c.last = { x, z };
       c.speed = lerp(c.speed, dt > 0 ? moved / dt : 0, Math.min(1, dt * 8));
       let yaw = Math.atan2(Math.cos(p.a), Math.sin(p.a)); c.yaw = angLerp(c.yaw, yaw, Math.min(1, dt * 12));
-      o.position.set(x, 0, z); o.rotation.y = c.yaw;
+      const feet = ((p.fl || 0) + (p.cf != null && p.ck != null ? (p.cf - (p.fl || 0)) * p.ck : 0)) * 4.2;
+      o.position.set(x, feet, z); o.rotation.y = c.yaw;
+      if (p.sk) tickSkinFx(o, t);
       const parts = o.userData.parts, sp = Math.min(c.speed / 6, 1.6);
       c.phase += dt * (3 + c.speed * 1.6);
       // phase 2: skinned glTF clips, procedural wiggles (tentacles, tails, wings), swimming and boats
@@ -806,7 +809,8 @@ export class World {
     for (const [id, c] of this.chars) if (!seen.has(id)) { this.dropChar(c); this.chars.delete(id); }
 
     // local flashlight
-    const myPos = new THREE.Vector3(md.dx * S, 0, md.dy * S), aim = v.aim ?? mp.a;
+    const feetY = ((mp.fl || 0) + (mp.cf != null && mp.ck != null ? (mp.cf - (mp.fl || 0)) * mp.ck : 0)) * 4.2;
+    const myPos = new THREE.Vector3(md.dx * S, feetY, md.dy * S), aim = v.aim ?? mp.a;
     const dir = new THREE.Vector3(Math.cos(aim), 0, Math.sin(aim));
     const survivorLight = mp.role === 'survivor' && !ghost && st !== 'lobby';
     const myLightOn = survivorLight || st === 'lobby';
@@ -1065,11 +1069,19 @@ export class World {
     this.menuSpot = new THREE.SpotLight('#ffe2c0', 120, 50, .35, .5, 1.3); this.menuSpot.position.set(0, 14, 10); this.menuSpot.castShadow = true; this.menuSpot.shadow.mapSize.set(1024, 1024); s.add(this.menuSpot, this.menuSpot.target);
     const red = new THREE.PointLight('#ff2020', 20, 30, 1.5); red.position.set(0, 3, -6); s.add(red); this.menuRed = red;
     if (GFX.pcss) this.menuSpot.shadow.radius = 1.2;
+    if (GFX.tier !== 'low') {
+      const rain = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(Array.from({ length: 180 * 3 }, () => (Math.random() - .5) * 40)), 3)), new THREE.PointsMaterial({ color: '#9bb', size: 0.05, transparent: true, opacity: 0.45, depthWrite: false }));
+      rain.position.y = 8; s.add(rain); this.menuRain = rain;
+    }
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff2020' }));
+    eye.position.set(-6, 2.2, -8); s.add(eye); this.menuEye = eye;
     s.userData = { vol: { on: true, dens: .05, hf: .25, far: 40, flash: this.menuSpot, flashK: .0045, lights: [red], lampK: .01 }, cg: [[.01, .004, .006], [1, 1, 1], [1.04, 1, .98], .9], dof: .9, focus: 16, focusR: 9 };
   }
   renderMenu(dt, t) {
     const a = Math.sin(t * .35) * .9; this.menuSpot.target.position.set(Math.sin(a) * 14, 1.5, -Math.cos(a) * 14 + 6);
-    const f = Math.sin(t * 11) + Math.sin(t * 5.7); this.menuSpot.intensity = f > 1.5 ? 20 : 260; this.menuRed.intensity = 12 + Math.sin(t * 2) * 8;
+    const gentle = (() => { try { return localStorage.nhPhoto === '1'; } catch (e) { return false; } })();
+    const f = Math.sin(t * 11) + Math.sin(t * 5.7); this.menuSpot.intensity = gentle ? 160 : (f > 1.5 ? 30 : 260); this.menuRed.intensity = gentle ? 8 : 12 + Math.sin(t * 2) * 8;
+    if (this.menuEye) { this.menuEye.material.opacity = 0.4 + Math.sin(t * 3) * 0.4; this.menuEye.material.transparent = true; this.menuEye.position.x = -6 + Math.sin(t * 0.2) * 2; }
     this.menuMonsters.forEach((m, i) => { const p = m.userData.parts; if (p.head) p.head.rotation.y = Math.sin(t * .7 + i) * .3; if (p.armL) p.armL.rotation.x = Math.sin(t * 1.4 + i) * .15 - .1; if (p.head?.userData.petals) p.head.userData.petals.forEach(h => h.rotation.x = .3 + .5 * (.5 + .5 * Math.sin(t * 2))); if (p.stat) p.stat.visible = Math.random() < .5; if (m.userData.anim) animTick(m, dt, 'idle'); if (m.userData.wiggle) wiggleTick(m, t + i); });
     this.menuCam.position.set(Math.sin(t * .1) * 3, 3.2, 9 + Math.sin(t * .13)); this.menuCam.lookAt(0, 2.4, -6);
     const u = this.post.uniforms; u.uGrey.value = 0; u.uRed.value = .03; u.uVig.value = 1.2; u.uGrain.value = .07; u.uAb.value = 1; u.uExp.value = 2; u.uFade.value = 0;
@@ -1107,7 +1119,8 @@ export class World {
   // every monster has its own animated jumpscare; game.js cuts to black (optional blood splatter) at the impact moment
   renderScare(dt, t, sc) {
     const key = modelKey(sc.type, sc.fm);
-    if (this.scareKind !== key) { if (this.scareModel) this.scareScene.remove(this.scareModel); this.scareModel = buildMonster(key); lodTick(this.scareModel, 0); this.scareScene.add(this.scareModel); this.scareKind = key; }
+    if (this.scareKind !== key) { if (this.scareModel) this.scareScene.remove(this.scareModel); this.scareModel = buildMonster(key); lodTick(this.scareModel, 0); this.scareScene.add(this.scareModel); this.scareKind = key; this.scareSkin = ''; }
+    if (sc.skin && this.scareSkin !== sc.skin) { applySkin(this.scareModel, sc.skin); this.scareSkin = sc.skin; }
     const M = this.scareModel, p = M.userData.parts, e = sc.elapsed, cam = this.scareCam, k = sc.type;
     M.position.set(0, 0, 0); M.rotation.set(0, 0, 0); M.scale.set(1, 1, 1); M.visible = true; this.scareRed.color.set('#ff1010'); const big = P2.has(k); this.scareScene.fog.far = big ? 45 : 14; this.scareLight.distance = big ? 40 : 12; this.scareRed.distance = big ? 40 : 12;
     const hp = new THREE.Vector3(); M.updateMatrixWorld(true); (p.head || M).getWorldPosition(hp);
@@ -1157,16 +1170,18 @@ export class World {
     else { const lunge = ease((e - .3) / .8); pos = new THREE.Vector3(hp.x, hp.y, hp.z + 4 - lunge * 3.2); shake = .03 + lunge * .1; }
     if (this.scareWater) { this.scareWater.visible = SEA.has(k) && !(k === 'megalodon' && sc.fm === 1); this.scareSwarm.visible = k === 'megalodon' && sc.fm !== 1 && e < 2.2; }
     const jaw = M.getObjectByName('jaw'); if (jaw && e > .12) jaw.rotation.x = Math.max(jaw.rotation.x || 0, .7 + Math.sin(t * 28) * .08);
-    const rush = ease(Math.min(1, sc.elapsed / (sc.intense === false ? .48 : .26)));
+    const rush = sc.show ? 0 : ease(Math.min(1, sc.elapsed / (sc.intense === false ? .48 : .26)));
     const face = look.clone(); const away = pos.clone().sub(face); if (away.lengthSq() < 1e-4) away.set(0, 0, 1); away.normalize().multiplyScalar(sc.intense === false ? .85 : .42);
     pos.lerp(face.clone().add(away), rush * (sc.intense === false ? .62 : .9));
     const gain = sc.intense === false ? .6 : 1.65; shake *= gain; ab *= sc.photo ? .3 : gain; red *= sc.photo ? .35 : 1;
+    if (sc.show) { M.position.set(0, 0, 0); M.rotation.set(0, 0, 0); M.scale.set(1, 1, 1); const h = Math.max(1.8, monsterHeight(key)); pos = new THREE.Vector3(0, h * .42, h * 1.35); look = new THREE.Vector3(0, h * .38, 0); shake = 0; this.scareScene.fog.far = 80; }
     cam.fov = fov; cam.updateProjectionMatrix();
     const jitter = sc.photo ? shake * .25 : shake;
     cam.position.set(pos.x + (Math.random() - .5) * jitter, pos.y + (Math.random() - .5) * jitter, pos.z); cam.lookAt(look); this.scareScene.userData.focus = Math.max(.4, cam.position.distanceTo(hp));
-    this.scareLight.position.set(hp.x, hp.y - 1.2, hp.z + 1.8); this.scareLight.intensity = sc.photo ? 28 : (Math.random() < .15 ? 8 : 48); this.scareRed.position.set(hp.x + 1, hp.y + 1, hp.z + 1);
+    this.scareLight.position.set(hp.x, hp.y - 1.2, hp.z + 1.8); this.scareLight.intensity = sc.show ? 16 : (sc.photo ? 28 : (Math.random() < .15 ? 8 : 48)); this.scareRed.intensity = sc.show ? 2 : 20; this.scareRed.position.set(hp.x + 1, hp.y + 1, hp.z + 1);
     if (p.head && !fnaf && k !== 'sirenhead' && k !== 'locust') p.head.rotation.z = Math.sin(t * 40) * .05;
-    const u = this.post.uniforms; u.uGrey.value = k === 'boisvert' ? (sc.photo ? .25 : .55) : 0; u.uRed.value = red + (sc.photo ? 0 : Math.random() * .15); u.uVig.value = 1.45; u.uGrain.value = k === 'boisvert' || k === 'locust' ? (sc.photo ? .06 : .22) : (sc.photo ? .05 : .16); u.uAb.value = ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = sc.photo ? 0 : (sc.elapsed < .07 ? .85 : 0);
+    tickSkinFx(M, t);
+    const u = this.post.uniforms; u.uGrey.value = k === 'boisvert' ? (sc.photo ? .25 : .55) : 0; u.uRed.value = red + (sc.photo ? 0 : Math.random() * .15); u.uVig.value = 1.45; u.uGrain.value = k === 'boisvert' || k === 'locust' ? (sc.photo ? .06 : .22) : (sc.photo ? .05 : .16); u.uAb.value = sc.show ? 1.2 : ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = sc.photo || sc.show ? 0 : (sc.elapsed < .07 ? .85 : 0);
     this.render(this.scareScene, cam);
   }
   // phase 2 jumpscares: one choreography per creature (teen level: lunges, bites and cut-to-black, no gore)

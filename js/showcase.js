@@ -2,6 +2,7 @@
 // cloned materials, and any geometry that is not in the shared model cache.
 import * as THREE from '../vendor/three.module.min.js';
 import { applyEmote } from './emotes.js';
+import { tickSkinFx } from './skinfx.js';
 
 let live = null;
 let opened = 0;
@@ -132,6 +133,7 @@ export function openShowcase(opts) {
     live.raf = requestAnimationFrame(loop);
     const dt = Math.min(0.05, clock.getDelta());
     acc += dt;
+    if (model) tickSkinFx(model, acc);
     if (opts.animate && model) opts.animate(model, acc, dt);
     else if (opts.emote && model) {
       const parts = model.userData.parts;

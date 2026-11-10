@@ -5,6 +5,7 @@ import { tex, faceTex, glowTex, oldWallpaper } from './textures.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clone as skClone } from '../vendor/SkeletonUtils.js';
 import { realize, realizeHuman, prepGLBGeometry, realSetup, lodTick, isLow, realReady } from './realism.js';
+import { dressSkin } from './skinfx.js';
 export { realSetup, lodTick, realReady };
 
 const geo = {};
@@ -1238,7 +1239,8 @@ const SKIN_FX = { shadow: { mul: '#2a2a32', e: '#ff1010' }, golden: { mul: '#ffd
 export function applySkin(root, skin) {
   if (root.userData.kind) root.userData.skin = skin;
   const f = SKIN_FX[skin]; if (!f) return; const mul = new THREE.Color(f.mul);
-  const seen = new Set(); root.traverse(o => { if (!o.isMesh) return; for (const m of Array.isArray(o.material) ? o.material : [o.material]) { if (!m.color || seen.has(m)) continue; seen.add(m); m.color.multiply(mul).lerp(mul, .25); if (f.m != null) { m.metalness = f.m; m.roughness = .3; } if (f.e && m.emissive && m.emissiveIntensity > .5) m.emissive.set(f.e); else if (f.e && skin === 'toxic' && m.emissive) { m.emissive.set('#0a3000'); m.emissiveIntensity = .5; } } });
+  const seen = new Set(); root.traverse(o => { if (!o.isMesh) return; for (const m of Array.isArray(o.material) ? o.material : [o.material]) { if (!m.color || seen.has(m)) continue; seen.add(m); m.color.multiply(mul).lerp(mul, .25); if (f.m != null) { m.metalness = f.m; m.roughness = .3; } if (f.e && m.emissive && m.emissiveIntensity > .5) m.emissive.set(f.e); else if (f.e && skin === 'toxic' && m.emissive) { m.emissive.set('#0a3000'); m.emissiveIntensity = .5; } if (f.op != null) { m.transparent = true; m.opacity = f.op; m.depthWrite = false; } } });
+  dressSkin(root, skin);
 }
 // what plays on old TVs in houses: the Locust standing in front of faded floral wallpaper (it talks like a friendly child…)
 let _lscr = null;

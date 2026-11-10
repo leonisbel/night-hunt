@@ -107,6 +107,7 @@ function botLook() { const r = a => a[Math.floor(Math.random() * a.length)]; ret
 const COLORS = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#1abc9c','#e67e22','#ecf0f1','#fd79a8','#00cec9','#a29bfe','#55efc4','#fab1a0','#74b9ff','#ffeaa7'];
 const THEMES = [...CLASSIC, 'Stormy Ocean', 'Rainforest Swamp', 'Snowy Mountain', 'Haunted Farm', 'Vampire Castle', 'Fester Street'];
 const ENV = (typeof process !== 'undefined' && process.env) || {};
+const Auras = (typeof NightHuntAuras !== 'undefined' && NightHuntAuras) || (typeof require === 'function' ? require('./js/auras.js') : null);
 // the power-line forest is still the most common map; a monster player's chosen monster pulls the round to that monster's home map
 const pickTheme = pref => THEMES.includes(ENV.THEME) ? ENV.THEME : pref && MONSTERS[pref] ? pick(MONSTERS[pref].home) : Math.random() < .3 ? THEMES[0] : pick(THEMES.slice(1));
 
@@ -146,34 +147,49 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
   for (let i = 0; i < 5; i++) { const x = 140 + i * 390; block(x, 160, 300, 1000, 2 + (i % 4)); block(x, 1760, 300, 820, 1 + ((i + 2) % 4)); }
   // mall shell. Door faces the avenue (west side, y 1400–1640).
   const X = 2220, Y = 360, W = 2200, H = 2100, door0 = 1400, door1 = 1640;
-  L.bld.push({ x: X, y: Y, w: W, h: H, type: 'store', kind: 'mall', floors: 1, light: 'warm', store: 'mall', name: 'NIGHT MALL', c: '#ffd27a', nolight: true });
-  L.walls.push({ x: X, y: Y, w: W, h: T, mh: 8 }, { x: X, y: Y + H - T, w: W, h: T, mh: 8 }, { x: X + W - T, y: Y, w: T, h: H, mh: 8 },
-    { x: X, y: Y, w: T, h: door0 - Y, mh: 8 }, { x: X, y: door1, w: T, h: Y + H - door1, mh: 8 });
-  const P = (k, x, y, w, h, extra = {}) => L.props.push(Object.assign({ k, x: Math.round(x), y: Math.round(y), w, h, solid: extra.solid !== false }, extra));
-  const north = STORES.slice(0, 5), south = STORES.slice(5);
-  north.forEach((st, i) => {
-    const sx = X + 80 + i * 420, counterY = Y + H - 220;
-    P('counter', sx, counterY, 240, 36);
-    P('register', sx + 100, counterY + 4, 28, 24, { solid: false });
-    P('storesign', sx + 20, Y + H - 70, 200, 16, { solid: false, t: st.name, s: st.sub, c: st.c, a: Math.PI });
-    L.zones.push({ k: st.k, name: st.name, x: sx - 10, y: counterY - 200, w: 280, h: 180, c: st.c, ic: st.ic });
-    if (st.k === 'skinshop') { P('mannequin', sx, counterY - 70, 40, 40, { solid: false }); P('mannequin', sx + 190, counterY - 70, 40, 40, { solid: false }); }
-    if (st.k === 'weapons') P('display', sx + 40, counterY - 80, 160, 36, { items: ['knife', 'bat', 'axe', 'pistol'] });
-    if (st.k === 'armor') P('display', sx + 50, counterY - 80, 140, 36, { items: ['vest', 'helmet'] });
-    if (st.k === 'food') { P('fridge', sx, counterY - 70, 40, 36, { solid: false }); P('display', sx + 70, counterY - 80, 140, 36, { items: ['soda', 'chips', 'medkit'] }); }
-    if (st.k === 'monskins') ['freddy', 'trex', 'dragon'].forEach((m, q) => P('pedestal', sx + q * 70, counterY - 80, 42, 42, { m, solid: false }));
-  });
-  south.forEach((st, i) => {
-    const sx = X + 140 + i * 500, counterY = Y + 90;
-    P('counter', sx, counterY, 240, 36);
-    P('register', sx + 100, counterY + 4, 28, 24, { solid: false });
-    P('storesign', sx + 20, Y + 40, 200, 16, { solid: false, t: st.name, s: st.sub, c: st.c, a: 0 });
-    L.zones.push({ k: st.k, name: st.name, x: sx - 10, y: counterY + 50, w: 280, h: 180, c: st.c, ic: st.ic });
-    if (st.k === 'emotes') P('dancefloor', sx + 10, counterY + 80, 220, 110, { solid: false });
-    if (st.k === 'pets') ['puppy', 'kitty', 'dragon'].forEach((pet, q) => P('petbed', sx + q * 70, counterY + 70, 42, 36, { pet, solid: false }));
-    if (st.k === 'clothing') { P('rack', sx, counterY + 70, 90, 28, { solid: false }); P('mirror', sx + 150, counterY + 60, 50, 16, { solid: false, a: Math.PI }); }
-    if (st.k === 'crate') { P('crate', sx, counterY + 70, 40, 40, { solid: false }); P('crate', sx + 160, counterY + 70, 40, 40, { solid: false }); }
-  });
+  L.bld.push({ x: X, y: Y, w: W, h: H, type: 'store', kind: 'mall', floors: 2, light: 'warm', store: 'mall', name: 'NIGHT MALL', c: '#ffd27a', nolight: true });
+  L.walls.push({ x: X, y: Y, w: W, h: T, mh: 9 }, { x: X, y: Y + H - T, w: W, h: T, mh: 9 }, { x: X + W - T, y: Y, w: T, h: H, mh: 9 },
+    { x: X, y: Y, w: T, h: door0 - Y, mh: 9 }, { x: X, y: door1, w: T, h: Y + H - door1, mh: 9 },
+    { x: X, y: door0, w: T, h: door1 - door0, fl: 1, mh: 4.4 });
+  const AX = 3080, AY = 1220, AW = 520, AH = 500, R = 22;
+  L.mall = { x: X, y: Y, w: W, h: H, atrium: { x: AX, y: AY, w: AW, h: AH }, floorH: 4.2 };
+  L.walls.push({ x: AX, y: AY, w: AW, h: R, fl: 1, mh: 1.15 }, { x: AX, y: AY + AH - R, w: AW, h: R, fl: 1, mh: 1.15 },
+    { x: AX, y: AY, w: R, h: AH, fl: 1, mh: 1.15 }, { x: AX + AW - R, y: AY, w: R, h: AH, fl: 1, mh: 1.15 });
+  const P = (k, x, y, w, h, extra = {}) => L.props.push(Object.assign({ k, x: Math.round(x), y: Math.round(y), w, h, solid: extra.solid !== false, fl: extra.fl || 0 }, extra));
+  const byK = Object.fromEntries(STORES.map(s => [s.k, s]));
+  const shop = (k, sx, counterY, fl, face) => {
+    const st = byK[k];
+    P('counter', sx, counterY, 240, 36, { fl });
+    P('register', sx + 100, counterY + 4, 28, 24, { solid: false, fl });
+    const signY = face > 0 ? counterY + 80 : counterY - 50;
+    P('storesign', sx + 20, signY, 200, 16, { solid: false, fl, t: st.name, s: st.sub, c: st.c, a: face > 0 ? 0 : Math.PI });
+    const zx = sx - 10, zy = face > 0 ? counterY + 50 : counterY - 200;
+    L.zones.push({ k: st.k, name: st.name, x: zx, y: zy, w: 280, h: 180, c: st.c, ic: st.ic, fl });
+    if (k === 'skinshop') { P('mannequin', sx, counterY - 70, 40, 40, { solid: false, fl }); P('mannequin', sx + 190, counterY - 70, 40, 40, { solid: false, fl }); }
+    if (k === 'weapons') P('display', sx + 40, counterY - 80, 160, 36, { items: ['knife', 'bat', 'axe', 'pistol'], fl });
+    if (k === 'armor') P('display', sx + 50, counterY - 80, 140, 36, { items: ['vest', 'helmet'], fl });
+    if (k === 'food') { P('fridge', sx, counterY - 70, 40, 36, { solid: false, fl }); P('display', sx + 70, counterY - 80, 140, 36, { items: ['soda', 'chips', 'medkit'], fl }); }
+    if (k === 'monskins') ['freddy', 'trex', 'dragon'].forEach((m, q) => P('pedestal', sx + q * 70, counterY - 70, 42, 42, { m, solid: false, fl }));
+    if (k === 'emotes') P('dancefloor', sx + 10, counterY + 70, 220, 110, { solid: false, fl });
+    if (k === 'pets') ['puppy', 'kitty', 'dragon'].forEach((pet, q) => P('petbed', sx + q * 70, counterY + 70, 42, 36, { pet, solid: false, fl }));
+    if (k === 'clothing') { P('rack', sx, counterY + 70, 90, 28, { solid: false, fl }); P('mirror', sx + 150, counterY + 60, 50, 16, { solid: false, fl, a: Math.PI }); }
+    if (k === 'crate') { P('crate', sx, counterY + 70, 40, 40, { solid: false, fl }); P('crate', sx + 160, counterY + 70, 40, 40, { solid: false, fl }); }
+  };
+  // Ground floor promenade. Upper balcony holds clothing, skins, emotes and crates. The atrium stays open.
+  shop('weapons', 3600, Y + H - 220, 0, -1);
+  shop('armor', 4000, Y + H - 220, 0, -1);
+  shop('food', 2460, Y + H - 220, 0, -1);
+  shop('pets', 2460, Y + 90, 0, 1);
+  shop('skinshop', 2460, Y + 90, 1, 1);
+  shop('monskins', 3600, Y + 90, 1, 1);
+  shop('crate', 4000, Y + 90, 1, 1);
+  shop('emotes', 2920, Y + H - 220, 1, -1);
+  shop('clothing', 3600, Y + H - 220, 1, -1);
+  L.lifts = [
+    { kind: 'escalator', x: 2860, y: 1320, w: 120, h: 240, from: 0, to: 1, land: { x: 2740, y: 1440 }, back: { x: 2740, y: 1600 } },
+    { kind: 'stair', x: 3680, y: 1320, w: 150, h: 240, from: 0, to: 1, land: { x: 3900, y: 1280 }, back: { x: 3900, y: 1600 } },
+    { kind: 'elevator', x: 2340, y: 1760, w: 110, h: 110, from: 0, to: 1, land: { x: 2500, y: 1810 }, back: { x: 2500, y: 1960 } },
+  ];
   // coin kiosk sits on the avenue, outside the mall door. It is not a paid shop.
   P('kiosk', 1960, 1560, 70, 50);
   P('storesign', 1880, 1640, 200, 16, { solid: false, t: 'COIN STORE', s: 'FREE REWARD · NO PAYMENTS', c: '#ffd76b', a: 0 });
@@ -189,7 +205,7 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
     { id: 1, x: 360, y: 1348, a: 0, kind: 'pickup' }, { id: 2, x: 980, y: 1336, a: 0.1, kind: 'sedan' },
     { id: 3, x: 1540, y: 1355, a: 0, kind: 'suv' }, { id: 4, x: 2060, y: 1368, a: 0.15, kind: 'pickup' },
     { id: 5, x: 430, y: 1632, a: Math.PI, kind: 'sedan' }, { id: 6, x: 1180, y: 1644, a: Math.PI, kind: 'suv' },
-    { id: 7, x: 1720, y: 1628, a: Math.PI, kind: 'pickup' }, { id: 8, x: 2480, y: 1520, a: 1.57, kind: 'sedan' },
+    { id: 7, x: 1720, y: 1628, a: Math.PI, kind: 'pickup' }, { id: 8, x: 1980, y: 1500, a: 0.2, kind: 'sedan' },
   ]; }
 // every building is a furnished house (rooms split by an inner wall) or a facility (warehouse/lab/industrial)
 function furnish(m, b) {
@@ -327,12 +343,15 @@ function freeSpot(m, r, near, spread, where) { // where: undefined = land on the
   }
   return { x: m.w / 2, y: m.h / 2 };
 }
-function collides(m, x, y, r) {
-  return m.walls.some(w => x + r > w.x && x - r < w.x + w.w && y + r > w.y && y - r < w.y + w.h) || m.trees.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r) || (m.poles && m.poles.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r)) || (m.props && m.props.some(o => o.solid && x + r > o.x && x - r < o.x + o.w && y + r > o.y && y - r < o.y + o.h));
+function collides(m, x, y, r, fl) {
+  const F = fl || 0;
+  const wall = w => (w.fl == null || w.fl === F) && x + r > w.x && x - r < w.x + w.w && y + r > w.y && y - r < w.y + w.h;
+  const prop = o => o.solid && (o.fl == null || o.fl === F) && x + r > o.x && x - r < o.x + o.w && y + r > o.y && y - r < o.y + o.h;
+  return m.walls.some(wall) || m.trees.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r) || (m.poles && m.poles.some(t => Math.hypot(t.x - x, t.y - y) < t.r + r)) || (m.props && m.props.some(prop));
 }
 function moveEnt(m, e, dx, dy) {
-  const r = e.r;
-  const tryAxis = (nx, ny) => { if (!collides(m, nx, ny, r)) { e.x = nx; e.y = ny; return true; } return false; };
+  const r = e.r, fl = e.fl || 0;
+  const tryAxis = (nx, ny) => { if (!collides(m, nx, ny, r, fl)) { e.x = nx; e.y = ny; return true; } return false; };
   if (!tryAxis(e.x + dx, e.y + dy)) { if (!tryAxis(e.x + dx, e.y)) tryAxis(e.x, e.y + dy); }
   e.x = clamp(e.x, r, m.w - r); e.y = clamp(e.y, r, m.h - r);
 }
@@ -340,7 +359,7 @@ function moveEnt(m, e, dx, dy) {
 // ---------- rooms / players ----------
 function makePlayer(name, ws, bot) {
   return { id: nextId++, name, ws, bot: !!bot, color: COLORS[0], x: 0, y: 0, a: 0, r: 16, keys: {}, role: 'lobby', mt: null,
-    alive: true, escaped: false, stamina: 100, cdUntil: 0, st: {}, score: 0, earn: 0, look: bot ? botLook() : cleanLook(), pref: null, skin: 'classic', botT: 0, botGoal: null, lastPos: null, ...freshKit() };
+    alive: true, escaped: false, stamina: 100, cdUntil: 0, st: {}, score: 0, earn: 0, look: bot ? botLook() : cleanLook(), pref: null, skin: 'classic', botT: 0, botGoal: null, lastPos: null, fl: 0, climb: null, ...freshKit() };
 }
 function freshKit() { return { hp: 100, maxHp: 100, inv: Array(SLOTS).fill(null), sel: 0, ammo: { light: 0, shells: 0, heavy: 0 }, vest: 0, helmet: 0, atkUntil: 0, hitUntil: 0, fire: false, fireEdge: false, sleeping: false, preSleep: null }; }
 function roomInfo(r) { return { code: r.code, name: r.name, players: r.players.size, max: r.max, state: r.state, theme: r.map && r.state !== 'lobby' ? r.map.theme : 'Lobby', isPublic: r.isPublic }; }
@@ -350,11 +369,11 @@ function event(r, msg, kind) { bcast(r, { t: 'event', msg, kind: kind || 'info' 
 function recolor(r) { const used = new Set(); for (const p of r.players.values()) { if (!used.has(p.color) && p.colorSet) { used.add(p.color); continue; } p.color = COLORS.find(c => !used.has(c)) || '#fff'; p.colorSet = true; used.add(p.color); } }
 function toLobby(r) {
   r.state = 'lobby'; r.map = LOBBY; r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set(); bindVehicles(r, LOBBY.vehicles);
-  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100, boat: null, esc: 0, seated: false }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, LOBBY.spawn, 80)); }
+  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100, boat: null, esc: 0, seated: false, fl: 0, climb: null }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, LOBBY.spawn, 80)); }
   sendMap(r);
 }
 function sendMap(r, only) {
-  const m = r.map, o = { t: 'map', map: { w: m.w, h: m.h, theme: m.theme, walls: m.walls, trees: m.trees, bushes: m.bushes, vents: m.vents, heli: m.heli || null, poles: m.poles || [], lines: m.lines || [], loot: m.loot || [], bld: m.bld || [], props: m.props || [], islands: m.islands || null, safe: m.safe || 0, pools: m.pools || null, streets: m.streets || null, zones: m.zones || null, roads: m.roads || (m.road ? [m.road] : null) } };
+  const m = r.map, o = { t: 'map', map: { w: m.w, h: m.h, theme: m.theme, walls: m.walls, trees: m.trees, bushes: m.bushes, vents: m.vents, heli: m.heli || null, poles: m.poles || [], lines: m.lines || [], loot: m.loot || [], bld: m.bld || [], props: m.props || [], islands: m.islands || null, safe: m.safe || 0, pools: m.pools || null, streets: m.streets || null, zones: m.zones || null, roads: m.roads || (m.road ? [m.road] : null), lifts: m.lifts || null, mall: m.mall || null } };
   if (only) send(only, o); else bcast(r, o);
 }
 function addToRoom(r, p) {
@@ -454,6 +473,7 @@ function boatWater(m, x, y, rad) { if (!m.islands) return false; return x > rad 
 function nearestVeh(r, p) { if (!r.vehicles) return null; return r.vehicles.filter(v => dist(v, p) < v.r + p.r + 60).sort((a, c) => dist(a, p) - dist(c, p))[0] || null; }
 function board(r, p) {
   if (!r.vehicles || p.boat) return false;
+  if (r.state === 'lobby' && (p.fl || 0) !== 0) return false;
   if (r.state === 'playing' && (p.role !== 'survivor' || !p.alive || p.escaped)) return false;
   if (r.state !== 'playing' && r.state !== 'lobby') return false;
   const b = nearestVeh(r, p); if (!b) return false;
@@ -701,6 +721,7 @@ function sitLobby(r, p) {
     send(p, { t: 'event', msg: 'You climbed out of the helicopter.', kind: 'info' });
     return true;
   }
+  if ((p.fl || 0) !== 0) return false;
   if (!nearHeliDoor(p)) return false;
   p.seated = true;
   const h = LOBBY.heli, n = [...r.players.values()].filter(q => q.seated).length, a = n * 0.85;
@@ -850,6 +871,43 @@ function phase2Tick(r, t, dt, surv) {
   }
 }
 
+function startClimb(p, L) {
+  const from = p.fl || 0;
+  const to = from === (L.from || 0) ? L.to : (L.from || 0);
+  const land = to === L.to ? L.land : L.back;
+  p.climb = { u: 0, dur: L.kind === 'elevator' ? 1.35 : 1.05, to, x0: p.x, y0: p.y, x1: land.x, y1: land.y };
+}
+function rideLift(r, p) {
+  if (p.climb || p.seated || p.boat) return;
+  for (const L of r.map.lifts || []) {
+    if (L.kind === 'elevator') continue;
+    if (p.x <= L.x || p.x >= L.x + L.w || p.y <= L.y || p.y >= L.y + L.h) continue;
+    startClimb(p, L); return;
+  }
+}
+function tryElevator(r, p) {
+  if (!r || r.state !== 'lobby' || p.climb || p.seated || p.boat) return false;
+  const L = (r.map.lifts || []).find(L => L.kind === 'elevator' && p.x > L.x && p.x < L.x + L.w && p.y > L.y && p.y < L.y + L.h);
+  if (!L) return false;
+  const goingUp = (p.fl || 0) === 0;
+  startClimb(p, L);
+  send(p, { t: 'event', msg: goingUp ? 'The elevator is going up.' : 'The elevator is going down.', kind: 'info' });
+  return true;
+}
+function applyAuras(r, dt, t) {
+  if (!Auras) return;
+  const mons = [...r.players.values()].filter(p => p.role === 'monster');
+  for (const m of mons) m.downUntil = m.st.down;
+  for (const s of r.players.values()) {
+    if (s.role !== 'survivor' || !s.alive || s.escaped) { s.auraKind = ''; s.auraSlow = 1; continue; }
+    const fx = Auras.tickSurvivor(s, mons, dt, t);
+    s.auraKind = fx ? fx.kind : '';
+    s.auraSlow = fx && !fx.frozen ? (fx.slow || 1) : 1;
+    if (fx && fx.frozen) s.st.stun = Math.max(s.st.stun || 0, t + (fx.freeze || 1.2));
+    else if (fx && fx.stun) s.st.stun = Math.max(s.st.stun || 0, t + fx.stun);
+    if (fx && fx.dmg && fx.monster) hurtSurvivor(r, s, fx.dmg, fx.monster);
+  }
+}
 // ---------- simulation ----------
 let tickN = 0;
 function step() {
@@ -861,6 +919,7 @@ function step() {
       if (!r.extract && r.roundEnd - t <= extractAt(r)) { const s = freeSpot(r.map, 90); r.extract = { x: s.x, y: s.y, r: 80 }; event(r, 'The extraction helicopter has landed! Find it (follow the arrow)!', 'big'); bcast(r, { t: 'sfx', kind: 'heli' }); }
       checkEnd(r);
     }
+    if (r.state === 'playing') applyAuras(r, dt, t);
     for (const p of r.players.values()) {
       if (p.bot && !(ENV.TEST_ROLES === 'human-monster' && p.role === 'survivor')) botThink(r, p, t); // kill-cam screenshot hook: survivor bots stand still
       const k = p.keys || {}; let dx = (k.right ? 1 : 0) - (k.left ? 1 : 0), dy = (k.down ? 1 : 0) - (k.up ? 1 : 0);
@@ -889,16 +948,24 @@ function step() {
         if (p.boat) sp = 0;
         if (p.st.slow > t) sp *= .5;
         if (p.st.stun > t || p.st.root > t) sp = 0;
+        if (p.auraSlow && p.auraSlow < 1) sp *= p.auraSlow;
         if (p.st.spd > t) sp *= GEAR.speed.mult;
         if (p.st.grav > t && !(p.st.spd > t)) sp *= GEAR.grav.mult;
       }
-      if (r.state === 'lobby' && !p.boat) sp = p.seated ? 0 : 200;
+      if (r.state === 'lobby' && !p.boat) sp = p.seated || p.climb ? 0 : 200;
+      if (r.state === 'lobby' && p.climb) {
+        const c = p.climb; c.u = Math.min(1, c.u + dt / c.dur);
+        p.x = c.x0 + (c.x1 - c.x0) * c.u; p.y = c.y0 + (c.y1 - c.y0) * c.u;
+        if (c.u >= 1) { p.fl = c.to; p.climb = null; }
+        len = 0;
+      }
       if (p.boat && boatOf(r, p) && boatOf(r, p).by === p.id && (r.state === 'playing' || r.state === 'lobby')) driveVehicle(r, p, len ? dx : 0, len ? dy : 0, dt, !len);
       else if (len && sp) {
         if ((!p.alive || p.escaped || p.role === 'ghost') && r.state === 'playing') { p.x = clamp(p.x + dx * sp * dt, 20, r.map.w - 20); p.y = clamp(p.y + dy * sp * dt, 20, r.map.h - 20); }
         else moveEnt(r.map, p, dx * sp * dt, dy * sp * dt);
       }
       if (p.boat) { const b = boatOf(r, p); if (b) { p.x = b.x; p.y = b.y; if (len && b.by === p.id) p.a = b.a; } else p.boat = null; }
+      if (r.state === 'lobby') rideLift(r, p);
       if (r.state === 'playing' && p.role === 'survivor' && p.alive && !p.escaped) {
         if (!p.bot && (p.fire || p.fireEdge)) useItem(r, p, p.fireEdge);
         p.fireEdge = false;
@@ -946,13 +1013,14 @@ function snapshot(r, t) {
       }
       const st = {}; for (const k in p.st) if (p.st[k] > t) st[k] = 1;
       if (me.role === 'monster' && me.st.sight > t && p.role === 'survivor') st.reveal = 1;
-      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester', 'wendigo'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined, seat: p.seated ? 1 : undefined };
+      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester', 'wendigo'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined, seat: p.seated ? 1 : undefined, fl: p.fl || 0, au: p.role === 'survivor' ? (p.auraKind || '') : undefined };
+      if (p.climb) { q.ck = +p.climb.u.toFixed(2); q.cf = p.climb.to; }
       if (r.state === 'playing') { q.hp = Math.round(p.hp / p.maxHp * 100); if (p.role === 'survivor') { const s = p.inv[p.sel]; q.w = s ? s.k : null; q.ar = (p.vest > 0 ? 1 : 0) | (p.helmet > 0 ? 2 : 0); } }
       ps.push(q);
     }
     const o = { t: 's', state: r.state, ps, ex: r.extract, max: r.max, boarded: r.boarded || [],
       tl: r.state === 'playing' ? Math.max(0, Math.ceil(r.roundEnd - t)) : r.state === 'flight' ? Math.ceil(r.flightEnd - t) : r.state === 'results' ? Math.ceil(r.resultsEnd - t) : 0,
-      me: { esc: me.esc || 0, fm: me.form || 0, fmT: me.formT ? Math.max(0, Math.ceil(me.formT - t)) : 0, stamina: Math.round(me.stamina), cd: Math.max(0, +(me.cdUntil - t).toFixed(1)), hp: Math.ceil(me.hp), mhp: me.maxHp, inv: me.inv.map(s => s ? [s.k, s.n] : 0), sel: me.sel, ammo: me.ammo, vest: Math.round(me.vest), helmet: Math.round(me.helmet), gear: gearState(me, t) }, rl: r.roundLen };
+      me: { esc: me.esc || 0, fm: me.form || 0, fmT: me.formT ? Math.max(0, Math.ceil(me.formT - t)) : 0, stamina: Math.round(me.stamina), cd: Math.max(0, +(me.cdUntil - t).toFixed(1)), hp: Math.ceil(me.hp), mhp: me.maxHp, inv: me.inv.map(s => s ? [s.k, s.n] : 0), sel: me.sel, ammo: me.ammo, vest: Math.round(me.vest), helmet: Math.round(me.helmet), gear: gearState(me, t), au: me.auraKind || '', fl: me.fl || 0 }, rl: r.roundLen };
     if (om.length) o.om = om;
     if (r.vehicles && (r.state === 'playing' || r.state === 'lobby')) o.bt = r.vehicles.filter(b => Math.abs(b.x - me.x) < 2600 && Math.abs(b.y - me.y) < 2600).map(b => [b.id, Math.round(b.x), Math.round(b.y), +b.a.toFixed(2), VEH_CODE[b.kind] || 0, b.by || 0, Math.round(b.fuel), Math.round(b.hp), Math.round(b.spd)]);
     if (r.state === 'playing') { o.lo = [...r.opened]; o.it = r.items.filter(i => Math.abs(i.x - me.x) < 1100 && Math.abs(i.y - me.y) < 1100).map(i => [i.id, Math.round(i.x), Math.round(i.y), i.k]); }
@@ -988,7 +1056,7 @@ function handleConnection(ws) {
           if (m.f && !p.fire) p.fireEdge = true; p.fire = !!m.f;
           p.mv = Array.isArray(m.mv) && m.mv.length === 2 && m.mv.every(v => typeof v === 'number' && isFinite(v)) ? { x: Math.max(-1, Math.min(1, m.mv[0])), y: Math.max(-1, Math.min(1, m.mv[1])) } : null; } break;
         case 'ability': if (r) useAbility(r, p); break;
-        case 'open': if (r) { if (p.boat) leaveBoat(r, p); else if (r.state === 'lobby') { if (!board(r, p) && !sitLobby(r, p)) send(p, { t: 'event', msg: 'Walk up to a vehicle or the helicopter door, then press E.', kind: 'info' }); } else if (p.sleeping) { wake(p); send(p, { t: 'event', msg: 'You woke up.' }); } else if (nearestVeh(r, p) && board(r, p)) { /* entered a vehicle before looting */ } else if (tryExtract(r, p)) { /* boarded the extraction helicopter */ } else if (!openLoot(r, p) && !board(r, p)) toggleSleep(r, p); } break;
+        case 'open': if (r) { if (p.boat) leaveBoat(r, p); else if (r.state === 'lobby') { if (!tryElevator(r, p) && !board(r, p) && !sitLobby(r, p)) send(p, { t: 'event', msg: 'Walk up to a vehicle, the helicopter door, or the elevator, then press E.', kind: 'info' }); } else if (p.sleeping) { wake(p); send(p, { t: 'event', msg: 'You woke up.' }); } else if (nearestVeh(r, p) && board(r, p)) { /* entered a vehicle before looting */ } else if (tryExtract(r, p)) { /* boarded the extraction helicopter */ } else if (!openLoot(r, p) && !board(r, p)) toggleSleep(r, p); } break;
         case 'gear': if (r && p) useGear(r, p, m.k); break;
         case 'admin': if (r && p) adminDo(r, p, m); else if (p) adminReject(p); break;
         case 'sel': if (p && Number.isInteger(m.i) && m.i >= 0 && m.i < SLOTS) p.sel = m.i; break;
