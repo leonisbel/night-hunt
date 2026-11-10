@@ -297,23 +297,27 @@ export class World {
     const outer = (w) => w.x <= 0 || w.y <= 0 || w.x + w.w >= map.w || w.y + w.h >= map.h;
     const stoneMat = pbrWall('castle', { color: '#b8b4bc' });
     const storeMat = pbrWall('brick', { color: '#e8d8c8' });
+    const mallWhite = new THREE.MeshStandardMaterial({ color: '#f7f7f5', roughness: 0.36, metalness: 0.02 });
     const fenceMat = pbrWall('oldwood', { color: '#a08060' });
     const winMats = new Map(), winMat = c => { if (!winMats.has(c)) winMats.set(c, new THREE.MeshStandardMaterial({ color: '#111', map: windowTex(), emissiveMap: windowTex(), emissive: c === 'off' ? '#000' : c === 'flicker' ? '#ffd890' : c, emissiveIntensity: c === 'off' ? 0 : .3, roughness: .15, metalness: .1 })); return winMats.get(c); };
     this.flickerWins = [];
     for (const w of map.walls) {
+      if (w.hide) { w._h = (w.base || 0) + (w.mh || 1); continue; }
       const inB = (map.bld || []).find(b => w.x >= b.x - 1 && w.y >= b.y - 1 && w.x + w.w <= b.x + b.w + 1 && w.y + w.h <= b.y + b.h + 1);
       const isOuter = outer(w), two = inB && inB.floors > 1, store = inB && inB.type === 'store';
       const cityH = w.city ? (GFX.tier === 'low' ? Math.min(w.city, 11) : w.city) : 0;
-      const hgt = w.mh || cityH || (isOuter ? (map.theme === 'Helipad Lobby' ? 2.2 : 4.5) : w.f ? 1.25 : w.cs ? 7.5 : store ? 4.2 : two ? 6.2 : T.wallH); w._h = hgt;
-      const sx = w.w * S, sz = w.h * S, g = boxUV(new THREE.BoxGeometry(sx, hgt, sz), sx, hgt, sz, T.wall === 'brick' ? 3 : 2.5);
-      let wm0 = w.f ? fenceMat : w.cs ? stoneMat : store ? storeMat : inB ? (inB.type === 'house' ? houseMat : facMat) : wallMat;
+      const hgt = w.mh || cityH || (isOuter ? (map.theme === 'Helipad Lobby' ? 2.2 : 4.5) : w.f ? 1.25 : w.cs ? 7.5 : store ? 4.2 : two ? 6.2 : T.wallH);
+      const base = w.base || 0; w._h = base + hgt;
+      const mallShell = w.mall || (inB && inB.kind === 'mall');
+      const sx = w.w * S, sz = w.h * S, g = boxUV(new THREE.BoxGeometry(sx, hgt, sz), sx, hgt, sz, mallShell ? 1 : T.wall === 'brick' ? 3 : 2.5);
+      let wm0 = mallShell ? mallWhite : w.f ? fenceMat : w.cs ? stoneMat : store ? storeMat : inB ? (inB.type === 'house' ? houseMat : facMat) : wallMat;
       if (inB && !store && !isOuter) { // inside faces: wallpaper (houses) / painted concrete (facilities)
         const long = sx > sz, inner = inB.type === 'house' ? paperMat : facIn, cx = (inB.x + inB.w / 2), cy = (inB.y + inB.h / 2), wx = w.x + w.w / 2, wy = w.y + w.h / 2;
         const edge = long ? (Math.abs(w.y - inB.y) < 2 || Math.abs(w.y + w.h - inB.y - inB.h) < 2) : (Math.abs(w.x - inB.x) < 2 || Math.abs(w.x + w.w - inB.x - inB.w) < 2);
         const arr = [wm0, wm0, wm0, wm0, wm0, wm0];
         if (long) { if (!edge || cy > wy) arr[4] = inner; if (!edge || cy < wy) arr[5] = inner; } else { if (!edge || cx > wx) arr[0] = inner; if (!edge || cx < wx) arr[1] = inner; }
         wm0 = arr; }
-      const m = own(new THREE.Mesh(g, wm0)); m.castShadow = true; m.position.set((w.x + w.w / 2) * S, hgt / 2, (w.y + w.h / 2) * S); L.add(m);
+      const m = own(new THREE.Mesh(g, wm0)); m.castShadow = true; m.position.set((w.x + w.w / 2) * S, base + hgt / 2, (w.y + w.h / 2) * S); L.add(m);
       if (!isOuter && T.wall !== 'wood' && !w.f && !w.cs && !inB) { const cap = own(new THREE.Mesh(boxUV(new THREE.BoxGeometry(sx + .1, .15, sz + .1), sx, .15, sz, 2), wallMat)); cap.position.set(m.position.x, hgt + .07, m.position.z); L.add(cap); }
       if (w.cs) { const long = sx > sz, n = Math.floor((long ? sx : sz) / 1.6); for (let i = 0; i < n; i++) { const mm = own(new THREE.Mesh(G.box(long ? .8 : sz + .1, .9, long ? sz + .1 : .8), stoneMat)); mm.position.set(long ? (w.x * S + .8 + i * 1.6) : m.position.x, hgt + .45, long ? m.position.z : (w.y * S + .8 + i * 1.6)); mm.castShadow = true; L.add(mm); } }
       // lit windows on the outside walls of houses (one or two storeys); every house has its own light colour
@@ -404,7 +408,7 @@ export class World {
     this.spinners = []; this.animProps = [];
     const DRESS = ['3,1,2,,,tophat,cape,knight', '1,3,0,,,witch,none,pajamas', '4,0,1,,,halo,wings,astronaut', '2,2,3,,,viking,chain,hazmat', '0,4,2,,,pirate,bandana,ninja'];
     let dressN = 0;
-    for (const pr of map.props || []) { const o = buildProp(pr.k, pr.w * S, pr.h * S, pr); o.position.set((pr.x + pr.w / 2) * S, 0, (pr.y + pr.h / 2) * S); o.rotation.y = pr.a || 0; L.add(o);
+    for (const pr of map.props || []) { const o = buildProp(pr.k, pr.w * S, pr.h * S, pr); o.position.set((pr.x + pr.w / 2) * S, (pr.fl || 0) * 4.2, (pr.y + pr.h / 2) * S); o.rotation.y = pr.a || 0; L.add(o);
       if (o.userData.statue) { const st = buildMonster(o.userData.statue); const h = monsterHeight(o.userData.statue); st.scale.setScalar(1.5 / h); st.position.y = .97; applySkin(st, ['golden', 'neon', 'lava', 'abyss'][this.spinners.length % 4]); o.add(st); this.spinners.push(st); }
       if (o.userData.spin || o.userData.tiles || o.userData.pet) this.animProps.push(o);
       if (o.userData.dress) { const sv = buildSurvivor('#888', DRESS[dressN++ % DRESS.length]); sv.position.y = .05; o.add(sv); }
@@ -415,10 +419,10 @@ export class World {
       if (road.w > road.h) for (let x = road.x + 40; x < road.x + road.w - 60; x += 160) { const ln = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .22), new THREE.MeshBasicMaterial({ color: '#e8d06a' })); ln.rotation.x = -Math.PI / 2; ln.position.set(x * S, .035, (road.y + road.h / 2) * S); L.add(ln); } }
     for (const b of map.bld || []) if (b.type === 'store') { const many = !!b.store;
       if (!b.nolight && GFX.tier !== 'low') for (let i = 0; i < (many ? 1 : 2); i++) { const l = new THREE.PointLight(many ? b.c : '#ffe2b0', many ? 18 : 16, many ? 28 : 22, 1.2); if (many) l.color.lerp(new THREE.Color('#ffe8c8'), .6); l.position.set((b.x + b.w * (many ? (i + .5) : .62)) * S, 3.2, (b.y + b.h * .5) * S); L.add(l); }
-      if (b.kind === 'mall') { const n = GFX.tier === 'low' ? 1 : 3; for (let i = 0; i < n; i++) { const l = new THREE.PointLight('#ffe6c4', GFX.tier === 'low' ? 10 : 22, 36, 1.3); l.position.set((b.x + b.w * (i + 1) / (n + 1)) * S, 4.2, (b.y + b.h * .5) * S); L.add(l); } }
+      if (b.kind === 'mall') { const n = GFX.tier === 'low' ? 2 : 5; for (let i = 0; i < n; i++) { const l = new THREE.PointLight('#ffe6c4', GFX.tier === 'low' ? 8 : 16, 40, 1.4); l.position.set((b.x + b.w * (i + 1) / (n + 1)) * S, 7.4, (b.y + b.h * .45) * S); L.add(l); } }
       const sg = textSprite(many ? b.name : '★ STORE ★', many ? b.c : '#ff4a4a', 46); sg.material.depthTest = true; if (many) sg.position.set((b.x + b.w / 2) * S, b.kind === 'mall' ? 9.2 : 6.4, (b.y + b.h / 2) * S); else sg.position.set(b.x * S - .2, 5.2, (b.y + b.h / 2) * S); sg.scale.set(many ? (b.kind === 'mall' ? 18 : 14) : 9, many ? 2.4 : 1.7, 1); L.add(sg); }
-    for (const z of (map.zones || [])) { const col = z.c || (z.k === 'shop' ? '#ffd27a' : z.k === 'mirror' ? '#9ad8ff' : '#ff9af0'); const zs = textSprite((z.ic ? z.ic + ' ' : '') + (z.c ? z.name : 'COUNTER'), col, 34); zs.material.depthTest = true; const bS = (map.bld || []).find(b => b.store === z.k), cy2 = bS ? (bS.north ? bS.y + 120 : bS.y + bS.h - 120) : z.y + z.h / 2; zs.position.set((z.x + z.w / 2) * S, 3.5, cy2 * S); zs.scale.set(z.c ? 3 : 5.5, z.c ? .56 : 1, 1); L.add(zs);
-      const rug = own(new THREE.Mesh(new THREE.PlaneGeometry(z.w * S * .9, z.h * S * .85), new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(.22), roughness: .9 }))); rug.rotation.x = -Math.PI / 2; rug.position.set((z.x + z.w / 2) * S, .035, (z.y + z.h / 2) * S); L.add(rug); }
+    for (const z of (map.zones || [])) { const col = z.c || (z.k === 'shop' ? '#ffd27a' : z.k === 'mirror' ? '#9ad8ff' : '#ff9af0'); const fy = (z.fl || 0) * 4.2; const zs = textSprite((z.ic ? z.ic + ' ' : '') + (z.c ? z.name : 'COUNTER'), col, 34); zs.material.depthTest = true; const bS = (map.bld || []).find(b => b.store === z.k), cy2 = bS ? (bS.north ? bS.y + 120 : bS.y + bS.h - 120) : z.y + z.h / 2; zs.position.set((z.x + z.w / 2) * S, 2.4 + fy, cy2 * S); zs.scale.set(z.c ? 3 : 5.5, z.c ? .56 : 1, 1); L.add(zs);
+      const rug = own(new THREE.Mesh(new THREE.PlaneGeometry(z.w * S * .9, z.h * S * .85), new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(.22), roughness: .9 }))); rug.rotation.x = -Math.PI / 2; rug.position.set((z.x + z.w / 2) * S, .05 + fy, (z.y + z.h / 2) * S); L.add(rug); }
     // loot containers
     this.loot = new Map();
     for (const c of map.loot || []) { const o = c.kind === 'chest' ? buildChest() : buildBag(); o.position.set(c.x * S, 0, c.y * S); o.rotation.y = c.a || 0; L.add(o); this.loot.set(c.id, { o, c, open: false, t: 0 }); }
@@ -589,7 +593,7 @@ export class World {
     if ((this.lodT -= dt) <= 0 && this.lod) { this.lodT = .25; const R0 = this.map.theme === 'Helipad Lobby' ? 1e9 : this.map.islands ? 150 : 115;
       for (const o of this.lod) { const dx = o.position.x - px, dz = o.position.z - pz, rr = R0 + o.userData.lr; o.visible = dx * dx + dz * dz < rr * rr; } }
     GU.uTime.value = t; this.fx.u.uTime.value = t;
-    if (this.lobbyDress) this.lobbyDress.tick(t, dt);
+    if (this.lobbyDress) this.lobbyDress.tick(t, dt, md);
     { const sk = this.sky.material.uniforms; sk.uMoonDir.value.copy(this.moon.position).sub(this.moon.target.position).normalize(); sk.uMoonDir.value.y = Math.max(.32, sk.uMoonDir.value.y * .55); sk.uMoonDir.value.normalize();
       sk.uRot.value = t * .0008; // slow drift of the stars
       const PS = this.playerSky || null;
@@ -715,7 +719,7 @@ export class World {
       const moved = c.last ? Math.hypot(x - c.last.x, z - c.last.z) : 0; c.last = { x, z };
       c.speed = lerp(c.speed, dt > 0 ? moved / dt : 0, Math.min(1, dt * 8));
       let yaw = Math.atan2(Math.cos(p.a), Math.sin(p.a)); c.yaw = angLerp(c.yaw, yaw, Math.min(1, dt * 12));
-      const feet = ((p.fl || 0) + (p.cf != null && p.ck != null ? (p.cf - (p.fl || 0)) * p.ck : 0)) * 4.2;
+      const feet = d.alt != null ? d.alt : (p.alt != null ? p.alt : (p.fl || 0) * 4.2);
       o.position.set(x, feet, z); o.rotation.y = c.yaw;
       if (p.sk) tickSkinFx(o, t);
       const parts = o.userData.parts, sp = Math.min(c.speed / 6, 1.6);
@@ -809,7 +813,7 @@ export class World {
     for (const [id, c] of this.chars) if (!seen.has(id)) { this.dropChar(c); this.chars.delete(id); }
 
     // local flashlight
-    const feetY = ((mp.fl || 0) + (mp.cf != null && mp.ck != null ? (mp.cf - (mp.fl || 0)) * mp.ck : 0)) * 4.2;
+    const feetY = (disp[me] && disp[me].alt != null) ? disp[me].alt : (mp.alt != null ? mp.alt : (mp.fl || 0) * 4.2);
     const myPos = new THREE.Vector3(md.dx * S, feetY, md.dy * S), aim = v.aim ?? mp.a;
     const dir = new THREE.Vector3(Math.cos(aim), 0, Math.sin(aim));
     const survivorLight = mp.role === 'survivor' && !ghost && st !== 'lobby';
@@ -923,6 +927,7 @@ export class World {
     u.uRed.value = danger * (.25 + .2 * Math.sin(t * 9)) + (isMon && playing ? .08 : 0);
     u.uVig.value = 1.05 + danger * .35 + (mp.st.blind ? .5 : 0); u.uGrain.value = this.theme.staticNoise ? .06 : .045; u.uAb.value = .6 + danger * 3; { const gk = (performance.now() - (this.glitchT || -1e9)) / 700; if (gk < 1) { u.uAb.value += (1 - gk) * 22 * Math.random(); u.uGrain.value += (1 - gk) * .35; } } // Doctor Nowhere's form-change glitch
     u.uExp.value = st === 'lobby' ? 1.5 : 1.7; u.uFade.value = 0; u.uFlash.value = Math.max(0, u.uFlash.value - dt * 3);
+    if (v.day) { this.hemi.intensity = 2.5; this.hemi.color.set('#fff6ea'); this.scene.fog.color.set('#d7e0ea'); this.scene.fog.density = 0.006; this.moon.intensity = 0.2; u.uExp.value = 1.05; u.uVig.value = 0.85; }
     this.render(this.scene, this.camera);
     return { danger, myPos };
   }
