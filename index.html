@@ -5,7 +5,7 @@
 <div id="warn" class="panel"><h1>WARNING</h1><p class="rating"><span class="r13">13+</span> Rated 13+ (teen)</p>
   <p>Night Hunt contains <b>flashing and strobing lights</b> that may trigger seizures in people with photosensitive epilepsy. If you feel dizzy, get a headache, have blurred vision, twitching or any discomfort, <b>stop playing immediately</b>. It also contains <b>blood and gore</b>, sudden <b>jumpscares</b> and <b>loud sounds</b>. The game is rated <b>13+</b>. If this is too much for you, please leave now.</p>
   <button id="bwarn" class="big">Continue</button></div>
-<div id="intro" class="intro hide"><div class="logo">NIGHT<br>HUNT</div><p class="tap">tap to start</p></div>
+<div id="intro" class="intro hide"><div class="logo">NIGHT<br>HUNT</div><button id="bplay" type="button" class="big">Play</button><button id="breduce" type="button">Reduce motion</button><p class="tap">or tap the screen</p></div>
 <div id="menu" class="panel hide">
   <h1>NIGHT HUNT <span class="r13" title="Rated 13+">13+</span></h1><p class="sub">a multiplayer monster survival game (fan-made, play with friends)</p>
   <label>Your name <input id="pname" maxlength="16" placeholder="Player"></label>
@@ -17,19 +17,29 @@
   <label>Graphics <select id="optgfx"><option value="auto">Auto</option><option value="low">Low (phones)</option><option value="med">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
   <label>Sky <select id="optsky"></select></label>
   <div class="tabs"><button data-tab="create" class="on">Create Server</button><button data-tab="join">Join with Code</button><button data-tab="browse">Public Servers</button></div>
-  <div id="tab-create" class="tab">
+  <div id="tab-create" class="tab card">
     <label>Server name <input id="sname" maxlength="24" placeholder="Night Hunt Server"></label>
-    <label>Round length <select id="sround"><option value="300">5 minutes</option><option value="420" selected>7 minutes</option><option value="600">10 minutes</option></select></label>
     <label>Max players: <b id="maxv">4</b><input id="smax" type="range" min="2" max="15" value="4"></label>
-    <div class="priv"><label><input type="radio" name="priv" value="friends" checked> 🔒 Friends only <small>(join with private code / invite link)</small></label>
-    <label><input type="radio" name="priv" value="public"> 🌍 Public <small>(shows in the public server list)</small></label></div>
+    <label>Round length <select id="sround"><option value="300">5 minutes</option><option value="420" selected>7 minutes</option><option value="600">10 minutes</option></select></label>
+    <label>Difficulty <select id="sdiff"><option value="story">Story</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+    <p class="lt">Map</p>
+    <div id="smap" class="mapgrid">
+      <button type="button" class="mapcard on" data-map=""><i class="thumb any"></i><b>Surprise</b></button>
+      <button type="button" class="mapcard" data-map="Neon Spire"><i class="thumb neon"></i><b>Neon Spire</b></button>
+      <button type="button" class="mapcard" data-map="Foggy Woods"><i class="thumb woods"></i><b>Foggy Woods</b></button>
+      <button type="button" class="mapcard" data-map="Fester Street"><i class="thumb street"></i><b>Fester Street</b></button>
+      <button type="button" class="mapcard" data-map="Vampire Castle"><i class="thumb castle"></i><b>Vampire Castle</b></button>
+    </div>
+    <input type="hidden" id="smapv" value="">
+    <div class="priv"><label><input type="radio" name="priv" value="friends" checked> 🔒 Private <small>join with a code</small></label>
+    <label><input type="radio" name="priv" value="public"> 🌍 Public <small>listed in the browser</small></label></div>
     <button id="bcreate" class="big">Create Server</button>
   </div>
   <div id="tab-join" class="tab hide"><label>Server code <input id="jcode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"></label><button id="bjoin" class="big">Join</button></div>
   <div id="tab-browse" class="tab hide"><div id="slist">Loading…</div><button id="brefresh">Refresh</button></div>
   <div id="merr" class="err"></div>
   <div id="dlwin" style="text-align:center;margin-top:12px"><a href="https://github.com/leonisbel/night-hunt/releases/latest/download/NightHunt-Windows.zip" style="display:inline-block;background:#1f6feb;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-weight:bold">⬇ Download for Windows</a></div>
-  <div class="help desk"><b>Controls:</b> WASD / arrows move · Shift sprint · Click the game to lock the mouse, then move it to look around (Esc frees it) · Mouse wheel = zoom from first to third person · Click / Space = attack, shoot or eat/drink the selected item · E = open chest/bag · 1–6 = pick a hotbar slot · E near a bed = sleep (heals) · G = drop · Monsters: Space / click = ability · Tab = scoreboard · M = mute</div>
+  <div class="help desk" id="ctrlhelp"><b>Settings · Controls</b><br>WASD moves · Arrow left and right turn the camera · Shift sprints · Click or Space attacks, uses an item, or fires the monster ability · E interacts · Q is the monster ability · Z X C are the coils · 1–6 pick a hotbar slot · G drops · B opens the emote wheel · Tab holds the scoreboard · M mutes · <b>H hides the HUD</b> · <b>F1 shows this key list in a round</b>. There is no jump key. On a phone, the eye button in the corner hides the on-screen buttons. The eye stays visible.</div>
   <div class="help mob"><b>Touch controls:</b> left thumb = joystick (move) · right side = drag to look around, pinch to zoom · ⚔️ = attack/use · 📦 = open chest/bag · tap a hotbar slot to select it · 🏃 = sprint · ⚡ = monster ability · 💃 = emote wheel · 📋 = players</div>
   <p class="help"><button type="button" id="badmin">Owner admin</button> <small>Locked unless a server verifies the owner. Hosting or a display name does not grant it.</small></p>
 </div>
@@ -55,6 +65,8 @@
   <div id="board" class="hide"></div>
   <button id="bleave">Leave</button>
 </div>
+<button id="bhud" type="button" aria-label="Hide on-screen controls" title="Hide controls">👁</button>
+<div id="keyguide" class="hide" aria-label="Keyboard controls"></div>
 <div id="overlay" class="hide"></div>
 <div id="deathscreen" class="hide"></div><div id="killpop" class="hide"></div>
 <div id="specbar" class="hide"><button id="specprev">◀</button><span id="specname">Spectating</span><button id="specnext">▶</button><button id="specstats">📊 Stats</button><button id="speclobby">🏠 Lobby</button></div>
@@ -67,15 +79,15 @@
 <div id="touch">
   <div id="joyzone"><div id="joybase"><div id="joyknob"></div></div><span class="zl">MOVE</span></div>
   <div id="aimzone"><div id="aimring"><b></b></div><span class="zl">LOOK · PINCH ZOOM</span></div>
-  <button id="tsprint" class="tb">🏃<small>SPRINT</small></button>
-  <button id="temote" class="tb sm">💃<small>EMOTE</small></button>
-  <button id="tspeed" class="tb sm gear hide">🌀</button>
-  <button id="tgrav" class="tb sm gear hide">🌙</button>
-  <button id="tinvis" class="tb sm gear hide">👻</button>
-  <button id="tability" class="tb hide">⚡<small>ABILITY</small></button>
-  <button id="tattack" class="tb hide">⚔️<small>ATTACK</small></button>
-  <button id="topen" class="tb hide">📦<small>OPEN</small></button>
-  <button id="tboard" class="tb sm">📋</button>
-  <button id="tmute" class="tb sm">🔊</button>
+  <button id="tsprint" class="tb" title="Sprint" aria-label="Sprint">🏃<small>SPRINT</small></button>
+  <button id="temote" class="tb sm" title="Emotes" aria-label="Emotes">💃<small>EMOTE</small></button>
+  <button id="tspeed" class="tb sm gear hide" title="Speed coil" aria-label="Speed coil">🌀<small>SPEED</small></button>
+  <button id="tgrav" class="tb sm gear hide" title="Gravity coil" aria-label="Gravity coil">🌙<small>GRAV</small></button>
+  <button id="tinvis" class="tb sm gear hide" title="Invisibility" aria-label="Invisibility">👻<small>CLOAK</small></button>
+  <button id="tability" class="tb hide" title="Monster ability" aria-label="Monster ability">⚡<small>ABILITY</small></button>
+  <button id="tattack" class="tb hide" title="Attack or use item" aria-label="Attack">⚔️<small>ATTACK</small></button>
+  <button id="topen" class="tb hide" title="Open or interact" aria-label="Open">📦<small>OPEN</small></button>
+  <button id="tboard" class="tb sm" title="Player list" aria-label="Player list">📋<small>LIST</small></button>
+  <button id="tmute" class="tb sm" title="Mute" aria-label="Mute">🔊<small>MUTE</small></button>
 </div>
 <script src="vendor/peerjs.min.js"></script><script src="vendor/nostr.bundle.js"></script><script src="js/auras.js"></script><script src="core.js"></script><script src="net.js"></script><script type="module" src="game.js"></script></body></html>

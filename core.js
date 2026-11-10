@@ -105,7 +105,7 @@ function cleanLook(l) { l = l || {}; const n = (v, m) => Math.max(0, Math.min(m,
 const lookStr = l => [l.sk, l.hc, l.hs, l.top || '', l.pants || '', l.hat, l.acc, l.of || 'none', l.pet || 'none', l.tr || 'none'].join(',');
 function botLook() { const r = a => a[Math.floor(Math.random() * a.length)]; return { sk: Math.floor(Math.random() * 6), hc: Math.floor(Math.random() * 6), hs: Math.floor(Math.random() * 4), top: null, pants: r(['#2c3e60', '#3a3a3a', '#4a4030', '#25303f']), hat: r(['none', 'none', 'cap', 'beanie', 'hardhat']), acc: r(['none', 'none', 'glasses', 'scarf']), of: r(['none', 'none', 'none', 'ranger', 'hunter', 'scout']) }; }
 const COLORS = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#1abc9c','#e67e22','#ecf0f1','#fd79a8','#00cec9','#a29bfe','#55efc4','#fab1a0','#74b9ff','#ffeaa7'];
-const THEMES = [...CLASSIC, 'Stormy Ocean', 'Rainforest Swamp', 'Snowy Mountain', 'Haunted Farm', 'Vampire Castle', 'Fester Street'];
+const THEMES = [...CLASSIC, 'Stormy Ocean', 'Rainforest Swamp', 'Snowy Mountain', 'Haunted Farm', 'Vampire Castle', 'Fester Street', 'Neon Spire'];
 const ENV = (typeof process !== 'undefined' && process.env) || {};
 const Auras = (typeof NightHuntAuras !== 'undefined' && NightHuntAuras) || (typeof require === 'function' ? require('./js/auras.js') : null);
 // the power-line forest is still the most common map; a monster player's chosen monster pulls the round to that monster's home map
@@ -236,7 +236,7 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
   ]; }
 // every building is a furnished house (rooms split by an inner wall) or a facility (warehouse/lab/industrial)
 function furnish(m, b) {
-  const { x, y, w, h, t, type } = b; m.bld.push({ x, y, w, h, type, kind: b.kind || (type === 'house' ? pick(['cabin', 'farmhouse', 'bungalow']) : pick(['warehouse', 'lab', 'substation'])), floors: b.floors || 1, light: b.light });
+  const { x, y, w, h, t, type } = b; m.bld.push({ x, y, w, h, type, kind: b.kind || (type === 'house' ? pick(['cabin', 'farmhouse', 'bungalow']) : pick(['warehouse', 'lab', 'substation'])), floors: b.floors || 1, light: b.light, name: b.name || '' });
   const P = (k, px, py, pw, ph, solid = true, a = 0) => m.props.push({ k, x: Math.round(px), y: Math.round(py), w: Math.round(pw), h: Math.round(ph), solid, a });
   const ix = x + t, iy = y + t, iw = w - 2 * t, ih = h - 2 * t;
   if (type === 'house') {
@@ -341,9 +341,21 @@ function genMap(theme = pickTheme()) {
       rooms.push(addBuilding(m, x, y, bw, bh, 'house', { kind: 'twostory', floors: 2, light: pick(WINDOW_LIGHTS) }));
     }
     for (const sy of streets) for (let sx = 200; sx < W - 150; sx += 330) m.props.push({ k: 'streetlight', x: sx, y: sy - 90, w: 10, h: 10, solid: false, a: 0 });
-    m.streets = streets; nT = 70; nBush = 34; treeR = [18, 30];
+    m.streets = streets;     nT = 70; nBush = 34; treeR = [18, 30];
+  } else if (theme === 'Neon Spire') {
+    m.future = 1; m.lanes = []; m.rails = [{ y: 1680 }];
+    const names = ['HARBOR SPIRE', 'LUMEN ARC', 'NORTH FORGE', 'VOID MARKET', 'GLASS ORBIT', 'PULSE TOWER', 'ASH CIRCUIT', 'NIGHT ANNEX', 'DRIFT HALL'];
+    for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 3; gx++) {
+      const bw = 380 + ((gx * 3 + gy) % 4) * 40, bh = 320 + ((gx + gy * 2) % 3) * 36;
+      const x = 220 + gx * 1600, y = 260 + gy * 1600;
+      if (x + bw > W - 160 || y + bh > H - 160) continue;
+      rooms.push(addBuilding(m, x, y, bw, bh, 'facility', { kind: 'spire', floors: 3 + ((gx + gy) % 5), light: ['#7af0ff', '#ff4ad8', '#ffe08a', '#9d7bff'][(gx + gy) % 4], name: names[(gx + gy * 3) % names.length] }));
+    }
+    for (let i = 0; i < 3; i++) m.lanes.push({ x: 80, y: 1100 + i * 420, w: W - 160, h: 12 });
+    for (let x = 300; x < W - 200; x += 520) m.poles.push({ x, y: 1680, r: 18, rail: 1 });
+    nT = 6; nBush = 4; treeR = [12, 18];
   }
-  if (!rooms.some(b => b.type === 'house')) tryBuild(1, () => 'house', stdSize, () => (m.islands ? { kind: 'shack' } : {}), m.islands ? () => ({ x: C.x + rand(-200, 200), y: C.y + rand(-200, 200) }) : null);
+  if (theme !== 'Neon Spire' && !rooms.some(b => b.type === 'house')) tryBuild(1, () => 'house', stdSize, () => (m.islands ? { kind: 'shack' } : {}), m.islands ? () => ({ x: C.x + rand(-200, 200), y: C.y + rand(-200, 200) }) : null);
   nT = N(nT); nBush = N(nBush); for (let i = 0, k = 0; i < nT && k < nT * 20; k++) { const r = rand(treeR[0], treeR[1]), x = rand(0, W), y = rand(0, H); if (free(x, y, r + (forest ? 26 : 40)) && !(forest && nearLine(x, y, 130)) && !(m.streets && m.streets.some(sy => Math.abs(y - sy) < 120))) { m.trees.push({ x, y, r }); i++; } }
   for (let i = 0, k = 0; i < nBush && k < nBush * 100; k++) { const r = rand(30, 46), x = rand(0, W), y = rand(0, H); if (free(x, y, r)) { m.bushes.push({ x, y, r }); i++; } }
   for (let i = 0, k = 0; i < N(10) && k < 6000; k++) { const x = rand(0, W), y = rand(0, H); if (free(x, y, 30)) { m.vents.push({ x, y }); i++; } }
@@ -389,7 +401,7 @@ function makePlayer(name, ws, bot) {
     alive: true, escaped: false, stamina: 100, cdUntil: 0, st: {}, score: 0, earn: 0, look: bot ? botLook() : cleanLook(), pref: null, skin: 'classic', botT: 0, botGoal: null, lastPos: null, fl: 0, alt: 0, climb: null, ...freshKit() };
 }
 function freshKit() { return { hp: 100, maxHp: 100, inv: Array(SLOTS).fill(null), sel: 0, ammo: { light: 0, shells: 0, heavy: 0 }, vest: 0, helmet: 0, atkUntil: 0, hitUntil: 0, fire: false, fireEdge: false, sleeping: false, preSleep: null }; }
-function roomInfo(r) { return { code: r.code, name: r.name, players: r.players.size, max: r.max, state: r.state, theme: r.map && r.state !== 'lobby' ? r.map.theme : 'Lobby', isPublic: r.isPublic }; }
+function roomInfo(r) { return { code: r.code, name: r.name, players: r.players.size, max: r.max, state: r.state, theme: r.map && r.state !== 'lobby' ? r.map.theme : 'Lobby', isPublic: r.isPublic, map: r.themePick || '', diff: r.diff || 'normal', ping: null }; }
 function send(p, o) { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(o)); }
 function bcast(r, o) { const s = JSON.stringify(o); for (const p of r.players.values()) if (p.ws && p.ws.readyState === 1) p.ws.send(s); }
 function event(r, msg, kind) { bcast(r, { t: 'event', msg, kind: kind || 'info' }); }
@@ -431,8 +443,10 @@ function startRound(r) {
   if (ENV.TEST_ROLES === 'human-monster' && ps.some(p => !p.bot)) mons = [ps.find(p => !p.bot)]; // screenshot hook only (kill cam)
   // the map: a monster player's chosen monster takes the round to its home map (test hooks can force one)
   const prefM = (ENV.TEST_MON && MONSTERS[ENV.TEST_MON] && !ENV.THEME && MONSTERS[ENV.TEST_MON].home !== CLASSIC) ? ENV.TEST_MON : (mons.find(p => p.pref && MONSTERS[p.pref]) || {}).pref;
-  r.map = genMap(pickTheme(prefM)); bindVehicles(r, [...(r.map.vehicles || []), ...(r.map.boats || []).filter(b => !(r.map.vehicles || []).includes(b))]);
-  const homePool = MKEYS.filter(k => MONSTERS[k].home.includes(r.map.theme)), pool = homePool.slice().sort(() => Math.random() - .5);
+  const chosen = r.themePick && THEMES.includes(r.themePick) ? r.themePick : null;
+  r.map = genMap(chosen || pickTheme(prefM)); bindVehicles(r, [...(r.map.vehicles || []), ...(r.map.boats || []).filter(b => !(r.map.vehicles || []).includes(b))]);
+  let homePool = MKEYS.filter(k => MONSTERS[k].home.includes(r.map.theme)); if (!homePool.length) homePool = MKEYS.slice();
+  const pool = homePool.slice().sort(() => Math.random() - .5);
   while (pool.length < mons.length) pool.unshift(pick(homePool));
   for (const p of mons) if (p.pref && pool.includes(p.pref)) { pool.splice(pool.indexOf(p.pref), 1); pool.push(p.pref); } // chosen monsters go to the top of the pool
   const center = { x: r.map.w / 2, y: r.map.h / 2 };
@@ -1110,7 +1124,7 @@ function handleConnection(ws) {
         case 'create': {
           if (r) return;
           const max = clamp(parseInt(m.max) || 4, MIN_START, MAX_CAP);
-          const nr = { code: code(), name: clean(m.name, 24) || 'Night Hunt Server', max, isPublic: !!m.isPublic, players: new Map(), state: 'lobby', map: LOBBY, traps: [], items: [], opened: new Set(), itemId: 1, roundLen: ROUND_LENS.includes(+m.roundLen) ? +m.roundLen : DEFAULT_LEN };
+          const nr = { code: code(), name: clean(m.name, 24) || 'Night Hunt Server', max, isPublic: !!m.isPublic, players: new Map(), state: 'lobby', map: LOBBY, traps: [], items: [], opened: new Set(), itemId: 1, roundLen: ROUND_LENS.includes(+m.roundLen) ? +m.roundLen : DEFAULT_LEN, themePick: THEMES.includes(m.theme) ? m.theme : null, diff: ['story', 'normal', 'hard'].includes(m.diff) ? m.diff : 'normal' };
           bindVehicles(nr, LOBBY.vehicles); rooms.set(nr.code, nr); p = makePlayer(clean(m.player, 16) || 'Player', ws); nr.host = p.id; addToRoom(nr, p); break; }
         case 'join': {
           if (r) return;
