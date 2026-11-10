@@ -29,7 +29,7 @@
   <div id="tab-browse" class="tab hide"><div id="slist">Loading…</div><button id="brefresh">Refresh</button></div>
   <div id="merr" class="err"></div>
   <div id="dlwin" style="text-align:center;margin-top:12px"><a href="https://github.com/leonisbel/night-hunt/releases/latest/download/NightHunt-Windows.zip" style="display:inline-block;background:#1f6feb;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-weight:bold">⬇ Download for Windows</a></div>
-  <div class="help desk"><b>Controls:</b> WASD / arrows move · Shift sprint · Click the game to lock the mouse, then move it to look around (Esc frees it) · Mouse wheel = zoom from first to third person · Click / Space = attack, shoot or eat/drink the selected item · E = open chest/bag · 1–6 = pick a hotbar slot · E near a bed = sleep (heals) · G = drop · Monsters: Space / click = ability · Tab = scoreboard · M = mute</div>
+  <div class="help desk" id="ctrlhelp"><b>Settings · Controls</b><br>WASD moves · Arrow left and right turn the camera · Shift sprints · Click or Space attacks, uses an item, or fires the monster ability · E interacts · Q is the monster ability · Z X C are the coils · 1–6 pick a hotbar slot · G drops · B opens the emote wheel · Tab holds the scoreboard · M mutes · <b>H hides the HUD</b> · <b>F1 shows this key list in a round</b>. There is no jump key. On a phone, the eye button in the corner hides the on-screen buttons. The eye stays visible.</div>
   <div class="help mob"><b>Touch controls:</b> left thumb = joystick (move) · right side = drag to look around, pinch to zoom · ⚔️ = attack/use · 📦 = open chest/bag · tap a hotbar slot to select it · 🏃 = sprint · ⚡ = monster ability · 💃 = emote wheel · 📋 = players</div>
   <p class="help"><button type="button" id="badmin">Owner admin</button> <small>Locked unless a server verifies the owner. Hosting or a display name does not grant it.</small></p>
 </div>
@@ -55,6 +55,8 @@
   <div id="board" class="hide"></div>
   <button id="bleave">Leave</button>
 </div>
+<button id="bhud" type="button" aria-label="Hide on-screen controls" title="Hide controls">👁</button>
+<div id="keyguide" class="hide" aria-label="Keyboard controls"></div>
 <div id="overlay" class="hide"></div>
 <div id="deathscreen" class="hide"></div><div id="killpop" class="hide"></div>
 <div id="specbar" class="hide"><button id="specprev">◀</button><span id="specname">Spectating</span><button id="specnext">▶</button><button id="specstats">📊 Stats</button><button id="speclobby">🏠 Lobby</button></div>

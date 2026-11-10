@@ -3,6 +3,7 @@ import { World, S } from './js/render3d.js';
 import { GFX, AUTO as GFX_AUTO, setTier } from './js/gfx.js';
 import { SKIES, loadSky, saveSky } from './js/skies.js';
 import { audio, sfx, setAmbience, setRotor, setEngine, staticHiss } from './js/audio.js';
+import { KEYS, GUIDE_KEY, HUD_KEY, nextHud, guideOpen } from './js/keys.js';
 import { oldWallpaper } from './js/textures.js';
 import { initTouch } from './js/touch.js';
 import { initLocker } from './js/locker.js';
@@ -12,7 +13,7 @@ const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const cam = { yaw: -Math.PI / 2, pitch: .55, zoom: localStorage.nhZoom != null ? +localStorage.nhZoom : .5 };
 let ITEMS = {}, fireHeld = false, fireLatch = false, lastHp = null;
-let me = null, room = null, map = null, snap = null, isHost = false, MON = {}, disp = {}, jumpscare = null, flight = null, results = null, muted = false;
+let me = null, room = null, map = null, snap = null, isHost = false, MON = {}, disp = {}, jumpscare = null, flight = null, results = null, muted = false, guidePin = null, guideAuto = 0;
 const keys = {}; let mouse = { x: innerWidth / 2, y: innerHeight / 2, moved: false }, aimA = 0, lastMoveA = 0;
 const mobileUA = matchMedia('(pointer:coarse)').matches || navigator.maxTouchPoints > 0;
 let world;
@@ -78,6 +79,23 @@ function surfaceAt(x, y) {
   if (map.streets && map.streets.some(sy => Math.abs(y - sy) < 90)) return 'concrete';
   return 'grass';
 }
+function applyHud(on) {
+  document.body.classList.toggle('hudoff', !on);
+  const b = $('bhud'); if (b) { b.textContent = on ? '👁' : '👁‍🗨'; b.title = on ? 'Hide controls' : 'Show controls'; b.setAttribute('aria-pressed', on ? 'false' : 'true'); }
+}
+function fillGuide() {
+  const el = $('keyguide'); if (!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  el.innerHTML = '<h3>KEYBOARD</h3><table>' + KEYS.map(([k, v]) => `<tr><td><kbd>${k}</kbd></td><td>${v}</td></tr>`).join('') + '</table>';
+}
+function syncGuide(now) {
+  const el = $('keyguide'); if (!el) return;
+  fillGuide();
+  const touchOn = document.body.classList.contains('touchmode') || !!(typeof touch !== 'undefined' && touch && touch.active);
+  el.classList.toggle('hide', !guideOpen({ touch: touchOn, pinned: guidePin, auto: !!(guideAuto && now < guideAuto) }));
+}
+applyHud(localStorage.nhHud !== '0');
+if ($('bhud')) $('bhud').onclick = e => { e.stopPropagation(); const n = nextHud(localStorage.nhHud); localStorage.nhHud = n; applyHud(n !== '0'); };
 function showMenu(err) { ['darkover', 'staticover', 'hallucover', 'sleepover', 'locustover', 'scareover'].forEach(i => $(i).classList.add('hide')); staticHiss(false); if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock(); room = null; snap = null; map = null; $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('overlay').classList.add('hide'); document.body.classList.remove('ingame'); $('merr').textContent = err || ''; setAmbience(null); setRotor(0); clearEnd(); }
 $('bleave').onclick = () => { NET.leave(); showMenu(); };
 $('binvite').onclick = () => { const u = location.origin + location.pathname + '?room=' + room; navigator.clipboard && navigator.clipboard.writeText(u).catch(() => { }); addEvent('Invite link copied: ' + u, 'good'); };
@@ -213,6 +231,8 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyG') send({ t: 'drop' });
   if (e.code === 'Tab') { e.preventDefault(); showBoard(true); }
   if (e.code === 'KeyM') muted = audio.toggleMute();
+  if (e.code === HUD_KEY && !e.repeat) { const n = nextHud(localStorage.nhHud); localStorage.nhHud = n; applyHud(n !== '0'); e.preventDefault(); }
+  if (e.code === GUIDE_KEY && !e.repeat) { guidePin = guidePin === 'open' ? 'shut' : 'open'; guideAuto = 0; e.preventDefault(); }
   if (e.code === 'KeyB' && !e.repeat && snap) armWheel();
   if (spec && (e.code === 'ArrowRight' || e.code === 'KeyN')) startSpec(1); if (spec && e.code === 'ArrowLeft') startSpec(-1);
 });
@@ -269,7 +289,7 @@ function frame(now) {
   if (jumpscare && now > jumpscare.until) { const d = jumpscare.death; jumpscare = null; if (d) showDeath(d); }
   if (pendingResults && !endBusy()) showResults(pendingResults);
   if (resultsEnd && !$('overlay').classList.contains('hide')) { const rb = $('rback'); if (rb) rb.textContent = `Back to the lobby in ${Math.max(0, Math.ceil((resultsEnd - now) / 1000))}s…`; }
-  if (flight && now > flight.until) { flight = null; $('flightcard').classList.add('hide'); }
+  if (flight && now > flight.until) { flight = null; $('flightcard').classList.add('hide'); if (!(touch && touch.active)) { guidePin = null; guideAuto = now + 8000; } }
   if (flight) { const s = $('flsecs'); if (s) s.textContent = '· landing in ' + Math.ceil((flight.until - now) / 1000) + 's'; }
   setRotor(flight ? .9 : snap && map && map.heli && disp[me] ? Math.max(0, .5 - Math.hypot(disp[me].dx - map.heli.x, disp[me].dy - map.heli.y) / 1400) : snap && snap.ex && disp[me] ? Math.max(0, .5 - Math.hypot(disp[me].dx - snap.ex.x, disp[me].dy - snap.ex.y) / 1600) : 0);
   if (!snap || !snap.ps) setEngine(0, 0);
@@ -282,8 +302,8 @@ function frame(now) {
   }
   if (jumpscare) { const e = jumpscare.freeze != null ? jumpscare.freeze : (now - jumpscare.start) / 1000; world.frame(dt, t, { scare: { type: jumpscare.type, fm: jumpscare.fm, elapsed: e, intense: opt.scare !== 'normal', photo: !!opt.photo, blood: !!opt.blood, skin: jumpscare.skin, show: jumpscare.show } }); if (!jumpscare.show) drawScare(jumpscare.type, e); arrows([]); return; }
   else if (scareShown && !killcam) { scareShown = false; $('scareover').classList.add('hide'); }
-  if (flight) { world.frame(dt, t, { flight: { elapsed: (now - flight.start) / 1000, left: (flight.until - now) / 1000, monster: flight.mine && flight.mine.role === 'monster' } }); arrows([]); return; }
-  if (!room || !map || !snap) { world.frame(dt, t, {}); return; }
+  if (flight) { world.frame(dt, t, { flight: { elapsed: (now - flight.start) / 1000, left: (flight.until - now) / 1000, monster: flight.mine && flight.mine.role === 'monster' } }); arrows([]); syncGuide(now); return; }
+  if (!room || !map || !snap) { world.frame(dt, t, {}); syncGuide(now); return; }
   for (const p of snap.ps) { const d = disp[p.id] || (disp[p.id] = { dx: p.x, dy: p.y }); const k = Math.min(1, dt * 14); if (Math.hypot(p.x - d.dx, p.y - d.dy) > 300) { d.dx = p.x; d.dy = p.y; } d.dx += (p.x - d.dx) * k; d.dy += (p.y - d.dy) * k; const alt = p.alt != null ? p.alt : (p.fl || 0) * 4.2; if (d.alt == null || Math.abs(alt - d.alt) > 2.5) d.alt = alt; else d.alt += (alt - d.alt) * k; }
   const mp = snap.ps.find(p => p.id === me), md = disp[me]; if (!mp || !md) return;
   { const mine = snap.bt && mp.bt && snap.bt.find(b => b[0] === mp.bt); setEngine(mine && mine[5] === me ? Math.min(1, (mine[8] || 0) / 220) : 0, mine ? Math.min(1.4, (mine[8] || 0) / 180) : 0); }
@@ -306,7 +326,7 @@ function frame(now) {
   if (snap.ex && (mp.role === 'survivor' || ghost)) tg.push({ x: snap.ex.x, y: snap.ex.y, c: '#5dff8a', l: '🚁 ESCAPE' });
   if (mp.role === 'monster' && snap.state === 'playing') for (const p of snap.ps) if (p.st.reveal && p.al && !p.es && disp[p.id]) tg.push({ x: disp[p.id].dx, y: disp[p.id].dy, c: '#ff3b3b', l: '👁', mark: true });
   arrows(tg, md);
-  hud(mp, ghost);
+  hud(mp, ghost); syncGuide(now);
 }
 const arrowEls = [];
 function arrows(list, md) {
@@ -331,7 +351,8 @@ function hud(mp, ghost) {
   const showAb = !!(M && st === 'playing');
   $('ability').classList.toggle('hide', !showAb);
   const DF = M && M.forms ? M.forms[snap.me.fm || 0] : null;
-  if (M) $('ability').innerHTML = DF ? `<b>${DF.name}: ${DF.ability}</b> <small>${touch.active ? '' : '(Space / Click)'}</small><br><small>${DF.desc}</small><br><small>🔄 next form in ${snap.me.fmT}s</small><br>${snap.me.cd > 0 ? `⏳ ${snap.me.cd.toFixed(1)}s` : '<b style="color:#6f6">READY</b>'}` : `<b>${M.ability}</b> <small>${touch.active ? '' : '(Space / Click)'}</small><br><small>${M.desc}</small><br>${snap.me.cd > 0 ? `⏳ ${snap.me.cd.toFixed(1)}s` : '<b style="color:#6f6">READY</b>'}`;
+  const abKey = touch.active ? '' : ' <kbd>Space</kbd>';
+  if (M) $('ability').innerHTML = DF ? `<b>${DF.name}: ${DF.ability}</b>${abKey}<br><small>${DF.desc}</small><br><small>🔄 next form in ${snap.me.fmT}s</small><br>${snap.me.cd > 0 ? `⏳ ${snap.me.cd.toFixed(1)}s` : '<b style="color:#6f6">READY</b>'}` : `<b>${M.ability}</b>${abKey}<br><small>${M.desc}</small><br>${snap.me.cd > 0 ? `⏳ ${snap.me.cd.toFixed(1)}s` : '<b style="color:#6f6">READY</b>'}`;
   const tab = $('tability'); tab.classList.toggle('hide', !showAb); if (showAb) { tab.classList.toggle('cool', snap.me.cd > 0); tab.querySelector('small').textContent = snap.me.cd > 0 ? snap.me.cd.toFixed(1) + 's' : DF ? DF.ability : M.ability; }
   $('tsprint').classList.toggle('hide', ghost || st === 'results');
   $('stam').classList.toggle('hide', !(st === 'playing' && mp.role === 'survivor' && !ghost)); $('stam').firstChild.style.width = snap.me.stamina + '%'; $('stam').firstChild.style.background = mp.st.grey ? '#777' : snap.me.stamina < 25 ? '#c33' : '#3c3';
@@ -343,7 +364,8 @@ function hud(mp, ghost) {
   const nearDoor = st === 'lobby' && map && map.heli && disp[me] && Math.hypot(disp[me].dx - map.heli.x, disp[me].dy - map.heli.y) < (map.heli.board || 88);
   const imSeated = snap.boarded.includes(me);
   if (st === 'lobby') $('lobbyhint').innerHTML = `🚁 ${imSeated ? 'You are seated. E climbs out.' : nearDoor ? 'E — sit in the helicopter.' : 'Walk to the helicopter door, then press E to sit.'} ${boarded}/${snap.ps.length} seated<br><small>${snap.ps.length < 2 ? 'Need at least 2 players. Invite friends with the code' + (isHost ? ' or add a bot' : '') : hb < humans.length ? 'Waiting for everyone to sit down…' : isHost ? 'Everyone is seated — press Take off!' : 'Waiting for the host to take off…'}</small>`;
-  const gb = $('gearbar'); if (gb) { const g = snap.me && snap.me.gear; const showG = st === 'playing' && mp.role === 'survivor' && !ghost && g && Object.keys(g).length; gb.classList.toggle('hide', !showG); if (showG) gb.innerHTML = Object.entries(g).map(([k, s]) => `<button type="button" data-g="${k}" class="${s.left > 0 ? 'on' : ''}">${k === 'speed' ? '🌀' : k === 'grav' ? '🌙' : '👻'} ${s.left > 0 ? s.left.toFixed(1) + 's' : s.cd > 0 ? s.cd.toFixed(1) + 's' : 'READY'}</button>`).join(''); gb.querySelectorAll('button').forEach(b => b.onclick = () => send({ t: 'gear', k: b.dataset.g })); }
+  const gk = { speed: 'Z', grav: 'X', invis: 'C' };
+  const gb = $('gearbar'); if (gb) { const g = snap.me && snap.me.gear; const showG = st === 'playing' && mp.role === 'survivor' && !ghost && g && Object.keys(g).length; gb.classList.toggle('hide', !showG); if (showG) gb.innerHTML = Object.entries(g).map(([k, s]) => `<button type="button" data-g="${k}" class="${s.left > 0 ? 'on' : ''}">${k === 'speed' ? '🌀' : k === 'grav' ? '🌙' : '👻'} <kbd>${gk[k] || ''}</kbd> ${s.left > 0 ? s.left.toFixed(1) + 's' : s.cd > 0 ? s.cd.toFixed(1) + 's' : 'READY'}</button>`).join(''); gb.querySelectorAll('button').forEach(b => b.onclick = () => send({ t: 'gear', k: b.dataset.g })); }
   for (const [id, k] of [['tspeed', 'speed'], ['tgrav', 'grav'], ['tinvis', 'invis']]) { const n = $(id); if (!n) continue; const s = snap.me && snap.me.gear && snap.me.gear[k]; const on = st === 'playing' && mp.role === 'survivor' && !ghost && s; n.classList.toggle('hide', !on); if (on) n.innerHTML = `${k === 'speed' ? '🌀' : k === 'grav' ? '🌙' : '👻'}<small>${s.left > 0 ? s.left.toFixed(0) + 's' : s.cd > 0 ? s.cd.toFixed(0) + 's' : 'OK'}</small>`; }
 }
 // ---------- v1.4: the walk-in lobby store, boats, storm / weather overlays, Father Fester stage ----------
@@ -557,6 +579,13 @@ if (params.has('shot')) {
     jumpscare.freeze = +(params.get('hold') || .5);
     jumpscare.until = performance.now() + 120000;
     setTimeout(() => { window.NH.shotReady = true; }, 400);
+  }
+  else if (kind === 'keys') {
+    $('warn').classList.add('hide'); $('menu').classList.add('hide'); $('hud').classList.remove('hide');
+    document.body.classList.add('ingame'); document.body.classList.remove('touchmode', 'hudoff');
+    guidePin = 'open'; fillGuide(); syncGuide(performance.now());
+    $('ability').classList.remove('hide'); $('ability').innerHTML = '<b>Siren Call</b> <kbd>Space</kbd><br><small>A deafening siren.</small>';
+    window.NH.shotReady = true;
   }
   else if (kind === 'intro') {
     $('warn').classList.add('hide'); $('menu').classList.add('hide'); $('intro').classList.remove('hide');

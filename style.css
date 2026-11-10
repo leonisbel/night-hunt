@@ -111,6 +111,16 @@ body.touchmode #hostbox{width:170px;font-size:12px}
   body.touchmode.ingame #hostbox{bottom:auto;top:calc(100px + env(safe-area-inset-top));left:auto;right:calc(80px + env(safe-area-inset-right));transform:none}
 }
 body.cutscene #hostbox,body.cutscene #lobbyhint,body.cutscene #rolebox,body.cutscene #stam,body.cutscene #ability,body.cutscene #touch,body.cutscene #timer{display:none!important}
+#bhud{display:none;position:fixed;z-index:20;top:calc(8px + env(safe-area-inset-top));right:calc(8px + env(safe-area-inset-right));width:44px;height:44px;border-radius:50%;padding:0;font-size:20px;background:#000c;border:1px solid #fff6}
+body.touchmode.ingame #bhud{display:flex;align-items:center;justify-content:center}
+body.hudoff #hud,body.hudoff #touch,body.hudoff #specbar,body.hudoff #emotewheel,body.hudoff #flightcard,body.hudoff #keyguide{display:none!important}
+#keyguide{position:fixed;z-index:7;left:calc(12px + env(safe-area-inset-left));bottom:calc(16px + env(safe-area-inset-bottom));width:min(420px,46vw);max-height:46vh;overflow:auto;background:rgba(8,10,16,.88);border:1px solid #9ad0ff66;border-radius:12px;padding:10px 12px;color:#e8eef8;box-shadow:0 8px 30px #000a}
+#keyguide h3{margin:0 0 6px;font-size:14px;letter-spacing:1px}
+#keyguide table{width:100%;border-collapse:collapse;font-size:13px}
+#keyguide td{padding:2px 6px;vertical-align:top}
+#keyguide kbd{display:inline-block;min-width:1.4em;padding:1px 6px;border-radius:4px;background:#1c2430;border:1px solid #9ad0ff55;font-family:inherit;font-weight:800}
+body.touchmode #keyguide{display:none!important}
+#ability kbd{margin-left:6px;padding:0 5px;border-radius:4px;background:#300;border:1px solid #f66;font-weight:800}
 .panel{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 @media (max-height:500px){
   h1{font-size:30px;margin:0 0 2px}.panel{padding:10px 14px}.panel p,.panel .sub{margin:2px 0 6px;font-size:12px}
