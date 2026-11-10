@@ -178,6 +178,8 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
   P('kiosk', 1960, 1560, 70, 50);
   P('storesign', 1880, 1640, 200, 16, { solid: false, t: 'COIN STORE', s: 'FREE REWARD · NO PAYMENTS', c: '#ffd76b', a: 0 });
   L.zones.push({ k: 'coins', name: 'COIN STORE', x: 1860, y: 1400, w: 280, h: 150, c: '#ffd76b', ic: '🪙' });
+  L.zones.push({ k: 'sky', name: 'SKY DOME', x: 2320, y: 1680, w: 220, h: 160, c: '#9ad0ff', ic: '🌌', fl: 0 });
+  P('storesign', 2340, 1780, 180, 16, { solid: false, t: 'SKY DOME', s: 'FREE · ONLY YOUR VIEW', c: '#9ad0ff', a: 0 });
   for (let x = 220; x < 2000; x += 280) { P('streetlight', x, 1248, 16, 16); P('streetlight', x + 120, 1688, 16, 16, { a: Math.PI }); }
   for (let i = 0; i < 4; i++) P('car', 260 + i * 420, i % 2 ? 1210 : 1748, 70, 32, { a: i % 2 ? 0 : Math.PI, solid: false });
   [[400, 1500], [700, 1500], [1500, 1500], [2600, 1400], [3400, 1600], [4000, 1400]].forEach(([x, y]) => L.bushes.push({ x, y, r: 14 }));

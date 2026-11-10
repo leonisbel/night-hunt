@@ -152,8 +152,92 @@ float getShadow( sampler2D shadowMap`;
 const SKYTEX = {};
 export function skyTex(k) { return SKYTEX[k] || (SKYTEX[k] = (() => { const t = TL.load(new URL('../models/sky/' + k + '.jpg', import.meta.url).href); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t; })()); }
 const SKY_FN = `
-uniform sampler2D tSky; uniform vec3 uTint, uFogC, uMoonDir, uMoonC; uniform float uRot, uMoonI;
+uniform sampler2D tSky; uniform vec3 uTint, uFogC, uMoonDir, uMoonC; uniform float uRot, uMoonI, uKind, uTime, uLite;
+float nhH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float nhN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+  return mix(mix(nhH(i), nhH(i + vec2(1., 0.)), f.x), mix(nhH(i + vec2(0., 1.)), nhH(i + vec2(1., 1.)), f.x), f.y); }
+vec3 skyTheme(vec3 d) {
+  float k = uKind;
+  if (k < 1.5) { // black hole: bent accretion disk, dark shadow, slow spin
+    vec3 bh = normalize(vec3(.18, .46, -.86));
+    float facing = clamp(dot(d, bh), -1., 1.);
+    vec3 ax = normalize(cross(bh, vec3(0., 1., .15))); vec3 bn = cross(bh, ax);
+    vec2 q = vec2(dot(d, ax), dot(d, bn));
+    float bend = .42 / (.08 + max(.02, 1. - facing));
+    q *= 1. + bend * .22; float rad = length(q);
+    float ang = atan(q.y, q.x) + uTime * .22 + rad * (uLite > .5 ? 2. : 5.);
+    float ring = exp(-pow((rad - .62) * 6.5, 2.));
+    float spin = uLite > .5 ? 1. : (.62 + .38 * sin(ang * 7.));
+    vec3 fire = mix(vec3(1., .82, .45), vec3(1., .22, .04), smoothstep(.25, .95, rad));
+    vec3 c = vec3(.012, .004, .02) + fire * ring * spin * 2.4;
+    c *= 1. - smoothstep(.16, .045, acos(facing));
+    c += vec3(.7, .35, .12) * pow(max(facing, 0.), 28.) * .35;
+    return c;
+  }
+  if (k < 2.5) { // pink sunset
+    float n = nhN(d.xz * 2.4 + uTime * .04); float n2 = uLite > .5 ? n : nhN(d.xz * 6. - uTime * .02);
+    vec3 c = mix(vec3(1., .52, .68), vec3(.42, .18, .48), smoothstep(-.08, .75, d.y));
+    c += vec3(1., .72, .84) * smoothstep(.42, .78, n) * .5;
+    c += vec3(1., .9, .95) * smoothstep(.62, .9, n2) * .28;
+    return c;
+  }
+  if (k < 3.5) { // deep space
+    vec3 c = vec3(.012, .016, .045);
+    float band = exp(-pow(d.y * 3.2, 2.)) * (.35 + .65 * nhN(vec2(atan(d.z, d.x) * 1.6, d.y * 3.)));
+    c += vec3(.42, .48, .72) * band;
+    c += pow(nhH(floor(d.xy * 160. + d.zz * 30.)), 18.) * 1.6;
+    if (uLite < .5) c += pow(nhH(floor(d.yz * 80.)), 28.) * vec3(.7, .8, 1.);
+    return c;
+  }
+  if (k < 4.5) { // colorful galaxy
+    float a = atan(d.z, d.x) + uTime * .05;
+    float arm = .5 + .5 * sin(a * 3. + length(d.xz) * 8.);
+    vec3 c = mix(vec3(.12, .02, .18), vec3(.02, .08, .16), d.y * .5 + .5);
+    c += vec3(.85, .25, .7) * arm * exp(-abs(d.y) * 2.2) * .8;
+    c += vec3(.2, .85, .7) * (1. - arm) * exp(-abs(d.y) * 1.6) * .45;
+    c += vec3(1., .75, .4) * pow(nhH(floor(d.xy * 90.)), 22.);
+    return c;
+  }
+  if (k < 5.5) { // aurora
+    vec3 c = mix(vec3(.02, .04, .08), vec3(.01, .02, .05), smoothstep(0., .8, d.y));
+    float wave = sin(d.x * 7. + uTime * .45) * .12 + sin(d.z * 5. - uTime * .3) * .08;
+    float curtain = exp(-pow((d.y - .32 - wave) * 5.5, 2.));
+    c += vec3(.15, 1., .55) * curtain * (.55 + .45 * sin(d.x * 10. + uTime));
+    if (uLite < .5) c += vec3(.35, .45, 1.) * curtain * .35 * sin(d.z * 6. + uTime * .8);
+    return c;
+  }
+  if (k < 6.5) { // blood moon
+    vec3 c = mix(vec3(.22, .03, .03), vec3(.05, 0., .015), smoothstep(-.05, .7, d.y));
+    float md = dot(d, uMoonDir);
+    c += vec3(1., .12, .08) * (pow(max(md, 0.), 700.) * 10. + pow(max(md, 0.), 18.) * .55);
+    return c;
+  }
+  if (k < 7.5) { // two moons over an alien sky
+    vec3 c = mix(vec3(.05, .12, .1), vec3(.02, .03, .1), smoothstep(0., .8, d.y));
+    vec3 a = normalize(vec3(.55, .48, -.68)), b = normalize(vec3(-.62, .32, -.45));
+    float da = dot(d, a), db = dot(d, b);
+    c += vec3(.75, .85, .7) * pow(max(da, 0.), 600.) * 8.;
+    c += vec3(.55, .7, 1.) * pow(max(db, 0.), 500.) * 6.;
+    vec3 ax = normalize(cross(b, vec3(0., 1., 0.))); vec3 bn = cross(b, ax);
+    float ring = abs(dot(d, b)); float rr = length(vec2(dot(d, ax), dot(d, bn)));
+    c += vec3(.8, .75, .55) * smoothstep(.03, 0., abs(ring)) * smoothstep(.18, .08, abs(rr - .22));
+    return c;
+  }
+  vec3 c = vec3(.01, .015, .04); // meteor shower
+  c += pow(nhH(floor(d.xy * 140.)), 20.);
+  for (int i = 0; i < 3; i++) {
+    if (uLite > .5 && i > 0) break;
+    float fi = float(i);
+    float life = fract(uTime * .17 + fi * .37);
+    vec3 dir = normalize(vec3(nhH(vec2(fi, 2.)) - .5, .35 + nhH(vec2(fi, 3.)) * .4, nhH(vec2(fi, 4.)) - .5));
+    vec3 head = normalize(mix(dir, dir + vec3(.2, -.45, .08), life));
+    float hit = smoothstep(.045, 0., length(d - head));
+    c += vec3(1., .92, .75) * hit * (1. - life);
+  }
+  return c;
+}
 vec3 skyCol(vec3 d) {
+  if (uKind > .5) return skyTheme(d);
   float el = asin(clamp(d.y, -1., 1.)); float v = 1. - (1.5708 - el) / (.53 * 3.14159);
   vec3 c = texture2D(tSky, vec2(atan(d.z, d.x) / 6.2832 + .5 + uRot, clamp(v, .002, .998))).rgb * uTint;
   c = mix(uFogC, c, smoothstep(-.02, .32, d.y));
@@ -162,7 +246,7 @@ vec3 skyCol(vec3 d) {
 }`;
 export function makeSky() {
   const m = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { tSky: { value: skyTex('milky') }, uTint: { value: new THREE.Color(.3, .3, .35) }, uFogC: { value: new THREE.Color() }, uMoonDir: { value: new THREE.Vector3(0, .5, -1).normalize() }, uMoonC: { value: new THREE.Color('#dfe6ff') }, uRot: { value: 0 }, uMoonI: { value: 1 } },
+    uniforms: { tSky: { value: skyTex('milky') }, uTint: { value: new THREE.Color(.3, .3, .35) }, uFogC: { value: new THREE.Color() }, uMoonDir: { value: new THREE.Vector3(0, .5, -1).normalize() }, uMoonC: { value: new THREE.Color('#dfe6ff') }, uRot: { value: 0 }, uMoonI: { value: 1 }, uKind: { value: 0 }, uTime: { value: 0 }, uLite: { value: 0 } },
     vertexShader: 'varying vec3 vD; void main(){ vD = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.); gl_Position = p.xyww; }',
     fragmentShader: SKY_FN + `
 varying vec3 vD;
@@ -178,7 +262,7 @@ void main(){ vec3 d = normalize(vD); vec3 c = skyCol(d);
 // ---------- water: wave normals, Fresnel sky reflection, moon glints, crest + shoreline foam, rain ripples ----------
 export function waterMat(o = {}) {
   const m = new THREE.MeshStandardMaterial({ color: o.deep || '#0b2630', roughness: .06, metalness: 0, transparent: !!o.alpha, opacity: o.alpha || 1 });
-  m.userData.water = { tSky: { value: o.sky || skyTex('milky') }, uTint: { value: new THREE.Color(.3, .3, .35) }, uFogC: { value: new THREE.Color() }, uMoonDir: { value: new THREE.Vector3(0, .5, -1).normalize() }, uMoonC: { value: new THREE.Color('#dfe6ff') }, uRot: { value: 0 }, uMoonI: { value: 1 },
+  m.userData.water = { tSky: { value: o.sky || skyTex('milky') }, uTint: { value: new THREE.Color(.3, .3, .35) }, uFogC: { value: new THREE.Color() }, uMoonDir: { value: new THREE.Vector3(0, .5, -1).normalize() }, uMoonC: { value: new THREE.Color('#dfe6ff') }, uRot: { value: 0 }, uMoonI: { value: 1 }, uKind: { value: 0 }, uTime: { value: 0 }, uLite: { value: 0 },
     uShal: { value: new THREE.Color(o.shallow || '#2c6a70') }, uFoamC: { value: new THREE.Color(o.foam || '#c8d4d8') }, uAmp: { value: o.amp ?? 1 }, uIsl: { value: new Array(16).fill(0).map(() => new THREE.Vector3(-1e5, -1e5, 0)) }, uIslN: { value: 0 }, uMurk: { value: o.murk ?? 0 } };
   return patch(m, 'water' + (o.murk ? 'm' : ''), sh => {
     Object.assign(sh.uniforms, m.userData.water); worldVaryings(sh);

@@ -1,5 +1,5 @@
 *{box-sizing:border-box}body{margin:0;overflow:hidden;background:#000;font-family:'Trebuchet MS',Verdana,sans-serif;color:#eee}
-canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+#c{position:fixed;inset:0;width:100vw;height:100dvh;display:block;touch-action:none}
 .hide{display:none!important}
 .panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,94vw);max-height:94vh;overflow:auto;background:rgba(10,8,14,.92);border:2px solid #7a1010;border-radius:14px;padding:22px 26px;box-shadow:0 0 60px #a0000080}
 h1{margin:0;text-align:center;font-size:54px;letter-spacing:6px;color:#e11;text-shadow:0 0 18px #f00,3px 3px 0 #000;font-family:Impact,sans-serif}
@@ -34,7 +34,7 @@ select{width:100%;padding:8px;border-radius:8px;background:#1a1a22;color:#fff;bo
 
 /* ---- 3D / responsive / touch ---- */
 html,body{height:100%;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
-canvas{height:100dvh;touch-action:none}
+#c{height:100dvh;touch-action:none}
 input,select{-webkit-user-select:text;user-select:text}
 .panel{max-height:calc(100dvh - 20px);background:rgba(10,8,14,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 #topbar{top:calc(8px + env(safe-area-inset-top));left:calc(8px + env(safe-area-inset-left));max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -143,6 +143,7 @@ body.lockeron #touch{display:none!important}
 #locustover{width:100vw;height:100vh;z-index:7}
 body.cutscene .fxo:not(#scareover){display:none!important}
 #warn{max-width:560px;text-align:center;z-index:60}#warn p{line-height:1.5;font-size:15px}#warn h1{color:#ff3b3b}
+#skypick{position:fixed;right:16px;bottom:90px;z-index:6;width:min(280px,86vw);background:#0c1018ee;border:1px solid #9ad0ff;border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:6px}#skypick b{width:100%}#skypick small{width:100%;color:#9ad0ff}#skypick button{flex:1 1 40%}
 .r13{display:inline-block;background:#c0392b;color:#fff;border:2px solid #fff;border-radius:6px;padding:0 6px;font:bold 16px system-ui;vertical-align:middle;letter-spacing:0}
 .rating{font-weight:bold}.chk{display:flex;align-items:center;gap:8px}.chk input{width:auto}
 #hallucover{background:radial-gradient(circle,transparent 30%,#2a003a99 90%);mix-blend-mode:normal;animation:halluc 1.3s infinite alternate;pointer-events:none}
@@ -221,8 +222,11 @@ body.inlobby #blocker2.storebar{display:flex}
 #bemote{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(#7a4aaa,#3a1a6a);border:2px solid #ffd76b;border-radius:12px;color:#fff;cursor:pointer}
 #staticover{width:100%;height:100%;image-rendering:pixelated;z-index:3;opacity:.42;mix-blend-mode:screen;pointer-events:none}
 html,body{touch-action:none}
-button.si{color:inherit;font:inherit;cursor:pointer;width:100%;background:#0006}
-button.si small{color:#ffd76b}
+.si,.si button.equip{color:inherit;font:inherit}
+.si{cursor:pointer;width:100%;background:#0006}
+.si.on{outline:2px solid #ffd76b}
+.si .equip{margin-top:4px;background:#1d5a3a;border:1px solid #7dffb2;color:#fff;font-weight:800;border-radius:8px;padding:6px 8px}
+.si small{color:#ffd76b}
 #gearbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(168px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:6}
 #gearbar button{background:#142018ee;color:#fff;border:2px solid #7dffb2;border-radius:10px;padding:6px 10px;font-weight:800}
 #gearbar button.on{border-color:#ffd76b}
@@ -231,7 +235,8 @@ button.si small{color:#ffd76b}
 #emotewheel button span{display:block;font-size:22px}
 .showcase{position:fixed;inset:0;z-index:40;display:flex;background:#0c0a12f7;padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));gap:12px}
 .sc-stage{flex:1.2;min-width:0;position:relative;background:radial-gradient(circle at 50% 40%,#243044,#09080c);border-radius:16px;overflow:hidden}
-.sc-stage canvas{width:100%;height:100%;display:block;touch-action:none}
+.sc-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.sc-panel{position:relative;z-index:2}
 .sc-hint{position:absolute;left:10px;bottom:10px;color:#fff8;font-size:12px}
 body.showcaseon #locker{visibility:hidden}
 .sc-panel{flex:0.8;max-width:360px;color:#fff;overflow:auto;background:#16141c;border-radius:16px;padding:14px}

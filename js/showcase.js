@@ -59,7 +59,7 @@ export function openShowcase(opts) {
   const addBtn = (label, cls, fn, disabled) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = cls; b.textContent = label; b.disabled = !!disabled;
-    b.addEventListener('click', e => { e.stopPropagation(); fn(); });
+    b.addEventListener('pointerup', e => { e.preventDefault(); e.stopPropagation(); fn(); });
     actions.appendChild(b); return b;
   };
   if (opts.onBuy) addBtn(opts.buyLabel || (opts.price > 0 ? `Buy · 🪙 ${opts.price}` : 'Get'), 'sc-buy', () => opts.onBuy(), opts.buyDisabled);
