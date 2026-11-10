@@ -11,7 +11,10 @@
   <div class="lockrow storebar"><button class="blocker" data-tab="look">🪞<b>Dressing Room</b></button><button class="blocker" data-tab="monster">👹<b>Monster</b></button><button class="blocker" data-tab="weapons">🏬<b>Stores</b></button><button class="blocker" data-tab="skins">✨<b>Skins</b></button><span class="coinpill">🪙 <b class="coinv">0</b></span></div>
   <label>Play mode <select id="mode"><option value="online">🌐 Online (internet, peer-to-peer)</option><option value="server">📶 This server (Wi-Fi / LAN)</option></select></label>
   <label class="chk"><input type="checkbox" id="optblood" checked> Blood effects (jumpscares)</label>
+  <label>Jumpscare <select id="optscare"><option value="intense">Intense</option><option value="normal">Normal</option></select></label>
+  <label class="chk"><input type="checkbox" id="optphoto"> Reduce flashing (photosensitivity)</label>
   <label>Graphics <select id="optgfx"><option value="auto">Auto</option><option value="low">Low (phones)</option><option value="med">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
+  <label>Sky <select id="optsky"></select></label>
   <div class="tabs"><button data-tab="create" class="on">Create Server</button><button data-tab="join">Join with Code</button><button data-tab="browse">Public Servers</button></div>
   <div id="tab-create" class="tab">
     <label>Server name <input id="sname" maxlength="24" placeholder="Night Hunt Server"></label>
@@ -45,7 +48,7 @@
     <label>Round <select id="hround"><option value="300">5 min</option><option value="420">7 min</option><option value="600">10 min</option></select></label>
     <label>Max <input id="hmax" type="number" min="2" max="15"></label> <label><input type="checkbox" id="hpub"> Public</label></div>
   <div id="lobbyhint"></div>
-  <div id="zoneprompt" class="hide"></div><div id="p2over"></div><div id="p2warn" class="hide"></div>
+  <div id="zoneprompt" class="hide"></div><div id="skypick" class="hide"></div><div id="p2over"></div><div id="p2warn" class="hide"></div>
   <div id="events"></div>
   <div id="board" class="hide"></div>
   <button id="bleave">Leave</button>

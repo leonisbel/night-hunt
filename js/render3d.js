@@ -6,6 +6,7 @@ import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { buildMonster, buildSurvivor, buildHelicopter, buildLamp, monsterHeight, G, mat, buildItem, heldItem, itemClass, buildChest, buildBag, towerBeams, applySkin, buildProp, modelKey, animTick, wiggleTick, buildPet, realSetup, lodTick, buildVehicle } from './models.js';
 import { applyEmote } from './emotes.js';
 import { seasonFor } from './season.js';
+import { loadSky, skyById } from './skies.js';
 import { dressLobby } from './lobbydress.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 const NEUTRAL_CG = [[.006, .004, .008], [1, 1, 1], [1, 1, 1], .92], NOVOL = { on: false, dens: 0, lights: [] };
@@ -235,7 +236,7 @@ export class World {
     this.flash = mk(true);
     this.flashPool = Array.from({ length: this.mobile ? 1 : 3 }, () => mk(false));
     this.beams = [this.flash, ...this.flashPool].map(() => { const m = new THREE.Mesh(new THREE.ConeGeometry(5.2, 18, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#fff0d0', map: beamTex(), transparent: true, opacity: .05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.geometry.translate(0, -9, 0); m.geometry.rotateX(-Math.PI / 2); m.renderOrder = 5; m.visible = false; s.add(m); return m; });
-    this.sky = makeSky(); s.add(this.sky);
+    this.sky = makeSky(); s.add(this.sky); this.playerSky = loadSky(); this.sky.material.uniforms.uLite.value = GFX.tier === 'low' ? 1 : 0;
     this.lampPool = Array.from({ length: this.mobile ? 2 : 5 }, () => { const l = new THREE.PointLight('#ffc070', 0, 22, 1.4); s.add(l); return l; });
     this.selfLight = new THREE.PointLight('#ff3020', 0, 20, 1.2); s.add(this.selfLight);
     this.exSpot = new THREE.SpotLight('#cfffd8', 0, 60, .38, .5, .8); s.add(this.exSpot, this.exSpot.target);
@@ -257,6 +258,7 @@ export class World {
     const pl = new THREE.PointLight('#ff2040', 6, 10, 1.5); pl.position.y = 1; this.portal.add(pl);
   }
 
+  setSky(id) { this.playerSky = skyById(id); }
   setMap(map) {
     this.map = map; this.theme = THEMES[map.theme] || THEMES['Foggy Woods'];
     const T = this.theme, L = this.level;
@@ -270,6 +272,7 @@ export class World {
       this.mainCG = T.cg || NEUTRAL_CG;
       GU.uWet.value = T.wet ?? (T.rain ? 1 : 0); GU.uRain.value = T.rain ? 1 : 0; GU.uWind.value = T.ocean || T.rain ? 1.7 : T.snow ? 1.3 : 1; }
     this.hemi.color.set(T.sky); this.hemi.groundColor.set(T.gnd); this.hemi.intensity = T.hemi; this.moon.intensity = T.moon; this.moon.color.set(T.moonC || '#9fb4ff');
+    this.themeFog = T.fog; this.themeHemi = T.sky; this.themeGround = T.gnd; this.themeMoonC = T.moonC || '#9fb4ff';
 
     const R = rng(map.w * 7 + map.walls.length * 131 + map.trees.length * 17 + (map.bushes.length || 1));
     const own = m => { m.userData.own = true; m.receiveShadow = true; return m; };
@@ -588,7 +591,11 @@ export class World {
     if (this.lobbyDress) this.lobbyDress.tick(t, dt);
     { const sk = this.sky.material.uniforms; sk.uMoonDir.value.copy(this.moon.position).sub(this.moon.target.position).normalize(); sk.uMoonDir.value.y = Math.max(.32, sk.uMoonDir.value.y * .55); sk.uMoonDir.value.normalize();
       sk.uRot.value = t * .0008; // slow drift of the stars
-      for (const w of this.waters || []) { const wu = w.userData.water; wu.tSky.value = sk.tSky.value; wu.uTint.value.copy(sk.uTint.value); wu.uFogC.value.copy(sk.uFogC.value); wu.uMoonDir.value.copy(sk.uMoonDir.value); wu.uMoonC.value.copy(sk.uMoonC.value); wu.uRot.value = sk.uRot.value; wu.uAmp.value = wu.uMurk.value > 0 ? .06 : 1 + (this.storm || 0) * .8; } }
+      const PS = this.playerSky || null;
+      if (PS && sk.uKind) { sk.uKind.value = PS.kind; sk.uTime.value = t; sk.uLite.value = GFX.tier === 'low' ? 1 : 0;
+        if (PS.kind > 0) { this.scene.fog.color.set(PS.fog); this.hemi.color.set(PS.hemi); this.hemi.groundColor.set(PS.ground); this.moon.color.set(PS.moon); this.moon.intensity = (this.theme.moon || 1) * PS.moonI; }
+        else if (this.themeFog) { this.scene.fog.color.set(this.themeFog); this.hemi.color.set(this.themeHemi); this.hemi.groundColor.set(this.themeGround); this.moon.color.set(this.themeMoonC); this.moon.intensity = this.theme.moon || 1; } }
+      for (const w of this.waters || []) { const wu = w.userData.water; wu.tSky.value = sk.tSky.value; wu.uTint.value.copy(sk.uTint.value); wu.uFogC.value.copy(sk.uFogC.value); wu.uMoonDir.value.copy(sk.uMoonDir.value); wu.uMoonC.value.copy(sk.uMoonC.value); wu.uRot.value = sk.uRot.value; if (wu.uKind) { wu.uKind.value = sk.uKind.value; wu.uTime.value = t; wu.uLite.value = sk.uLite.value; } wu.uAmp.value = wu.uMurk.value > 0 ? .06 : 1 + (this.storm || 0) * .8; } }
     if (this.spinners) for (const s2 of this.spinners) s2.rotation.y = t * .6;
     if (this.animProps) for (const o of this.animProps) { const u = o.userData;
       if (u.spin) { o.children.forEach(c => {}); o.position.y = .15 + Math.sin(t * 2 + o.position.x) * .12; o.rotation.y = (o.userData.a0 ??= o.rotation.y) + t * .8; }
@@ -1149,11 +1156,17 @@ export class World {
     } else if (P2.has(k)) { const r2 = this.scare2(k, sc, M, p, hp, e, t, dt, ease); pos = r2.pos; look = r2.look; shake = r2.shake ?? .03; red = r2.red ?? .3; ab = r2.ab ?? 4; fov = r2.fov ?? 50; }
     else { const lunge = ease((e - .3) / .8); pos = new THREE.Vector3(hp.x, hp.y, hp.z + 4 - lunge * 3.2); shake = .03 + lunge * .1; }
     if (this.scareWater) { this.scareWater.visible = SEA.has(k) && !(k === 'megalodon' && sc.fm === 1); this.scareSwarm.visible = k === 'megalodon' && sc.fm !== 1 && e < 2.2; }
+    const jaw = M.getObjectByName('jaw'); if (jaw && e > .12) jaw.rotation.x = Math.max(jaw.rotation.x || 0, .7 + Math.sin(t * 28) * .08);
+    const rush = ease(Math.min(1, sc.elapsed / (sc.intense === false ? .48 : .26)));
+    const face = look.clone(); const away = pos.clone().sub(face); if (away.lengthSq() < 1e-4) away.set(0, 0, 1); away.normalize().multiplyScalar(sc.intense === false ? .85 : .42);
+    pos.lerp(face.clone().add(away), rush * (sc.intense === false ? .62 : .9));
+    const gain = sc.intense === false ? .6 : 1.65; shake *= gain; ab *= sc.photo ? .3 : gain; red *= sc.photo ? .35 : 1;
     cam.fov = fov; cam.updateProjectionMatrix();
-    cam.position.set(pos.x + (Math.random() - .5) * shake, pos.y + (Math.random() - .5) * shake, pos.z); cam.lookAt(look); this.scareScene.userData.focus = Math.max(.4, cam.position.distanceTo(hp));
-    this.scareLight.position.set(hp.x, hp.y - 1.2, hp.z + 1.8); this.scareLight.intensity = Math.random() < .2 ? 5 : 35; this.scareRed.position.set(hp.x + 1, hp.y + 1, hp.z + 1);
+    const jitter = sc.photo ? shake * .25 : shake;
+    cam.position.set(pos.x + (Math.random() - .5) * jitter, pos.y + (Math.random() - .5) * jitter, pos.z); cam.lookAt(look); this.scareScene.userData.focus = Math.max(.4, cam.position.distanceTo(hp));
+    this.scareLight.position.set(hp.x, hp.y - 1.2, hp.z + 1.8); this.scareLight.intensity = sc.photo ? 28 : (Math.random() < .15 ? 8 : 48); this.scareRed.position.set(hp.x + 1, hp.y + 1, hp.z + 1);
     if (p.head && !fnaf && k !== 'sirenhead' && k !== 'locust') p.head.rotation.z = Math.sin(t * 40) * .05;
-    const u = this.post.uniforms; u.uGrey.value = k === 'boisvert' ? .55 : 0; u.uRed.value = red + Math.random() * .15; u.uVig.value = 1.35; u.uGrain.value = k === 'boisvert' ? .12 : .18; u.uAb.value = ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = e < .06 ? .5 : 0;
+    const u = this.post.uniforms; u.uGrey.value = k === 'boisvert' ? (sc.photo ? .25 : .55) : 0; u.uRed.value = red + (sc.photo ? 0 : Math.random() * .15); u.uVig.value = 1.45; u.uGrain.value = k === 'boisvert' || k === 'locust' ? (sc.photo ? .06 : .22) : (sc.photo ? .05 : .16); u.uAb.value = ab; u.uExp.value = 2.2; u.uFade.value = 0; u.uFlash.value = sc.photo ? 0 : (sc.elapsed < .07 ? .85 : 0);
     this.render(this.scareScene, cam);
   }
   // phase 2 jumpscares: one choreography per creature (teen level: lunges, bites and cut-to-black, no gore)

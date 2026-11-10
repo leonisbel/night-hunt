@@ -1,6 +1,7 @@
 // Night Hunt client (3D): menu, networking glue, input (keyboard/mouse/touch), HUD and the three.js world.
 import { World, S } from './js/render3d.js';
 import { GFX, AUTO as GFX_AUTO, setTier } from './js/gfx.js';
+import { SKIES, loadSky, saveSky } from './js/skies.js';
 import { audio, sfx, setAmbience, setRotor, setEngine, staticHiss } from './js/audio.js';
 import { oldWallpaper } from './js/textures.js';
 import { initTouch } from './js/touch.js';
@@ -28,9 +29,12 @@ $('pname').value = localStorage.nhName || '';
 $('bwarn').onclick = () => { $('warn').classList.add('hide'); $('menu').classList.remove('hide'); };
 if ($('badmin')) $('badmin').onclick = () => $('admin').classList.remove('hide');
 if ($('adminclose')) $('adminclose').onclick = () => $('admin').classList.add('hide');
-const opt = { blood: localStorage.nhBlood !== '0' };
+const opt = { blood: localStorage.nhBlood !== '0', scare: localStorage.nhScare === 'normal' ? 'normal' : 'intense', photo: localStorage.nhPhoto === '1' };
 { const gs = $('optgfx'); if (gs) { gs.value = GFX_AUTO ? 'auto' : GFX.tier; gs.onchange = () => { setTier(gs.value); const q = new URLSearchParams(location.search); q.delete('gfx'); location.search = q.toString(); }; } }
+{ const ss = $('optsky'); if (ss) { ss.innerHTML = SKIES.map(s => `<option value="${s.id}">${s.name}</option>`).join(''); ss.value = loadSky().id; ss.onchange = () => { const sky = saveSky(ss.value); if (world) world.setSky(sky.id); }; } }
 $('optblood').checked = opt.blood; $('optblood').onchange = () => { opt.blood = $('optblood').checked; localStorage.nhBlood = opt.blood ? '1' : '0'; if (world) world.blood = opt.blood; }; if (world) world.blood = opt.blood;
+if ($('optscare')) { $('optscare').value = opt.scare; $('optscare').onchange = () => { opt.scare = $('optscare').value === 'normal' ? 'normal' : 'intense'; localStorage.nhScare = opt.scare; }; }
+if ($('optphoto')) { $('optphoto').checked = opt.photo; $('optphoto').onchange = () => { opt.photo = $('optphoto').checked; localStorage.nhPhoto = opt.photo ? '1' : '0'; }; }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.tab').forEach(x => x.classList.add('hide')); $('tab-' + b.dataset.tab).classList.remove('hide');
@@ -275,7 +279,7 @@ function frame(now) {
     if (e > KILL_LEN || !md) { cam.zoom = killcam.zoom; cam.pitch = killcam.pitch; cam.target = null; const kn = killcam.name, kt = killcam.type; killcam = null; $('scareover').classList.add('hide'); showKillPop(kn, kt); }
     else { cam.yaw = Math.atan2(killcam.y - md.dy, killcam.x - md.dx); cam.zoom = 0; cam.target = { x: killcam.x, y: killcam.y }; drawKill(e); }
   }
-  if (jumpscare) { const e = jumpscare.freeze != null ? jumpscare.freeze : (now - jumpscare.start) / 1000; world.frame(dt, t, { scare: { type: jumpscare.type, fm: jumpscare.fm, elapsed: e } }); drawScare(jumpscare.type, e); arrows([]); return; }
+  if (jumpscare) { const e = jumpscare.freeze != null ? jumpscare.freeze : (now - jumpscare.start) / 1000; world.frame(dt, t, { scare: { type: jumpscare.type, fm: jumpscare.fm, elapsed: e, intense: opt.scare !== 'normal', photo: !!opt.photo, blood: !!opt.blood } }); drawScare(jumpscare.type, e); arrows([]); return; }
   else if (scareShown && !killcam) { scareShown = false; $('scareover').classList.add('hide'); }
   if (flight) { world.frame(dt, t, { flight: { elapsed: (now - flight.start) / 1000, left: (flight.until - now) / 1000, monster: flight.mine && flight.mine.role === 'monster' } }); arrows([]); return; }
   if (!room || !map || !snap) { world.frame(dt, t, {}); return; }
@@ -294,7 +298,7 @@ function frame(now) {
   const speed = prev / Math.max(dt, .001);
   if (speed > 40 && !ghost) { stepT -= dt * (speed / 230); if (stepT <= 0) { stepT = .42; sfx(mp.role === 'monster' && snap.state !== 'lobby' ? 'stomp' : 'step', { vol: mp.role === 'monster' ? .5 : 1, surf: surfaceAt(md.dx, md.dy) }); } }
   for (const p of snap.ps) if (p.id !== me && p.role === 'monster' && snap.state === 'playing') { const d = disp[p.id], dd = Math.hypot(d.dx - md.dx, d.dy - md.dy); if (dd < 500 && Math.random() < dt * 2.2) sfx('stomp', { vol: (1 - dd / 500) * .7, pan: (d.dx - md.dx) / 500 }); }
-  if (mp.role === 'survivor' && !ghost && snap.state === 'playing' && snap.md < 520 && now - lastBeat > (snap.md < 250 ? 420 : 850)) { lastBeat = now; sfx('beat', { vol: snap.md < 250 ? 1 : .6 }); if (navigator.vibrate && snap.md < 250) navigator.vibrate(30); }
+  if (mp.role === 'survivor' && !ghost && snap.state === 'playing' && snap.md < 520 && snap.md >= 150 && now - lastBeat > (snap.md < 250 ? 380 : 820)) { lastBeat = now; sfx('beat', { vol: snap.md < 250 ? 1 : .55 }); if (navigator.vibrate && snap.md < 250 && !opt.photo) navigator.vibrate(30); }
   // edge arrows: helicopter pad in the lobby, extraction chopper during the hunt, siren reveals for monsters
   const tg = [];
   if (map.heli && snap.state === 'lobby' && !snap.boarded.includes(me)) tg.push({ x: map.heli.x, y: map.heli.y, c: '#ffd76b', l: '🚁 BOARD' });
@@ -344,11 +348,17 @@ function hud(mp, ghost) {
 // ---------- v1.4: the walk-in lobby store, boats, storm / weather overlays, Father Fester stage ----------
 const ZONE_TAB = { shop: 'food', mirror: 'clothing', skins: 'skinshop' };
 let lastZone = null;
-function storeZone() { if (!snap || snap.state !== 'lobby' || !map || !map.zones) return null; const md = disp[me]; if (!md) return null; return map.zones.find(z => md.dx > z.x && md.dx < z.x + z.w && md.dy > z.y && md.dy < z.y + z.h) || null; }
+function storeZone() { if (!snap || snap.state !== 'lobby' || !map || !map.zones) return null; const md = disp[me]; if (!md) return null; const fl = (snap.ps.find(p => p.id === me) || {}).fl || 0; return map.zones.find(z => (z.fl || 0) === fl && md.dx > z.x && md.dx < z.x + z.w && md.dy > z.y && md.dy < z.y + z.h) || null; }
+function paintSky(on) {
+  const el = $('skypick'); if (!el) return; el.classList.toggle('hide', !on); if (!on || el.dataset.built) return; el.dataset.built = '1';
+  el.innerHTML = `<b>Sky Dome</b><small>Free. Only your screen changes.</small>` + SKIES.map(s => `<button type="button" data-sky="${s.id}">${s.name}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => b.onclick = () => { const sky = saveSky(b.dataset.sky); if (world) world.setSky(sky.id); const ss = $('optsky'); if (ss) ss.value = sky.id; sfx('click'); });
+}
 function p2Hud(mp, ghost) {
   const z = storeZone(), zp = $('zoneprompt');
-  if (z !== lastZone) { lastZone = z; if (z) { sfx('click'); locker.open(ZONE_TAB[z.k] || z.k); } }
-  zp.classList.toggle('hide', !z); if (z) { zp.innerHTML = `${z.ic || { shop: '🛒', mirror: '🪞', skins: '✨' }[z.k] || '🛒'} ${z.name}<small>${touch.active ? 'Tap here' : 'Press E'} to browse · walk out to leave</small>`; zp.onclick = () => locker.open(ZONE_TAB[z.k] || z.k); }
+  if (z !== lastZone) { lastZone = z; if (z && z.k !== 'sky') { sfx('click'); locker.open(ZONE_TAB[z.k] || z.k); } }
+  paintSky(!!(z && z.k === 'sky'));
+  zp.classList.toggle('hide', !z); if (z) { zp.innerHTML = `${z.ic || '🛒'} ${z.name}<small>${z.k === 'sky' ? 'Pick a sky below. Walk out to close.' : (touch.active ? 'Tap here' : 'Press E') + ' to browse · walk out to leave'}</small>`; zp.onclick = () => { if (z.k !== 'sky') locker.open(ZONE_TAB[z.k] || z.k); }; }
   const live = snap.state === 'playing' && !ghost, S2 = mp.st || {}, ov = $('p2over');
   const cls = live ? (S2.burn ? 'burn' : S2.fog ? 'fog' : S2.snow ? 'snow' : S2.storm ? 'storm' : S2.soak ? 'soak' : '') : '';
   if (ov.className !== cls) ov.className = cls;
@@ -472,15 +482,14 @@ requestAnimationFrame(frame);
 if (params.has('desktop') && $('dlwin')) $('dlwin').remove();
 
 // ---------- jumpscares: one per monster, then a cut to black at impact (with optional teen-level blood splatter) ----------
-const IMPACT = { sirenhead: 2.0, cartooncat: 1.9, boisvert: 2.0, locust: 1.9, megalodon: 2.95, kraken: 2.05, cthulhu: 2.25, leviathan: 2.05, mosasaurus: 1.65, nessie: 2.15, spinosaurus: 2.05, trex: 2.05, quetzalcoatlus: 2.15, dragon: 2.15, yeti: 2.0, bigfoot: 2.0, chupacabra: 1.65, vampire: 2.0, gargoyle: 1.6, fester: 2.1, wendigo: 1.55 };
-const impactOf = (type, fm) => type === 'megalodon' && fm === 1 ? 1.25 : IMPACT[type] || 1.55;
-const scareLen = (type, fm) => Math.max(2.6, impactOf(type, fm) + 1.05);
+const scareImpact = () => opt.scare === 'normal' ? .95 : .72;
+const scareLen = () => opt.scare === 'normal' ? 1.5 : 1.32;
 let scareShown = false, splats = null, killcam = null, killSplats = null;
 const KILL_LEN = 2.4;
-function scareSound(k) { const x = { trex: 'trexroar', spinosaurus: 'spinoroar', wendigo: 'crack', yeti: 'roar', bigfoot: 'roar', dragon: 'fire', quetzalcoatlus: 'screech', gargoyle: 'screech', vampire: 'bats', fester: 'fester', cthulhu: 'thunder', kraken: 'tentacle', leviathan: 'wave', nessie: 'nessie', megalodon: 'wave', mosasaurus: 'wave' }[k]; if (x) setTimeout(() => sfx(x), 200); return { sonicexe: 'sonlaugh', sirenhead: 'siren', locust: 'locust', boisvert: 'static' }[k] || x ? 'scare2' : 'scare'; }
+function scareSound(k) { const x = { trex: 'trexroar', spinosaurus: 'spinoroar', wendigo: 'crack', yeti: 'roar', bigfoot: 'roar', dragon: 'fire', quetzalcoatlus: 'screech', gargoyle: 'screech', vampire: 'bats', fester: 'fester', cthulhu: 'thunder', kraken: 'tentacle', leviathan: 'wave', nessie: 'nessie', megalodon: 'wave', mosasaurus: 'wave', sirenhead: 'siren', boisvert: 'static', locust: 'static', sonicexe: 'sonlaugh' }[k]; if (x) sfx(x, { vol: opt.scare === 'normal' ? .85 : 1.15 }); return x ? 'scare2' : 'scare'; }
 function drawScare(type, e) {
   const c = $('scareover'); if (!scareShown) { scareShown = true; c.classList.remove('hide'); splats = null; c.width = innerWidth; c.height = innerHeight; }
-  const g = c.getContext('2d'), W = c.width, H = c.height, imp = impactOf(type, jumpscare ? jumpscare.fm : 0); g.clearRect(0, 0, W, H);
+  const g = c.getContext('2d'), W = c.width, H = c.height, imp = scareImpact(); g.clearRect(0, 0, W, H);
   if (e < imp) {
     if (type === 'locust') { // possession: screen tears, colour channels split, static
       for (let i = 0; i < 14; i++) { const y = Math.random() * H, h = 4 + Math.random() * 30; g.fillStyle = `rgba(${Math.random() < .5 ? 255 : 0},${Math.random() * 80 | 0},${Math.random() < .5 ? 255 : 0},${.08 + e * .08})`; g.fillRect((Math.random() - .5) * 60, y, W, h); }
@@ -491,7 +500,7 @@ function drawScare(type, e) {
       let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       for (let i = 0; i < n; i++) { g.fillStyle = i % 3 ? '#000' : '#777'; g.fillRect(Math.floor(rnd() * W / sz) * sz, Math.floor(rnd() * H / sz) * sz, sz, sz); }
     } else if (type === 'cartooncat') { g.fillStyle = `rgba(255,255,255,${Math.max(0, .15 - e * .05)})`; g.fillRect(0, 0, W, H); }
-    if (e > imp - .25) { g.fillStyle = `rgba(255,255,255,${(e - (imp - .25)) * 2.4})`; g.fillRect(0, 0, W, H); } // impact flash
+    if (!opt.photo && e > imp - .18) { g.fillStyle = `rgba(255,40,40,${(e - (imp - .18)) * 3})`; g.fillRect(0, 0, W, H); }
     return;
   }
   // impact: cut to black
@@ -513,7 +522,7 @@ function drawScare(type, e) {
 // the catching monster's own view of the kill: the victim's animation in the world, a red pulse, blood at the edges, caption
 function drawKill(e) {
   const c = $('scareover'); c.classList.remove('hide'); if (c.width !== innerWidth) { c.width = innerWidth; c.height = innerHeight; }
-  const g = c.getContext('2d'), W = c.width, H = c.height, imp = impactOf(killcam.type, 0); g.clearRect(0, 0, W, H);
+  const g = c.getContext('2d'), W = c.width, H = c.height, imp = .7; g.clearRect(0, 0, W, H);
   const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .25, W / 2, H / 2, Math.max(W, H) * .7); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(90,0,0,${.35 + Math.sin(e * 9) * .1})`); g.fillStyle = vg; g.fillRect(0, 0, W, H);
   if (e >= imp) {
     if (opt.blood) {
@@ -530,6 +539,25 @@ if (params.has('shot')) {
   const kind = params.get('shot');
   $('warn').classList.add('hide'); $('menu').classList.add('hide');
   if (kind === 'admin') { $('admin').classList.remove('hide'); window.NH.shotReady = true; }
+  else if (kind === 'scare') {
+    $('warn').classList.add('hide'); $('menu').classList.add('hide');
+    const type = params.get('type') || 'freddy';
+    window.NH.die(type, +(params.get('fm') || 0), {}, 'the monster');
+    jumpscare.freeze = +(params.get('hold') || .5);
+    jumpscare.until = performance.now() + 120000;
+    setTimeout(() => { window.NH.shotReady = true; }, 400);
+  }
+  else if (kind === 'sky') {
+    shotHold = true; document.body.classList.add('ingame'); $('hud').classList.add('hide'); $('menu').classList.add('hide'); $('warn').classList.add('hide');
+    world.setSky(params.get('sky') || 'night');
+    const map = NightHuntCore.LOBBY; world.setMap(map);
+    const spot = { x: 900, y: 1480, yaw: 0.4, pitch: -0.85, zoom: 0.02 };
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0' }];
+    const disp = { 1: { dx: spot.x, dy: spot.y } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
+    const snapS = { state: 'lobby', ps, boarded: [], max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 0 };
+    let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS }); if (++n === 8) window.NH.shotReady = true; if (n < 12) requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
   else if (kind === 'season') {
     shotHold = true; document.body.classList.add('ingame', 'inlobby'); $('hud').classList.add('hide'); $('menu').classList.add('hide');
     const map = NightHuntCore.LOBBY; world.setMap(map);

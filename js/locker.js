@@ -86,10 +86,24 @@ export function initLocker({ onChange, monsters, sfx, preview, onEmote }) {
   let tab = 'clothing', crateMsg = '';
   const owns = id => id === 'em:wave' || P.owned.includes(id) || (id.startsWith('gear:') && P.gear.includes(id.slice(5)));
   const commit = () => { saveProfile(P); render(); onChange(P); preview && preview(P); };
-  const card = (s, on) => `<button type="button" class="si ${on ? 'on' : ''}" data-show="${s.id || s.k || ''}"><span>${s.icon || '📦'}</span><b>${s.name}</b><small>${s.price === 0 ? 'Free' : s.price ? '🪙 ' + s.price : 'View'}</small></button>`;
+  const card = (s, on) => {
+    const id = s.id || s.k || '';
+    const tag = on ? '✓ Equipped' : (s.price === 0 ? 'Free' : s.price ? '🪙 ' + s.price : 'View');
+    const can = s.monster || s.price === 0 || owns(s.id) || (s.k && P.kit.includes(s.k));
+    return `<div class="si ${on ? 'on' : ''}" data-show="${id}"><span>${s.icon || '📦'}</span><b>${s.name}</b><small>${tag}</small><button type="button" class="equip" data-equip="${id}">${on ? 'Equipped' : (can ? 'Equip' : 'View')}</button></div>`;
+  };
   function sw(list, cur, f, round) { return `<div class="sw" data-f="${f}">${list.map((c, i) => `<button data-v="${i}" class="${cur === i ? 'on' : ''}" style="background:${c}${round ? ';border-radius:50%' : ''}" aria-label="${c}"></button>`).join('')}</div>`; }
   const opts = (f, list, cur, prefix) => `<div class="opts" data-f="${f}"><button data-v="none" class="${cur === 'none' ? 'on' : ''}">None</button>${list.map(s => { const v = s.id.slice(prefix.length); return `<button data-v="${v}" class="${cur === v ? 'on' : ''} ${owns(s.id) ? '' : 'lock'}" title="${s.name}">${s.icon}${owns(s.id) ? '' : ' 🔒'}</button>`; }).join('')}</div>`;
   const findShow = id => ALL().find(s => s.id === id) || GEAR_SHOP.find(s => s.id === id) || SUPPLY.find(s => s.k === id);
+  function equipById(id) {
+    const s = findShow(id) || EMOTES.map(e => ({ ...e, id: 'em:' + e.id })).find(e => e.id === id);
+    if (!s) return;
+    if (s.monster) { P.pref = s.monster; sfx && sfx('click'); commit(); return; }
+    const owned = s.price === 0 || owns(s.id);
+    if (!owned && !s.k) { openItem(s); return; }
+    if (s.k) { openItem(s); return; }
+    wear(s.id); sfx && sfx('click'); commit();
+  }
   function wear(id) {
     const [kind, v] = id.split(':');
     if (kind === 'hat') P.look.hat = v; if (kind === 'acc') P.look.acc = v; if (kind === 'of') P.look.of = v; if (kind === 'skin') P.skin = v;
@@ -157,7 +171,8 @@ export function initLocker({ onChange, monsters, sfx, preview, onEmote }) {
   }
   function render() {
     $('coins').textContent = P.coins; document.querySelectorAll('.coinv').forEach(e => e.textContent = P.coins);
-    const L = P.look, M = monsters();
+    const liveM = monsters() || {};
+    const L = P.look, M = Object.keys(liveM).length ? liveM : (window.NightHuntCore && window.NightHuntCore.MONSTERS) || {};
     let h = `<div class="ltabs">${Object.entries(TABS).map(([t, n]) => `<button data-t="${t}" class="${t === tab ? 'on' : ''}">${n}</button>`).join('')}</div>`;
     h += `<p class="lt">Tap an item to open it in the showcase. Looking does not buy it.</p>`;
     const kitNote = `<p class="lt">Packed for the next round: ${P.kit.length}/${KIT_MAX}${P.kit.length ? ' ' + P.kit.map(k => SUPPLY.find(x => x.k === k)?.icon || k).join(' ') : ''}. Supplies are handed out when the round starts.</p>`;
@@ -172,7 +187,7 @@ export function initLocker({ onChange, monsters, sfx, preview, onEmote }) {
       <h4>Hats</h4><div class="shop">${SHOP.filter(s => s.id.startsWith('hat:')).map(s => card(s, P.look.hat === s.id.slice(4))).join('')}</div>
       <h4>Accessories</h4><div class="shop">${SHOP.filter(s => s.id.startsWith('acc:')).map(s => card(s, P.look.acc === s.id.slice(4))).join('')}</div>`;
     } else if (tab === 'monskins') {
-      h += `<p class="lt">If the round picks you as a monster, play as:</p><div class="mgrid">${[{ id: '', name: 'Random', icon: '🎲' }, ...Object.entries(M).map(([k, m]) => ({ id: k, name: m.name, icon: '👹', ability: m.ability, cd: m.cd, home: m.home }))].map(m => `<button type="button" class="si ${(!m.id && !P.pref) || P.pref === m.id ? 'on' : ''}" data-mon="${m.id}"><span>${m.icon}</span><b>${m.name}</b><small>${m.ability || 'The round decides'}</small></button>`).join('')}</div>
+      h += `<p class="lt">If the round picks you as a monster, play as:</p><div class="mgrid">${[{ id: '', name: 'Random', icon: '🎲' }, ...Object.entries(M).map(([k, m]) => ({ id: k, name: m.name, icon: '👹', ability: m.ability, cd: m.cd, home: m.home }))].map(m => { const on = (!m.id && !P.pref) || P.pref === m.id; return `<div class="si ${on ? 'on' : ''}" data-mon="${m.id}"><span>${m.icon}</span><b>${m.name}</b><small>${on ? '✓ Equipped' : (m.ability || 'The round decides')}</small><button type="button" class="equip" data-equip-mon="${m.id}">${on ? 'Equipped' : 'Select'}</button></div>`; }).join('')}</div>
       <h4>Monster skins</h4><div class="shop">${MSKIN_SHOP.map(s => card(s, P.skin === s.id.slice(5))).join('')}</div>`;
     } else if (tab === 'skinshop') {
       h += `<div class="shop">${OUTFITS.map(s => card(s, P.look.of === s.id.slice(3))).join('')}</div>`;
@@ -206,13 +221,21 @@ export function initLocker({ onChange, monsters, sfx, preview, onEmote }) {
       if (b.classList.contains('lock')) { const item = (f === 'of' ? OUTFITS : f === 'hat' || f === 'acc' ? SHOP : []).find(s => s.id.endsWith(':' + v)); if (item) openItem(item); return; }
       if (f === 'sk' || f === 'hc' || f === 'hs') P.look[f] = +v; else if (f === 'hat' || f === 'acc' || f === 'of') P.look[f] = v; else P.look[f] = v || null;
       sfx && sfx('click'); commit(); }); });
-    $('lbody').querySelectorAll('[data-show]').forEach(b => b.onclick = () => { const s = findShow(b.dataset.show) || EMOTES.map(e => ({ ...e, id: 'em:' + e.id })).find(e => e.id === b.dataset.show); openItem(s); });
-    $('lbody').querySelectorAll('[data-mon]').forEach(b => b.onclick = () => {
+    $('lbody').querySelectorAll('[data-equip]').forEach(b => b.addEventListener('pointerup', e => { e.preventDefault(); e.stopPropagation(); equipById(b.dataset.equip); }));
+    $('lbody').querySelectorAll('[data-equip-mon]').forEach(b => b.addEventListener('pointerup', e => {
+      e.preventDefault(); e.stopPropagation();
+      const id = b.dataset.equipMon;
+      if (!id) { P.pref = null; sfx && sfx('click'); commit(); return; }
+      P.pref = id; sfx && sfx('click'); commit();
+    }));
+    $('lbody').querySelectorAll('[data-show]').forEach(b => b.addEventListener('pointerup', e => { if (e.target.closest('.equip')) return; const s = findShow(b.dataset.show) || EMOTES.map(em => ({ ...em, id: 'em:' + em.id })).find(em => em.id === b.dataset.show); openItem(s); }));
+    $('lbody').querySelectorAll('[data-mon]').forEach(b => b.addEventListener('pointerup', e => {
+      if (e.target.closest('.equip')) return;
       const id = b.dataset.mon;
       if (!id) { P.pref = null; sfx && sfx('click'); commit(); return; }
       const m = M[id] || { name: id };
       openItem({ id: 'mon:' + id, name: m.name, monster: id, ability: m.ability, cd: m.cd || 20, home: m.home, icon: '👹', price: 0 });
-    });
+    }));
     $('lbody').querySelectorAll('[data-wear]').forEach(b => b.onclick = () => { wear(b.dataset.wear); sfx && sfx('click'); commit(); });
     $('lbody').querySelectorAll('[data-crate]').forEach(b => b.onclick = () => openCrate());
     const daily = $('lbody').querySelector('[data-daily]');
