@@ -145,16 +145,25 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
       { x, y, w: T, h, city: ht, light: '#ffe9b0' }, { x: x + w - T, y, w: T, h, city: ht, light: floors % 3 ? '#ffcf7a' : '#7ab8ff' });
   };
   for (let i = 0; i < 5; i++) { const x = 140 + i * 390; block(x, 160, 300, 1000, 2 + (i % 4)); block(x, 1760, 300, 820, 1 + ((i + 2) % 4)); }
-  // mall shell. Door faces the avenue (west side, y 1400–1640).
-  const X = 2220, Y = 360, W = 2200, H = 2100, door0 = 1400, door1 = 1640;
-  L.bld.push({ x: X, y: Y, w: W, h: H, type: 'store', kind: 'mall', floors: 2, light: 'warm', store: 'mall', name: 'NIGHT MALL', c: '#ffd27a', nolight: true });
-  L.walls.push({ x: X, y: Y, w: W, h: T, mh: 9 }, { x: X, y: Y + H - T, w: W, h: T, mh: 9 }, { x: X + W - T, y: Y, w: T, h: H, mh: 9 },
-    { x: X, y: Y, w: T, h: door0 - Y, mh: 9 }, { x: X, y: door1, w: T, h: Y + H - door1, mh: 9 },
-    { x: X, y: door0, w: T, h: door1 - door0, fl: 1, mh: 4.4 });
+  // mall shell. The avenue door is the grand west entrance. North and south walls each have a side door.
+  const X = 2220, Y = 360, W = 2200, H = 2100;
+  const door0 = 1320, door1 = 1720, n0 = 3280, n1 = 3500, s0 = 3000, s1 = 3200;
+  L.bld.push({ x: X, y: Y, w: W, h: H, type: 'store', kind: 'mall', floors: 2, light: 'warm', store: 'mall', name: 'NIGHT MALL', c: '#f4f4f2', nolight: true });
+  const shell = (x, y, w, h) => L.walls.push({ x, y, w, h, mh: 9, mall: 1 });
+  shell(X, Y, n0 - X, T); shell(n1, Y, X + W - n1, T);
+  shell(X, Y + H - T, s0 - X, T); shell(s1, Y + H - T, X + W - s1, T);
+  shell(X + W - T, Y, T, H);
+  shell(X, Y, T, door0 - Y); shell(X, door1, T, Y + H - door1);
+  const lintel = (x, y, w, h) => L.walls.push({ x, y, w, h, fl: 1, mh: 4.7, base: 4.2, mall: 1 });
+  lintel(X, door0, T, door1 - door0); lintel(n0, Y, n1 - n0, T); lintel(s0, Y + H - T, s1 - s0, T);
   const AX = 3080, AY = 1220, AW = 520, AH = 500, R = 22;
-  L.mall = { x: X, y: Y, w: W, h: H, atrium: { x: AX, y: AY, w: AW, h: AH }, floorH: 4.2 };
-  L.walls.push({ x: AX, y: AY, w: AW, h: R, fl: 1, mh: 1.15 }, { x: AX, y: AY + AH - R, w: AW, h: R, fl: 1, mh: 1.15 },
-    { x: AX, y: AY, w: R, h: AH, fl: 1, mh: 1.15 }, { x: AX + AW - R, y: AY, w: R, h: AH, fl: 1, mh: 1.15 });
+  L.mall = { x: X, y: Y, w: W, h: H, atrium: { x: AX, y: AY, w: AW, h: AH }, floorH: 4.2, entrances: [
+    { id: 'main', name: 'NIGHT MALL', x: X, y: door0, w: T, h: door1 - door0, face: 'w', canopy: 1 },
+    { id: 'north', name: 'NORTH ENTRY', x: n0, y: Y, w: n1 - n0, h: T, face: 'n' },
+    { id: 'south', name: 'SOUTH ENTRY', x: s0, y: Y + H - T, w: s1 - s0, h: T, face: 's' },
+  ] };
+  L.walls.push({ x: AX, y: AY, w: AW, h: R, fl: 1, mh: 1.05, base: 4.2 }, { x: AX, y: AY + AH - R, w: AW, h: R, fl: 1, mh: 1.05, base: 4.2 },
+    { x: AX, y: AY, w: R, h: AH, fl: 1, mh: 1.05, base: 4.2 }, { x: AX + AW - R, y: AY, w: R, h: AH, fl: 1, mh: 1.05, base: 4.2 });
   const P = (k, x, y, w, h, extra = {}) => L.props.push(Object.assign({ k, x: Math.round(x), y: Math.round(y), w, h, solid: extra.solid !== false, fl: extra.fl || 0 }, extra));
   const byK = Object.fromEntries(STORES.map(s => [s.k, s]));
   const shop = (k, sx, counterY, fl, face) => {
@@ -185,11 +194,22 @@ const LOBBY = { w: 4600, h: 2800, walls: [], trees: [], bushes: [], vents: [], p
   shop('crate', 4000, Y + 90, 1, 1);
   shop('emotes', 2920, Y + H - 220, 1, -1);
   shop('clothing', 3600, Y + H - 220, 1, -1);
-  L.lifts = [
-    { kind: 'escalator', x: 2860, y: 1320, w: 120, h: 240, from: 0, to: 1, land: { x: 2740, y: 1440 }, back: { x: 2740, y: 1600 } },
-    { kind: 'stair', x: 3680, y: 1320, w: 150, h: 240, from: 0, to: 1, land: { x: 3900, y: 1280 }, back: { x: 3900, y: 1600 } },
-    { kind: 'elevator', x: 2340, y: 1760, w: 110, h: 110, from: 0, to: 1, land: { x: 2500, y: 1810 }, back: { x: 2500, y: 1960 } },
-  ];
+  // Ramps, not teleporters. up:-1 means the north end (small y) is the upper floor.
+  // belt 1 carries you up, belt -1 carries you down, 0 is a stair you walk yourself.
+  L.lifts = [];
+  const ramp = (kind, x, y, w, h, belt) => {
+    L.lifts.push({ kind, axis: 'y', x, y, w, h, up: -1, belt });
+    const side = 18, gap = Math.round(h * 0.16);
+    L.walls.push({ x: x - side, y: y + gap, w: side, h: h - gap * 2, mh: 1.2 });
+    L.walls.push({ x: x + w, y: y + gap, w: side, h: h - gap * 2, mh: 1.2 });
+    L.walls.push({ x, y: y + h - 22, w, h: 22, fl: 1, mh: 1.2 });
+    L.walls.push({ x: x - side, y: y + h - gap, w: side, h: gap, fl: 1, mh: 1.2 });
+    L.walls.push({ x: x + w, y: y + h - gap, w: side, h: gap, fl: 1, mh: 1.2 });
+  };
+  ramp('escalator', 2480, 1660, 110, 360, 1);
+  ramp('escalator', 2610, 1660, 110, 360, -1);
+  ramp('stair', 3680, 1620, 200, 400, 0);
+  L.lifts.push({ kind: 'elevator', x: 2300, y: 1880, w: 120, h: 120 });
   // coin kiosk sits on the avenue, outside the mall door. It is not a paid shop.
   P('kiosk', 1960, 1560, 70, 50);
   P('storesign', 1880, 1640, 200, 16, { solid: false, t: 'COIN STORE', s: 'FREE REWARD · NO PAYMENTS', c: '#ffd76b', a: 0 });
@@ -359,7 +379,7 @@ function moveEnt(m, e, dx, dy) {
 // ---------- rooms / players ----------
 function makePlayer(name, ws, bot) {
   return { id: nextId++, name, ws, bot: !!bot, color: COLORS[0], x: 0, y: 0, a: 0, r: 16, keys: {}, role: 'lobby', mt: null,
-    alive: true, escaped: false, stamina: 100, cdUntil: 0, st: {}, score: 0, earn: 0, look: bot ? botLook() : cleanLook(), pref: null, skin: 'classic', botT: 0, botGoal: null, lastPos: null, fl: 0, climb: null, ...freshKit() };
+    alive: true, escaped: false, stamina: 100, cdUntil: 0, st: {}, score: 0, earn: 0, look: bot ? botLook() : cleanLook(), pref: null, skin: 'classic', botT: 0, botGoal: null, lastPos: null, fl: 0, alt: 0, climb: null, ...freshKit() };
 }
 function freshKit() { return { hp: 100, maxHp: 100, inv: Array(SLOTS).fill(null), sel: 0, ammo: { light: 0, shells: 0, heavy: 0 }, vest: 0, helmet: 0, atkUntil: 0, hitUntil: 0, fire: false, fireEdge: false, sleeping: false, preSleep: null }; }
 function roomInfo(r) { return { code: r.code, name: r.name, players: r.players.size, max: r.max, state: r.state, theme: r.map && r.state !== 'lobby' ? r.map.theme : 'Lobby', isPublic: r.isPublic }; }
@@ -369,7 +389,7 @@ function event(r, msg, kind) { bcast(r, { t: 'event', msg, kind: kind || 'info' 
 function recolor(r) { const used = new Set(); for (const p of r.players.values()) { if (!used.has(p.color) && p.colorSet) { used.add(p.color); continue; } p.color = COLORS.find(c => !used.has(c)) || '#fff'; p.colorSet = true; used.add(p.color); } }
 function toLobby(r) {
   r.state = 'lobby'; r.map = LOBBY; r.traps = []; r.portal = null; r.extract = null; r.items = []; r.opened = new Set(); bindVehicles(r, LOBBY.vehicles);
-  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100, boat: null, esc: 0, seated: false, fl: 0, climb: null }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, LOBBY.spawn, 80)); }
+  for (const p of r.players.values()) { Object.assign(p, { role: 'lobby', mt: null, alive: true, escaped: false, st: {}, r: 16, stamina: 100, boat: null, esc: 0, seated: false, fl: 0, alt: 0, climb: null, lift: null }, freshKit()); Object.assign(p, freeSpot(LOBBY, 16, LOBBY.spawn, 80)); }
   sendMap(r);
 }
 function sendMap(r, only) {
@@ -871,26 +891,57 @@ function phase2Tick(r, t, dt, surv) {
   }
 }
 
-function startClimb(p, L) {
-  const from = p.fl || 0;
-  const to = from === (L.from || 0) ? L.to : (L.from || 0);
-  const land = to === L.to ? L.land : L.back;
-  p.climb = { u: 0, dur: L.kind === 'elevator' ? 1.35 : 1.05, to, x0: p.x, y0: p.y, x1: land.x, y1: land.y };
-}
-function rideLift(r, p) {
-  if (p.climb || p.seated || p.boat) return;
-  for (const L of r.map.lifts || []) {
-    if (L.kind === 'elevator') continue;
-    if (p.x <= L.x || p.x >= L.x + L.w || p.y <= L.y || p.y >= L.y + L.h) continue;
-    startClimb(p, L); return;
+function rampAt(map, x, y) {
+  for (const r of map.lifts || []) {
+    if (r.kind === 'elevator' || !r.axis) continue;
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return r;
   }
+  return null;
+}
+function rampAlong(r, x, y) {
+  const t = r.axis === 'x' ? (x - r.x) / Math.max(1, r.w) : (y - r.y) / Math.max(1, r.h);
+  const u = (r.up || 1) > 0 ? t : 1 - t;
+  const land = 0.14;
+  if (u <= land) return 0;
+  if (u >= 1 - land) return 1;
+  return (u - land) / (1 - 2 * land);
+}
+function mallFloorH(map) { return map.mall && map.mall.floorH || 4.2; }
+// Height follows the slope. A player on the other floor can pass the ramp without being snapped onto it.
+function mallAlt(map, x, y, prev) {
+  const FH = mallFloorH(map);
+  const p0 = prev || 0;
+  const ramp = rampAt(map, x, y);
+  if (ramp) {
+    const h = rampAlong(ramp, x, y) * FH;
+    if (p0 >= h - 0.35 || h - p0 < 0.85) return h;
+    return p0 >= FH * 0.5 ? FH : 0;
+  }
+  if (!map.mall) return 0;
+  const m = map.mall;
+  const inside = x > m.x && x < m.x + m.w && y > m.y && y < m.y + m.h;
+  if (!inside) return 0;
+  return p0 >= FH * 0.5 ? FH : 0;
+}
+function syncAlt(map, p, dt) {
+  const ramp = rampAt(map, p.x, p.y);
+  if (ramp && ramp.belt) {
+    const h = rampAlong(ramp, p.x, p.y) * mallFloorH(map);
+    if ((p.alt || 0) >= h - 0.45) {
+      const v = 100 * ramp.belt * (ramp.up || 1);
+      if (ramp.axis === 'x') moveEnt(map, p, v * dt, 0); else moveEnt(map, p, 0, v * dt);
+    }
+  }
+  p.alt = mallAlt(map, p.x, p.y, p.alt || 0);
+  p.fl = p.alt >= mallFloorH(map) * 0.5 ? 1 : 0;
 }
 function tryElevator(r, p) {
-  if (!r || r.state !== 'lobby' || p.climb || p.seated || p.boat) return false;
-  const L = (r.map.lifts || []).find(L => L.kind === 'elevator' && p.x > L.x && p.x < L.x + L.w && p.y > L.y && p.y < L.y + L.h);
+  if (!r || r.state !== 'lobby' || p.lift || p.seated || p.boat) return false;
+  const L = (r.map.lifts || []).find(q => q.kind === 'elevator' && p.x > q.x && p.x < q.x + q.w && p.y > q.y && p.y < q.y + q.h);
   if (!L) return false;
-  const goingUp = (p.fl || 0) === 0;
-  startClimb(p, L);
+  const FH = mallFloorH(r.map);
+  const goingUp = (p.alt || 0) < FH * 0.5;
+  p.lift = { u: 0, dur: 1.35, from: p.alt || 0, to: goingUp ? FH : 0 };
   send(p, { t: 'event', msg: goingUp ? 'The elevator is going up.' : 'The elevator is going down.', kind: 'info' });
   return true;
 }
@@ -952,20 +1003,29 @@ function step() {
         if (p.st.spd > t) sp *= GEAR.speed.mult;
         if (p.st.grav > t && !(p.st.spd > t)) sp *= GEAR.grav.mult;
       }
-      if (r.state === 'lobby' && !p.boat) sp = p.seated || p.climb ? 0 : 200;
-      if (r.state === 'lobby' && p.climb) {
-        const c = p.climb; c.u = Math.min(1, c.u + dt / c.dur);
-        p.x = c.x0 + (c.x1 - c.x0) * c.u; p.y = c.y0 + (c.y1 - c.y0) * c.u;
-        if (c.u >= 1) { p.fl = c.to; p.climb = null; }
-        len = 0;
+      if (r.state === 'lobby' && !p.boat) {
+        sp = p.seated || p.lift ? 0 : 200;
+        if (!p.seated && !p.lift) {
+          if (k.sprint && p.stamina > 1) sp *= 1.45;
+          if (p.st.spd > t) sp *= GEAR.speed.mult;
+          if (p.st.grav > t && !(p.st.spd > t)) sp *= GEAR.grav.mult;
+        }
       }
+      if (p.lift) { len = 0; sp = 0; }
       if (p.boat && boatOf(r, p) && boatOf(r, p).by === p.id && (r.state === 'playing' || r.state === 'lobby')) driveVehicle(r, p, len ? dx : 0, len ? dy : 0, dt, !len);
       else if (len && sp) {
         if ((!p.alive || p.escaped || p.role === 'ghost') && r.state === 'playing') { p.x = clamp(p.x + dx * sp * dt, 20, r.map.w - 20); p.y = clamp(p.y + dy * sp * dt, 20, r.map.h - 20); }
         else moveEnt(r.map, p, dx * sp * dt, dy * sp * dt);
       }
       if (p.boat) { const b = boatOf(r, p); if (b) { p.x = b.x; p.y = b.y; if (len && b.by === p.id) p.a = b.a; } else p.boat = null; }
-      if (r.state === 'lobby') rideLift(r, p);
+      if (r.state === 'lobby' && !p.boat && !p.seated) {
+        if (p.lift) {
+          p.lift.u = Math.min(1, p.lift.u + dt / p.lift.dur);
+          p.alt = p.lift.from + (p.lift.to - p.lift.from) * p.lift.u;
+          p.fl = p.alt >= mallFloorH(r.map) * 0.5 ? 1 : 0;
+          if (p.lift.u >= 1) p.lift = null;
+        } else syncAlt(r.map, p, dt);
+      }
       if (r.state === 'playing' && p.role === 'survivor' && p.alive && !p.escaped) {
         if (!p.bot && (p.fire || p.fireEdge)) useItem(r, p, p.fireEdge);
         p.fireEdge = false;
@@ -1013,8 +1073,7 @@ function snapshot(r, t) {
       }
       const st = {}; for (const k in p.st) if (p.st[k] > t) st[k] = 1;
       if (me.role === 'monster' && me.st.sight > t && p.role === 'survivor') st.reveal = 1;
-      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester', 'wendigo'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined, seat: p.seated ? 1 : undefined, fl: p.fl || 0, au: p.role === 'survivor' ? (p.auraKind || '') : undefined };
-      if (p.climb) { q.ck = +p.climb.u.toFixed(2); q.cf = p.climb.to; }
+      const q = { id: p.id, n: p.name, c: p.color, x: Math.round(p.x), y: Math.round(p.y), a: +p.a.toFixed(2), role: p.role, mt: p.mt, al: p.alive, es: p.escaped, h: r.host === p.id, b: p.bot, st, sc: p.score, lk: lookStr(p.look), sk: p.role === 'monster' ? p.skin : undefined, fm: p.role === 'monster' && ['drnowhere', 'megalodon', 'fester', 'wendigo'].includes(p.mt) ? monForm(r, p) : undefined, bt: p.boat || undefined, pf: r.state === 'lobby' ? p.pref : undefined, em: p.emoteUntil > t ? p.emote : undefined, seat: p.seated ? 1 : undefined, fl: p.fl || 0, alt: +((p.alt || 0).toFixed(2)), au: p.role === 'survivor' ? (p.auraKind || '') : undefined };
       if (r.state === 'playing') { q.hp = Math.round(p.hp / p.maxHp * 100); if (p.role === 'survivor') { const s = p.inv[p.sel]; q.w = s ? s.k : null; q.ar = (p.vest > 0 ? 1 : 0) | (p.helmet > 0 ? 2 : 0); } }
       ps.push(q);
     }

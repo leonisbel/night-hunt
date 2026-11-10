@@ -42,11 +42,161 @@ function put(mesh, dummy, x, y, z, sx = 1, sy = 1, sz = 1, ry = 0, rx = 0) {
   mesh.setMatrixAt(mesh.count++, dummy.matrix);
 }
 
+function hits(b, x, y, pad = 0) {
+  return x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad && y < b.y + b.h + pad;
+}
+function buildMallFacade(group, anim, map, mall, tier, focus) {
+  const white = new THREE.MeshStandardMaterial({ color: '#f7f7f5', roughness: 0.32, metalness: 0.02 });
+  const glow = new THREE.MeshPhysicalMaterial({ color: '#d7e7f4', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.58, emissive: '#ffd0a0', emissiveIntensity: 0.72, envMapIntensity: 1.15, side: THREE.DoubleSide });
+  const ents = (map.mall && map.mall.entrances) || [];
+  const blocked = (x, y) => ents.some(e => x > e.x - 50 && x < e.x + e.w + 50 && y > e.y - 50 && y < e.y + e.h + 50);
+  const max = tier === 'low' ? 36 : 120;
+  const we = inst(new THREE.BoxGeometry(0.07, 1.2, 2.05), glow, max, group);
+  const ns = inst(new THREE.BoxGeometry(2.05, 1.2, 0.07), glow, max, group);
+  const dummy = new THREE.Object3D();
+  const step = tier === 'low' ? 180 : 96;
+  const pane = (mesh, x, y, hy) => { if (mesh.count >= max || blocked(x, y)) return; put(mesh, dummy, x * S, hy, y * S); };
+  for (let y = mall.y + 80; y < mall.y + mall.h - 80; y += step) {
+    pane(we, mall.x - 10, y, 1.65); pane(we, mall.x - 10, y, 5.7);
+    pane(we, mall.x + mall.w + 10, y, 1.65); pane(we, mall.x + mall.w + 10, y, 5.7);
+  }
+  for (let x = mall.x + 80; x < mall.x + mall.w - 80; x += step) {
+    pane(ns, x, mall.y - 10, 1.65); pane(ns, x, mall.y - 10, 5.7);
+    pane(ns, x, mall.y + mall.h + 10, 1.65); pane(ns, x, mall.y + mall.h + 10, 5.7);
+  }
+  we.instanceMatrix.needsUpdate = true; ns.instanceMatrix.needsUpdate = true;
+  const doors = [];
+  for (const e of ents) {
+    const alongZ = e.face === 'w' || e.face === 'e';
+    const span = (alongZ ? e.h : e.w) * S;
+    const paneW = span * 0.46;
+    const geo = new THREE.BoxGeometry(alongZ ? 0.06 : paneW, 3.05, alongZ ? paneW : 0.06);
+    const a = new THREE.Mesh(geo, glow), b = new THREE.Mesh(geo, glow);
+    const out = e.face === 'w' ? -0.35 : e.face === 'e' ? 0.35 : 0;
+    const outZ = e.face === 'n' ? -0.35 : e.face === 's' ? 0.35 : 0;
+    const cx = (e.x + e.w / 2) * S + out, cz = (e.y + e.h / 2) * S + outZ;
+    a.position.set(cx, 1.55, cz); b.position.set(cx, 1.55, cz); group.add(a, b);
+    const jamb = (dx, dz) => { const j = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.25, 0.18), white); j.position.set(cx + dx, 1.62, cz + dz); group.add(j); };
+    if (alongZ) { jamb(0, -span / 2); jamb(0, span / 2); } else { jamb(-span / 2, 0); jamb(span / 2, 0); }
+    const head = new THREE.Mesh(new THREE.BoxGeometry(alongZ ? 0.22 : span + 0.2, 0.16, alongZ ? span + 0.2 : 0.22), white);
+    head.position.set(cx, 3.22, cz); group.add(head);
+    if (e.canopy) {
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.14, span + 1.6), white);
+      canopy.position.set(cx + (e.face === 'w' ? -2.2 : 2.2), 3.55, cz); group.add(canopy);
+      for (const side of [-1, 1]) { const col = new THREE.Mesh(new THREE.BoxGeometry(0.26, 3.45, 0.26), white); col.position.set(cx - 3.8, 1.7, cz + side * (span * 0.5 + 0.2)); group.add(col); }
+    }
+    const sign = board(group, e.canopy ? 'NIGHT MALL' : e.name, e.canopy ? 'MAIN ENTRANCE' : 'SIDE ENTRANCE', '#1c1e24', '#f7f7f5', cx + (e.face === 'w' ? -2.2 : e.face === 'e' ? 2.2 : 0), e.canopy ? 4.45 : 3.7, cz + (e.face === 'n' ? -0.4 : e.face === 's' ? 0.4 : 0), e.canopy ? 7 : 3.2);
+    sign.rotation.y = e.face === 'w' ? -Math.PI / 2 : e.face === 'e' ? Math.PI / 2 : e.face === 'n' ? Math.PI : 0;
+    doors.push({ a, b, alongZ, cx, cz, shut: paneW * 0.5, open: paneW * 0.98, ex: e.x + e.w / 2, ey: e.y + e.h / 2, reach: Math.max(e.w, e.h) + 180 });
+  }
+  anim.push(() => {
+    for (const d of doors) {
+      const near = focus.on && Math.hypot(focus.x - d.ex, focus.y - d.ey) < d.reach;
+      const target = near ? d.open : d.shut;
+      if (d.alongZ) { d.a.position.z += (d.cz - target - d.a.position.z) * 0.16; d.b.position.z += (d.cz + target - d.b.position.z) * 0.16; }
+      else { d.a.position.x += (d.cx - target - d.a.position.x) * 0.16; d.b.position.x += (d.cx + target - d.b.position.x) * 0.16; }
+    }
+  });
+}
+function buildMallInterior(group, anim, map, mall, tier, cx, cz, focus) {
+  const info = map.mall, atr = info && info.atrium;
+  const ax = atr ? (atr.x + atr.w / 2) * S : cx, az = atr ? (atr.y + atr.h / 2) * S : cz;
+  const aw = atr ? atr.w * S : 16, ad = atr ? atr.h * S : 16;
+  const gmat = glass();
+  const tile = tier === 'low' ? 160 : 100;
+  let n = 0;
+  for (let x = mall.x + 40; x < mall.x + mall.w - 40; x += tile) for (let y = mall.y + 40; y < mall.y + mall.h - 40; y += tile) n++;
+  const ground = inst(new THREE.BoxGeometry(tile * S * 0.96, 0.08, tile * S * 0.96), pbrMat('planks', 2, 2, { color: '#cfc6b8', r: 0.8 }), n, group);
+  const deck = inst(new THREE.BoxGeometry(tile * S * 0.96, 0.16, tile * S * 0.96), pbrMat('planks', 2, 2, { color: '#e4dccb', r: 0.72 }), n, group);
+  const dummy = new THREE.Object3D();
+  const ramps = (map.lifts || []).filter(r => r.axis);
+  for (let x = mall.x + 40; x < mall.x + mall.w - 40; x += tile) for (let y = mall.y + 40; y < mall.y + mall.h - 40; y += tile) {
+    const cxr = x + tile / 2, cyr = y + tile / 2;
+    put(ground, dummy, cxr * S, 0.04, cyr * S);
+    if (atr && hits(atr, cxr, cyr, 20)) continue;
+    if (ramps.some(r => hits(r, cxr, cyr, 10))) continue;
+    put(deck, dummy, cxr * S, 4.12, cyr * S);
+  }
+  ground.instanceMatrix.needsUpdate = true; deck.instanceMatrix.needsUpdate = true;
+  for (const [rx, rz, rw, rd] of [[ax, az - ad / 2, aw, 0.08], [ax, az + ad / 2, aw, 0.08], [ax - aw / 2, az, 0.08, ad], [ax + aw / 2, az, 0.08, ad]]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.2, rw), 1.05, Math.max(0.2, rd)), gmat);
+    rail.position.set(rx, 4.85, rz); group.add(rail);
+  }
+  const sky = new THREE.Mesh(new THREE.BoxGeometry((mall.w * S) * 0.9, 0.06, (mall.h * S) * 0.9), new THREE.MeshPhysicalMaterial({ color: '#d5e9ff', roughness: 0.05, metalness: 0.04, transparent: true, opacity: 0.22, side: THREE.DoubleSide }));
+  sky.position.set((mall.x + mall.w / 2) * S, 8.4, (mall.y + mall.h / 2) * S); group.add(sky);
+  const lampMat = std('#fff4d2', { e: '#ffe1a8', ei: 1.4, r: 0.3 });
+  const lamps = inst(new THREE.BoxGeometry(1.6, 0.08, 0.28), lampMat, tier === 'low' ? 6 : 14, group);
+  let li = 0;
+  for (let x = mall.x + 280; x < mall.x + mall.w - 200 && li < (tier === 'low' ? 6 : 14); x += tier === 'low' ? 700 : 420) {
+    put(lamps, dummy, x * S, 7.6, (mall.y + mall.h * 0.42) * S); li++;
+  }
+  lamps.instanceMatrix.needsUpdate = true;
+  board(group, 'NIGHT MALL', 'STAIRS  ·  ESCALATORS  ·  SHOPS', '#ffd27a', '#24180e', (mall.x + 180) * S, 5.6, (mall.y + 80) * S, 6);
+  const names = { weapons: 'WEAPON SHOP', armor: 'ARMOR', food: 'FOOD COURT', pets: 'PETS', skinshop: 'CLOTHING', monskins: 'MONSTER SHOP', emotes: 'ARCADE', clothing: 'DRESSING ROOM', crate: 'CRATES' };
+  for (const z of map.zones || []) {
+    if (!names[z.k]) continue;
+    const y = 1.5 + (z.fl || 0) * 4.2;
+    const pane = new THREE.Mesh(new THREE.BoxGeometry(Math.max(2.4, z.w * S * 0.55), 2.2, 0.05), gmat);
+    pane.position.set((z.x + z.w / 2) * S, y, (z.y + z.h * 0.15) * S); group.add(pane);
+    board(group, names[z.k], z.fl ? 'UPPER LEVEL' : 'GROUND FLOOR', z.c || '#fff', '#1c140c', (z.x + z.w / 2) * S, y + 1.45, (z.y + z.h * 0.15) * S, 2.6);
+  }
+  const railMat = std('#d9dde2', { m: 0.65, r: 0.28 });
+  const stepMat = std('#b7bcc2', { m: 0.4, r: 0.35 });
+  for (const r of map.lifts || []) {
+    const mx = (r.x + r.w / 2) * S, mz0 = r.y * S, mz1 = (r.y + r.h) * S;
+    if (r.kind === 'elevator') {
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(r.w * S, 4.3, r.h * S), new THREE.MeshPhysicalMaterial({ color: '#d5e2ee', roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.28, side: THREE.DoubleSide }));
+      shaft.position.set(mx, 2.15, (mz0 + mz1) / 2); group.add(shaft);
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(r.w * S * 0.78, 0.12, r.h * S * 0.78), std('#9aa3ad', { m: 0.5, r: 0.35 }));
+      cab.position.set(mx, 0.15, (mz0 + mz1) / 2); group.add(cab);
+      board(group, 'ELEVATOR', 'PRESS E', '#d7e6ff', '#141820', mx, 3.3, (mz0 + mz1) / 2, 1.8);
+      anim.push(t => { cab.position.y = 0.2 + (0.5 + 0.5 * Math.sin(t * 0.35)) * 4.0; });
+      continue;
+    }
+    const run = Math.abs(mz1 - mz0), rise = 4.2, len = Math.hypot(run, rise), ang = Math.atan2(rise, run);
+    const slope = new THREE.Mesh(new THREE.BoxGeometry(r.w * S * 0.9, 0.16, len), r.kind === 'stair' ? stepMat : std('#8d949c', { m: 0.55, r: 0.32 }));
+    slope.position.set(mx, 2.1, (mz0 + mz1) / 2);
+    slope.rotation.x = ang;
+    group.add(slope);
+    for (const side of [-1, 1]) {
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, len), railMat);
+      hand.position.set(mx + side * r.w * S * 0.42, 2.55, (mz0 + mz1) / 2);
+      hand.rotation.x = ang; group.add(hand);
+    }
+    const landMat = pbrMat('concrete', 1, 1, { color: '#d5d0c8', r: 0.7 });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(r.w * S * 0.9, 0.12, Math.max(0.8, run * 0.12)), landMat);
+    top.position.set(mx, 4.14, mz0 + run * 0.06); group.add(top);
+    const bot = new THREE.Mesh(new THREE.BoxGeometry(r.w * S * 0.9, 0.1, Math.max(0.8, run * 0.12)), landMat);
+    bot.position.set(mx, 0.08, mz1 - run * 0.06); group.add(bot);
+    const label = r.kind === 'stair' ? 'STAIRS' : (r.belt > 0 ? 'ESCALATOR UP' : 'ESCALATOR DOWN');
+    board(group, label, r.kind === 'stair' ? 'WALK' : 'STAND ON', '#ffe7a8', '#24180e', mx, 3.2, (mz0 + mz1) / 2, 2.2);
+    if (r.kind === 'escalator') {
+      const nStep = tier === 'low' ? 5 : 9;
+      const steps = [];
+      for (let i = 0; i < nStep; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(r.w * S * 0.72, 0.06, 0.28), std('#f2f4f6', { m: 0.25, r: 0.4 })); group.add(s); steps.push(s); }
+      const dir = r.belt > 0 ? 1 : -1;
+      anim.push(t => steps.forEach((s, i) => {
+        let u = ((i / nStep) + t * 0.18 * dir) % 1; if (u < 0) u += 1;
+        s.position.set(mx, 0.18 + u * 4.05, mz1 - u * run);
+      }));
+    }
+  }
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.45, tier === 'low' ? 10 : 20), pbrMat('castle', 1, 1, { color: '#d9d4cc' }));
+  ring.position.set(ax, 0.28, az); group.add(ring);
+  const water = new THREE.Mesh(new THREE.CircleGeometry(2.15, 18), new THREE.MeshPhysicalMaterial({ color: '#7eb8d4', roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.75 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(ax, 0.42, az); group.add(water);
+  const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.16, 1.4, 8), new THREE.MeshBasicMaterial({ color: '#e8f6ff', transparent: true, opacity: 0.65 }));
+  jet.position.set(ax, 1.1, az); group.add(jet);
+  anim.push(t => { jet.scale.y = 0.85 + Math.sin(t * 3) * 0.12; jet.position.y = 1.05 + Math.sin(t * 3) * 0.05; });
+  buildMallFacade(group, anim, map, mall, tier, focus);
+}
+
 export function dressLobby(map, season, tier, when = new Date()) {
   const group = new THREE.Group(); group.name = 'lobbydress';
   const anim = [];
   const night = season === 'july4' || season === 'newyear';
-  const done = () => ({ group, night, tick(t, dt) { for (const fn of anim) fn(t, dt); } });
+  const focus = { x: 0, y: 0, on: false };
+  const done = () => ({ group, night, tick(t, dt, md) { focus.on = !!(md && md.dx != null); if (focus.on) { focus.x = md.dx; focus.y = md.dy; } for (const fn of anim) fn(t, dt); } });
   if (!map || typeof document === 'undefined') return done();
   const B = BUDGET[tier] || BUDGET.high;
   const dummy = new THREE.Object3D();
@@ -155,67 +305,7 @@ export function dressLobby(map, season, tier, when = new Date()) {
     grnM.emissiveIntensity = phase > 6 ? 1.8 : 0.12;
   });
 
-  // Two-floor mall: atrium hole, balcony, glass rails, skylight, escalators, themed storefronts.
-  if (mall) {
-    const gmat = glass();
-    const info = map.mall;
-    const atr = info && info.atrium;
-    const ax = atr ? (atr.x + atr.w / 2) * S : cx;
-    const az = atr ? (atr.y + atr.h / 2) * S : cz;
-    const aw = atr ? atr.w * S : 16;
-    const ad = atr ? atr.h * S : 16;
-    const mx = mall.x * S, mz = mall.y * S, mw = mall.w * S, md = mall.h * S;
-    const deck = pbrMat('planks', 4, 4, { color: '#d7cbb6', r: 0.75 });
-    const slab = (x, y, z, w, h, d) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), deck); m.position.set(x, y, z); group.add(m); };
-    const fy = 4.2;
-    slab(mx + (ax - aw / 2 - mx) / 2, fy, mz + md / 2, ax - aw / 2 - mx, 0.22, md);
-    slab(ax + aw / 2 + (mx + mw - (ax + aw / 2)) / 2, fy, mz + md / 2, mx + mw - (ax + aw / 2), 0.22, md);
-    slab(ax, fy, mz + (az - ad / 2 - mz) / 2, aw, 0.22, az - ad / 2 - mz);
-    slab(ax, fy, az + ad / 2 + (mz + md - (az + ad / 2)) / 2, aw, 0.22, mz + md - (az + ad / 2));
-    const railMat = glass();
-    for (const [rx, rz, rw, rd] of [[ax, az - ad / 2, aw, 0.08], [ax, az + ad / 2, aw, 0.08], [ax - aw / 2, az, 0.08, ad], [ax + aw / 2, az, 0.08, ad]]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(rw, 1.05, rd), railMat);
-      rail.position.set(rx, fy + 0.7, rz); group.add(rail);
-    }
-    const sky = new THREE.Mesh(new THREE.BoxGeometry(mw * 0.92, 0.08, md * 0.92), new THREE.MeshPhysicalMaterial({ color: '#cfe7ff', roughness: 0.05, metalness: 0.05, transparent: true, opacity: 0.28, side: THREE.DoubleSide }));
-    sky.position.set(mx + mw / 2, 8.2, mz + md / 2); group.add(sky);
-    const beam = std('#e8e4dc', { m: 0.2, r: 0.4 });
-    for (const [bx, bz] of [[mx + 1.2, mz + 1.2], [mx + mw - 1.2, mz + 1.2], [mx + 1.2, mz + md - 1.2], [mx + mw - 1.2, mz + md - 1.2]]) {
-      const col = new THREE.Mesh(new THREE.BoxGeometry(0.35, 8.2, 0.35), beam); col.position.set(bx, 4.1, bz); group.add(col);
-    }
-    board(group, 'NIGHT MALL', 'TWO FLOORS  ·  ATRIUM', '#ffd27a', '#2a2418', mx + 6, 6.2, mz + 1.2, 5);
-    const names = { weapons: 'WEAPON SHOP', armor: 'ARMOR', food: 'FOOD COURT', pets: 'PETS', skinshop: 'CLOTHING', monskins: 'MONSTER SHOP', emotes: 'ARCADE', clothing: 'DRESSING ROOM', crate: 'CRATES' };
-    for (const z of map.zones || []) {
-      if (!names[z.k]) continue;
-      const y = 1.4 + (z.fl || 0) * fy;
-      const pane = new THREE.Mesh(new THREE.BoxGeometry(Math.max(3, z.w * S * 0.7), 2.3, 0.06), gmat);
-      pane.position.set((z.x + z.w / 2) * S, y, z.y * S); group.add(pane);
-      board(group, names[z.k], z.fl ? 'UPPER LEVEL' : 'GROUND', z.c || '#fff', '#1a140c', (z.x + z.w / 2) * S, y + 1.5, z.y * S, 2.4);
-    }
-    const stepMat = std('#c5c8cc', { m: 0.35, r: 0.35 });
-    for (const L of map.lifts || []) {
-      const lx = (L.x + L.w / 2) * S, lz = (L.y + L.h / 2) * S;
-      if (L.kind === 'elevator') {
-        const cab = new THREE.Mesh(new THREE.BoxGeometry(L.w * S, 2.4, L.h * S), std('#8d97a3', { m: 0.55, r: 0.35 }));
-        cab.position.set(lx, 1.2, lz); group.add(cab);
-        board(group, 'ELEVATOR', 'PRESS E', '#d7e6ff', '#1a1c22', lx, 2.8, lz, 1.6);
-      } else {
-        const n = tier === 'low' ? 6 : 10;
-        for (let i = 0; i < n; i++) {
-          const step = new THREE.Mesh(new THREE.BoxGeometry(L.w * S * 0.8, 0.14, 0.36), stepMat);
-          step.position.set(lx, 0.12 + (i / n) * fy, (L.y * S) + i * (L.h * S) / n); group.add(step);
-        }
-        board(group, L.kind === 'stair' ? 'STAIRS' : 'ESCALATOR', 'WALK ON', '#ffe7a8', '#2a2418', lx, 2.2, lz, 1.8);
-      }
-    }
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.45, tier === 'low' ? 10 : 20), pbrMat('castle', 1, 1, { color: '#d9d4cc' }));
-    ring.position.set(ax, 0.28, az); group.add(ring);
-    const water = new THREE.Mesh(new THREE.CircleGeometry(2.15, 18), new THREE.MeshPhysicalMaterial({ color: '#7eb8d4', roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.75 }));
-    water.rotation.x = -Math.PI / 2; water.position.set(ax, 0.42, az); group.add(water);
-    const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.16, 1.4, 8), new THREE.MeshBasicMaterial({ color: '#e8f6ff', transparent: true, opacity: 0.65 }));
-    jet.position.set(ax, 1.1, az); group.add(jet);
-    anim.push(t => { jet.scale.y = 0.85 + Math.sin(t * 3) * 0.12; jet.position.y = 1.05 + Math.sin(t * 3) * 0.05; });
-  }
+  if (mall) buildMallInterior(group, anim, map, mall, tier, cx, cz, focus);
 
   const hub = new THREE.Group(); hub.position.set(cx, 0, cz); group.add(hub);
   buildSeason(hub, group, season, tier, B, when, anim, cx, cz, leafMat, sand);

@@ -284,7 +284,7 @@ function frame(now) {
   else if (scareShown && !killcam) { scareShown = false; $('scareover').classList.add('hide'); }
   if (flight) { world.frame(dt, t, { flight: { elapsed: (now - flight.start) / 1000, left: (flight.until - now) / 1000, monster: flight.mine && flight.mine.role === 'monster' } }); arrows([]); return; }
   if (!room || !map || !snap) { world.frame(dt, t, {}); return; }
-  for (const p of snap.ps) { const d = disp[p.id] || (disp[p.id] = { dx: p.x, dy: p.y }); const k = Math.min(1, dt * 14); if (Math.hypot(p.x - d.dx, p.y - d.dy) > 300) { d.dx = p.x; d.dy = p.y; } d.dx += (p.x - d.dx) * k; d.dy += (p.y - d.dy) * k; }
+  for (const p of snap.ps) { const d = disp[p.id] || (disp[p.id] = { dx: p.x, dy: p.y }); const k = Math.min(1, dt * 14); if (Math.hypot(p.x - d.dx, p.y - d.dy) > 300) { d.dx = p.x; d.dy = p.y; } d.dx += (p.x - d.dx) * k; d.dy += (p.y - d.dy) * k; const alt = p.alt != null ? p.alt : (p.fl || 0) * 4.2; if (d.alt == null || Math.abs(alt - d.alt) > 2.5) d.alt = alt; else d.alt += (alt - d.alt) * k; }
   const mp = snap.ps.find(p => p.id === me), md = disp[me]; if (!mp || !md) return;
   { const mine = snap.bt && mp.bt && snap.bt.find(b => b[0] === mp.bt); setEngine(mine && mine[5] === me ? Math.min(1, (mine[8] || 0) / 220) : 0, mine ? Math.min(1.4, (mine[8] || 0) / 180) : 0); }
   const ghost = snap.state === 'playing' && (!mp.al || mp.es || mp.role === 'ghost');
@@ -565,12 +565,22 @@ if (params.has('shot')) {
   else if (kind === 'mall') {
     shotHold = true; document.body.classList.add('ingame', 'inlobby'); $('hud').classList.add('hide'); $('menu').classList.add('hide'); $('warn').classList.add('hide');
     const map = NightHuntCore.LOBBY; world.setMap(map);
-    const fl = +(params.get('floor') || 0);
-    const spot = fl ? { x: 2500, y: 900, yaw: 0.55, pitch: 0.06, zoom: 0.4 } : { x: 2500, y: 1900, yaw: -0.42, pitch: 0.04, zoom: 0.48 };
-    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0', fl }];
-    const disp = { 1: { dx: spot.x, dy: spot.y } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
-    const snapS = { state: 'lobby', ps, boarded: [], max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {}, fl }, tl: 0 };
-    let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS }); if (++n === 10) window.NH.shotReady = true; if (n < 16) requestAnimationFrame(loop); };
+    const view = params.get('view') || (params.get('floor') === '1' ? 'upper' : 'ground');
+    const spots = {
+      ground: { x: 3000, y: 1900, yaw: -1.1, pitch: 0.22, zoom: 0.62, alt: 0 },
+      upper: { x: 3000, y: 1500, yaw: 0.4, pitch: 0.28, zoom: 0.62, alt: 4.2 },
+      stair: { x: 3780, y: 1860, yaw: -Math.PI / 2, pitch: 0.32, zoom: 0.48, alt: 2.1 },
+      escalator: { x: 2860, y: 1880, yaw: -2.2, pitch: 0.28, zoom: 0.55, alt: 0.4 },
+      front: { x: 1880, y: 1520, yaw: 0.05, pitch: 0.16, zoom: 0.72, alt: 0 },
+      side: { x: 3390, y: 140, yaw: Math.PI / 2, pitch: 0.18, zoom: 0.7, alt: 0 },
+      exterior: { x: 1200, y: 1520, yaw: 0.22, pitch: 0.08, zoom: 0.9, alt: 0 },
+    };
+    const spot = spots[view] || spots.ground;
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'lobby', al: 1, es: 0, st: {}, lk: '2,1,0', fl: spot.alt > 2 ? 1 : 0, alt: spot.alt }];
+    const disp = { 1: { dx: spot.x, dy: spot.y, alt: spot.alt } }, camS = { yaw: spot.yaw, pitch: spot.pitch, zoom: spot.zoom };
+    const snapS = { state: 'lobby', ps, boarded: [], max: 4, me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {}, fl: ps[0].fl }, tl: 0 };
+    const day = params.get('tod') === 'day';
+    let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS, day }); if (++n === 12) window.NH.shotReady = true; if (n < 18) requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
   else if (kind === 'skin') {
