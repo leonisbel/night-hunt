@@ -4,6 +4,7 @@ import { GFX, AUTO as GFX_AUTO, setTier } from './js/gfx.js';
 import { SKIES, loadSky, saveSky } from './js/skies.js';
 import { audio, sfx, setAmbience, setRotor, setEngine, staticHiss } from './js/audio.js';
 import { KEYS, GUIDE_KEY, HUD_KEY, nextHud, guideOpen } from './js/keys.js';
+import { playGate, flyPose } from './js/playgate.js';
 import { oldWallpaper } from './js/textures.js';
 import { initTouch } from './js/touch.js';
 import { initLocker } from './js/locker.js';
@@ -13,7 +14,7 @@ const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const cam = { yaw: -Math.PI / 2, pitch: .55, zoom: localStorage.nhZoom != null ? +localStorage.nhZoom : .5 };
 let ITEMS = {}, fireHeld = false, fireLatch = false, lastHp = null;
-let me = null, room = null, map = null, snap = null, isHost = false, MON = {}, disp = {}, jumpscare = null, flight = null, results = null, muted = false, guidePin = null, guideAuto = 0;
+let me = null, room = null, map = null, snap = null, isHost = false, MON = {}, disp = {}, jumpscare = null, flight = null, results = null, muted = false, guidePin = null, guideAuto = 0, flyover = null;
 const keys = {}; let mouse = { x: innerWidth / 2, y: innerHeight / 2, moved: false }, aimA = 0, lastMoveA = 0;
 const mobileUA = matchMedia('(pointer:coarse)').matches || navigator.maxTouchPoints > 0;
 let world;
@@ -28,7 +29,18 @@ window.NH.showcaseStats = showcaseStats; window.NH.closeShowcase = closeShowcase
 $('pname').value = localStorage.nhName || '';
 // content warning (13+): must be accepted with Continue every time before the menu appears
 $('bwarn').onclick = () => { $('warn').classList.add('hide'); if (params.has('shot')) { $('menu').classList.remove('hide'); return; } $('intro').classList.remove('hide'); };
-if ($('intro')) $('intro').onclick = () => { audio.unlock(); sfx('sting'); $('intro').classList.add('gone'); setTimeout(() => { $('intro').classList.add('hide'); $('menu').classList.remove('hide'); }, 520); };
+function reducedNow() { try { return opt.photo || matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return !!(opt && opt.photo); } }
+function finishIntro() { flyover = null; if ($('intro')) $('intro').classList.add('hide'); if ($('menu')) $('menu').classList.remove('hide'); }
+function startIntro() {
+  audio.unlock();
+  if (flyover) { finishIntro(); return; }
+  const gate = playGate({ photo: opt.photo, reduced: reducedNow() });
+  if (!gate.dragon) { if ($('intro')) $('intro').classList.add('gone'); setTimeout(finishIntro, gate.ms); return; }
+  sfx('whoosh'); if ($('intro')) $('intro').classList.add('hide'); flyover = { t0: performance.now(), dur: gate.ms };
+}
+if ($('bplay')) $('bplay').onclick = e => { e.stopPropagation(); startIntro(); };
+if ($('breduce')) $('breduce').onclick = e => { e.stopPropagation(); opt.photo = true; localStorage.nhPhoto = '1'; document.body.classList.add('photo'); startIntro(); };
+if ($('intro')) $('intro').onclick = () => startIntro();
 if ($('badmin')) $('badmin').onclick = () => $('admin').classList.remove('hide');
 if ($('adminclose')) $('adminclose').onclick = () => $('admin').classList.add('hide');
 const opt = { blood: localStorage.nhBlood !== '0', scare: localStorage.nhScare === 'normal' ? 'normal' : 'intense', photo: localStorage.nhPhoto === '1' };
@@ -44,16 +56,18 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
 });
 $('smax').oninput = () => $('maxv').textContent = $('smax').value;
 function pname() { const n = $('pname').value.trim() || 'Player' + Math.floor(Math.random() * 900 + 100); localStorage.nhName = n; return n; }
-$('bcreate').onclick = () => { audio.unlock(); $('merr').textContent = ''; NET.create({ player: pname(), name: $('sname').value, max: +$('smax').value, roundLen: +$('sround').value, isPublic: document.querySelector('input[name=priv]:checked').value === 'public' }); };
+document.querySelectorAll('#smap .mapcard').forEach(b => b.onclick = () => { document.querySelectorAll('#smap .mapcard').forEach(x => x.classList.toggle('on', x === b)); if ($('smapv')) $('smapv').value = b.dataset.map || ''; });
+$('bcreate').onclick = () => { audio.unlock(); $('merr').textContent = ''; NET.create({ player: pname(), name: $('sname').value, max: +$('smax').value, roundLen: +$('sround').value, isPublic: document.querySelector('input[name=priv]:checked').value === 'public', theme: $('smapv') ? $('smapv').value : '', diff: $('sdiff') ? $('sdiff').value : 'normal' }); };
 $('bjoin').onclick = () => { audio.unlock(); joinCode($('jcode').value); };
 function joinCode(code) { code = code.toUpperCase().trim(); if (!/^[A-Z0-9]{5}$/.test(code)) { $('merr').textContent = 'Codes are 5 letters/numbers.'; return; } $('merr').textContent = 'Connecting…'; NET.join(code, pname()); }
 $('brefresh').onclick = refreshList;
 async function refreshList() {
+  if (params.get('shot') === 'lobby') return;
   $('slist').textContent = 'Loading…';
   try {
     const l = await NET.list();
     $('slist').innerHTML = l.length ? '' : '<p>No public servers right now. Create one!</p>';
-    for (const s of l) { const d = document.createElement('div'); d.className = 'srv'; d.innerHTML = `<span><b></b><br><small>${s.players}/${s.max} players · ${s.state === 'lobby' ? 'in lobby' : 'round in progress'}</small></span>`; d.querySelector('b').textContent = s.name;
+    for (const s of l) { const d = document.createElement('div'); d.className = 'srv'; const ping = s.ping == null ? '—' : s.ping + ' ms'; d.innerHTML = `<span><b></b><br><small>${s.players}/${s.max} players · ${s.map || s.theme || 'any map'} · ${s.diff || 'normal'} · ping ${ping}</small></span>`; d.querySelector('b').textContent = s.name;
       const b = document.createElement('button'); b.textContent = s.players >= s.max ? 'Full' : 'Join'; b.disabled = s.players >= s.max; b.onclick = () => { audio.unlock(); joinCode(s.code); }; d.appendChild(b); $('slist').appendChild(d); }
   } catch (e) { $('slist').textContent = 'Could not load server list.'; }
 }
@@ -303,6 +317,7 @@ function frame(now) {
   if (jumpscare) { const e = jumpscare.freeze != null ? jumpscare.freeze : (now - jumpscare.start) / 1000; world.frame(dt, t, { scare: { type: jumpscare.type, fm: jumpscare.fm, elapsed: e, intense: opt.scare !== 'normal', photo: !!opt.photo, blood: !!opt.blood, skin: jumpscare.skin, show: jumpscare.show } }); if (!jumpscare.show) drawScare(jumpscare.type, e); arrows([]); return; }
   else if (scareShown && !killcam) { scareShown = false; $('scareover').classList.add('hide'); }
   if (flight) { world.frame(dt, t, { flight: { elapsed: (now - flight.start) / 1000, left: (flight.until - now) / 1000, monster: flight.mine && flight.mine.role === 'monster' } }); arrows([]); syncGuide(now); return; }
+  if (flyover) { const u = (now - flyover.t0) / flyover.dur; if (u >= 1) finishIntro(); else world.renderFlyover(u); return; }
   if (!room || !map || !snap) { world.frame(dt, t, {}); syncGuide(now); return; }
   for (const p of snap.ps) { const d = disp[p.id] || (disp[p.id] = { dx: p.x, dy: p.y }); const k = Math.min(1, dt * 14); if (Math.hypot(p.x - d.dx, p.y - d.dy) > 300) { d.dx = p.x; d.dy = p.y; } d.dx += (p.x - d.dx) * k; d.dy += (p.y - d.dy) * k; const alt = p.alt != null ? p.alt : (p.fl || 0) * 4.2; if (d.alt == null || Math.abs(alt - d.alt) > 2.5) d.alt = alt; else d.alt += (alt - d.alt) * k; }
   const mp = snap.ps.find(p => p.id === me), md = disp[me]; if (!mp || !md) return;
@@ -580,6 +595,37 @@ if (params.has('shot')) {
     jumpscare.until = performance.now() + 120000;
     setTimeout(() => { window.NH.shotReady = true; }, 400);
   }
+  else if (kind === 'city') {
+    shotHold = true; $('warn').classList.add('hide'); $('menu').classList.add('hide'); $('hud').classList.add('hide');
+    const map = NightHuntCore.genMap('Neon Spire'); world.setMap(map);
+    const spot = { x: 1400, y: 900, yaw: Math.PI, pitch: 0.1, zoom: 0.8 };
+    const ps = [{ id: 1, n: 'Alex', c: '#3498db', x: spot.x, y: spot.y, a: spot.yaw, role: 'survivor', al: 1, es: 0, st: {}, lk: '2,1,0' }];
+    const disp = { 1: { dx: spot.x, dy: spot.y, alt: 0 } }, camS = { free: { x: 78, y: 16, z: 72, lx: 24, ly: 28, lz: 24 } };
+    const snapS = { state: 'playing', ps, boarded: [], me: { stamina: 100, cd: 0, hp: 100, mhp: 100, inv: [], sel: 0, ammo: {}, vest: 0, helmet: 0, fm: 0, fmT: 0, gear: {} }, tl: 120 };
+    const day = params.get('tod') === 'day';
+    let n = 0; const loop = t => { world.frame(1 / 60, t / 1000, { snap: snapS, disp, me: 1, mp: ps[0], ghost: false, aim: spot.yaw, cam: camS, day }); if (++n === 8) window.NH.shotReady = true; if (n < 14) requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+  else if (kind === 'fly') {
+    shotHold = true; $('warn').classList.add('hide'); $('intro').classList.add('hide');
+    const u = +(params.get('u') || 0.45);
+    const pose = flyPose(u);
+    if (pose.reveal && pose.cover < 0.45) { $('menu').classList.remove('hide'); const card = $('smap'); if (card && $('menu')) $('menu').scrollTop = Math.max(0, card.offsetTop - 80); }
+    else $('menu').classList.add('hide');
+    let n = 0; const loop = () => { const ready = world.renderFlyover(u); n++; if (ready || n > 240) window.NH.shotReady = true; else requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+  else if (kind === 'lobby') {
+    $('warn').classList.add('hide'); $('intro').classList.add('hide'); $('menu').classList.remove('hide');
+    const tab = params.get('tab') || 'create';
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
+    document.querySelectorAll('.tab').forEach(x => x.classList.add('hide'));
+    if ($('tab-' + tab)) $('tab-' + tab).classList.remove('hide');
+    if (tab === 'browse') $('slist').innerHTML = '<div class="srv"><span><b>Neon Night</b><br><small>2/8 players · Neon Spire · normal · ping —</small></span><button type="button">Join</button></div>';
+    const anchor = tab === 'browse' ? $('slist') : $('smap');
+    if (anchor) $('menu').scrollTop = Math.max(0, anchor.offsetTop - 70);
+    window.NH.shotReady = true;
+  }
   else if (kind === 'keys') {
     $('warn').classList.add('hide'); $('menu').classList.add('hide'); $('hud').classList.remove('hide');
     document.body.classList.add('ingame'); document.body.classList.remove('touchmode', 'hudoff');
@@ -665,7 +711,7 @@ if (params.has('shot')) {
     locker.open('weapons');
     setTimeout(() => { const b = document.querySelector('[data-show="knife"]'); if (b) b.click(); const wait = () => { const c = document.querySelector('.showcase canvas'); if (c && c.width > 8) window.NH.shotReady = true; else requestAnimationFrame(wait); }; wait(); }, 50);
   } else {
-    shotHold = true; document.body.classList.add('ingame', 'inlobby'); if (kind === 'mobile') { document.body.classList.add('touchmode'); $('hud').classList.remove('hide'); }
+    shotHold = true; document.body.classList.add('ingame', 'inlobby'); if (kind === 'mobile') { document.body.classList.add('touchmode'); $('hud').classList.remove('hide'); document.querySelectorAll('#touch .tb').forEach(b => b.classList.remove('hide')); }
     const map = kind === 'boats' ? NightHuntCore.genMap('Stormy Ocean') : NightHuntCore.LOBBY; world.setMap(map);
     const isl = map.islands && map.islands[0];
     const CODE = { boat: 0, ship: 1, pickup: 2, sedan: 3, suv: 4 };

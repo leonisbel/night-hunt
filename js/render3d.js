@@ -9,6 +9,8 @@ import { applyEmote } from './emotes.js';
 import { seasonFor } from './season.js';
 import { loadSky, skyById } from './skies.js';
 import { dressLobby } from './lobbydress.js';
+import { dressFuture } from './futurecity.js';
+import { flyPose } from './playgate.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 const NEUTRAL_CG = [[.006, .004, .008], [1, 1, 1], [1, 1, 1], .92], NOVOL = { on: false, dens: 0, lights: [] };
 const WALLPBR = { brick: 'brick', concrete: 'concrete', wood: 'oldwood', stone: 'castle' };
@@ -32,6 +34,7 @@ const THEMES = {
   'Haunted Farm': { ground: 'drygrass', grep: 4, ground2: 'dirt', wall: 'wood', fog: '#1c1912', dens: .038, sky: '#544a34', gnd: '#141008', hemi: .62, moon: .75, lamps: 8, tree: 'dead', wisps: 0, wallH: 3.2 , pg: 'dirt', prep: 3, pg2: 'grass', hdri: 'clear', skyT: [.36, .3, .22], vd: .055, cg: [[.016, .012, .004], [1.02, 1, .96], [1.05, 1, .85], .8] },
   'Vampire Castle': { ground: 'dirt', grep: 4, ground2: 'grass', wall: 'stone', fog: '#160c16', dens: .038, sky: '#4a2a50', gnd: '#0c080c', hemi: .58, moon: .85, moonC: '#ff9a8a', lamps: 10, tree: 'dead', wisps: 0, wallH: 3.4 , pg: 'trail', prep: 3, pg2: 'grass', hdri: 'clear', skyT: [.42, .22, .28], vd: .055, cg: [[.016, .004, .01], [1.02, .98, 1], [1.06, .92, .98], .85] },
   'Fester Street': { ground: 'grass', grep: 4, wall: 'brick', fog: '#14141c', dens: .032, sky: '#3a3a54', gnd: '#0c0c10', hemi: .62, moon: .6, lamps: 0, tree: 'round', wisps: 0, wallH: 3.2, streets: true , pg: 'grass', prep: 3, hdri: 'milky', skyT: [.24, .24, .34], vd: .04, cg: [[.008, .008, .016], [1, 1, 1.02], [.98, .98, 1.04], .8] },
+  'Neon Spire': { ground: 'asphalt', grep: 6, wall: 'concrete', fog: '#0c101c', dens: .011, sky: '#24304a', gnd: '#07080e', hemi: .7, moon: .55, lamps: 0, tree: 'round', wisps: 4, wallH: 4.2, streets: true, pg: 'asphalt', prep: 5, hdri: 'clear', skyT: [.16, .2, .32], vd: .018, cg: [[.004, .01, .02], [1, 1, 1.04], [.92, 1, 1.14], .9] },
 };
 
 // Screen-space "see-through" hole around the player for level geometry between camera and player
@@ -220,7 +223,7 @@ export class World {
     this.renderer.setPixelRatio(pr); this.renderer.setSize(w, h, false);
     this.fx.setSize(Math.floor(w * pr), Math.floor(h * pr));
     this.post.uniforms.uRes.value.set(w, h); FADE.uRes.value.set(w * pr, h * pr);
-    for (const c of [this.camera, this.menuCam, this.flightCam, this.scareCam]) if (c) { c.aspect = w / h; c.fov = h > w ? 64 : 50; c.updateProjectionMatrix(); }
+    for (const c of [this.camera, this.menuCam, this.flightCam, this.scareCam, this.flyCam]) if (c) { c.aspect = w / h; c.fov = c === this.flyCam ? 42 : (h > w ? 64 : 50); c.updateProjectionMatrix(); }
     this.portrait = h > w;
   }
 
@@ -264,7 +267,7 @@ export class World {
     this.map = map; this.theme = THEMES[map.theme] || THEMES['Foggy Woods'];
     const T = this.theme, L = this.level;
     L.traverse(o => { if (o.isMesh && o.userData.own && !o.geometry.userData.shared) o.geometry.dispose(); });
-    L.clear(); this.lobbyDress = null; if (this.items) { for (const e of this.items.values()) this.scene.remove(e.g); this.items.clear(); } this.lamps = []; this.bushes = []; this.lobbyHeli = null; this.omens = new Map(); this.boats = new Map(); if (this.bio) { this.scene.remove(this.bio); this.bio = null; }
+    L.clear(); this.lobbyDress = null; this.future = null; if (this.items) { for (const e of this.items.values()) this.scene.remove(e.g); this.items.clear(); } this.lamps = []; this.bushes = []; this.lobbyHeli = null; this.omens = new Map(); this.boats = new Map(); if (this.bio) { this.scene.remove(this.bio); this.bio = null; }
     for (const c of this.chars.values()) this.dyn.remove(c.obj); this.chars.clear();
     const s = this.scene; s.fog.color.set(T.fog); s.fog.density = T.dens; s.background.set(T.fog).multiplyScalar(.6); this.natG = null;
     { // v1.6: HDRI night sky, volumetric fog density, per-map colour grade, rain wetness + wind strength
@@ -298,6 +301,7 @@ export class World {
     const stoneMat = pbrWall('castle', { color: '#b8b4bc' });
     const storeMat = pbrWall('brick', { color: '#e8d8c8' });
     const mallWhite = new THREE.MeshStandardMaterial({ color: '#f7f7f5', roughness: 0.36, metalness: 0.02 });
+    const spireMat = new THREE.MeshStandardMaterial({ color: '#1a2030', roughness: 0.35, metalness: 0.62 });
     const fenceMat = pbrWall('oldwood', { color: '#a08060' });
     const winMats = new Map(), winMat = c => { if (!winMats.has(c)) winMats.set(c, new THREE.MeshStandardMaterial({ color: '#111', map: windowTex(), emissiveMap: windowTex(), emissive: c === 'off' ? '#000' : c === 'flicker' ? '#ffd890' : c, emissiveIntensity: c === 'off' ? 0 : .3, roughness: .15, metalness: .1 })); return winMats.get(c); };
     this.flickerWins = [];
@@ -306,12 +310,13 @@ export class World {
       const inB = (map.bld || []).find(b => w.x >= b.x - 1 && w.y >= b.y - 1 && w.x + w.w <= b.x + b.w + 1 && w.y + w.h <= b.y + b.h + 1);
       const isOuter = outer(w), two = inB && inB.floors > 1, store = inB && inB.type === 'store';
       const cityH = w.city ? (GFX.tier === 'low' ? Math.min(w.city, 11) : w.city) : 0;
-      const hgt = w.mh || cityH || (isOuter ? (map.theme === 'Helipad Lobby' ? 2.2 : 4.5) : w.f ? 1.25 : w.cs ? 7.5 : store ? 4.2 : two ? 6.2 : T.wallH);
+      const spire = inB && inB.kind === 'spire';
+      const hgt = spire ? 3.2 : (w.mh || cityH || (isOuter ? (map.theme === 'Helipad Lobby' ? 2.2 : 4.5) : w.f ? 1.25 : w.cs ? 7.5 : store ? 4.2 : two ? 6.2 : T.wallH));
       const base = w.base || 0; w._h = base + hgt;
       const mallShell = w.mall || (inB && inB.kind === 'mall');
       const sx = w.w * S, sz = w.h * S, g = boxUV(new THREE.BoxGeometry(sx, hgt, sz), sx, hgt, sz, mallShell ? 1 : T.wall === 'brick' ? 3 : 2.5);
-      let wm0 = mallShell ? mallWhite : w.f ? fenceMat : w.cs ? stoneMat : store ? storeMat : inB ? (inB.type === 'house' ? houseMat : facMat) : wallMat;
-      if (inB && !store && !isOuter) { // inside faces: wallpaper (houses) / painted concrete (facilities)
+      let wm0 = spire ? spireMat : mallShell ? mallWhite : w.f ? fenceMat : w.cs ? stoneMat : store ? storeMat : inB ? (inB.type === 'house' ? houseMat : facMat) : wallMat;
+      if (inB && !store && !isOuter && !spire) { // inside faces: wallpaper (houses) / painted concrete (facilities)
         const long = sx > sz, inner = inB.type === 'house' ? paperMat : facIn, cx = (inB.x + inB.w / 2), cy = (inB.y + inB.h / 2), wx = w.x + w.w / 2, wy = w.y + w.h / 2;
         const edge = long ? (Math.abs(w.y - inB.y) < 2 || Math.abs(w.y + w.h - inB.y - inB.h) < 2) : (Math.abs(w.x - inB.x) < 2 || Math.abs(w.x + w.w - inB.x - inB.w) < 2);
         const arr = [wm0, wm0, wm0, wm0, wm0, wm0];
@@ -403,7 +408,7 @@ export class World {
     for (const b of map.bld || []) {
       const fm = b.type === 'house' ? pbrMat('oldwood', b.w * S / 2.2, b.h * S / 2.2, { color: '#c8a888', ns: 1.2 }) : pbrMat('concrete', b.w * S / 3, b.h * S / 3, { color: b.kind === 'lab' ? '#d8dce0' : '#a8a8a2', tile: true });
       const f = own(new THREE.Mesh(new THREE.PlaneGeometry(b.w * S, b.h * S), fm)); f.rotation.x = -Math.PI / 2; f.position.set((b.x + b.w / 2) * S, .025, (b.y + b.h / 2) * S); L.add(f);
-      if (b.type === 'facility') { const sign = textSprite(b.kind.toUpperCase(), b.kind === 'lab' ? '#9ad8ff' : '#ffd27a', 30); sign.material.depthTest = true; sign.position.set((b.x + b.w / 2) * S, 4.2, b.y * S); sign.scale.set(3.5, .65, 1); L.add(sign); }
+      if (b.type === 'facility' && b.kind !== 'spire') { const sign = textSprite(b.kind.toUpperCase(), b.kind === 'lab' ? '#9ad8ff' : '#ffd27a', 30); sign.material.depthTest = true; sign.position.set((b.x + b.w / 2) * S, 4.2, b.y * S); sign.scale.set(3.5, .65, 1); L.add(sign); }
     }
     this.spinners = []; this.animProps = [];
     const DRESS = ['3,1,2,,,tophat,cape,knight', '1,3,0,,,witch,none,pajamas', '4,0,1,,,halo,wings,astronaut', '2,2,3,,,viking,chain,hazmat', '0,4,2,,,pirate,bandana,ninja'];
@@ -459,6 +464,7 @@ export class World {
         this.hemi.intensity *= 0.4; this.moon.intensity = Math.max(this.moon.intensity, 1.6);
       }
     }
+    if (map.future) { this.future = dressFuture(map, GFX.tier); L.add(this.future.group); }
     this.lod = []; this.lodT = 0; const tmpS = new THREE.Sphere();
     for (const o of L.children) { if (o.isInstancedMesh || o.isLight) continue; let r = 2;
       if (o.isMesh) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); tmpS.copy(o.geometry.boundingSphere); r = tmpS.radius * Math.max(o.scale.x, o.scale.y, o.scale.z); }
@@ -594,6 +600,7 @@ export class World {
       for (const o of this.lod) { const dx = o.position.x - px, dz = o.position.z - pz, rr = R0 + o.userData.lr; o.visible = dx * dx + dz * dz < rr * rr; } }
     GU.uTime.value = t; this.fx.u.uTime.value = t;
     if (this.lobbyDress) this.lobbyDress.tick(t, dt, md);
+    if (this.future) this.future.tick(t);
     { const sk = this.sky.material.uniforms; sk.uMoonDir.value.copy(this.moon.position).sub(this.moon.target.position).normalize(); sk.uMoonDir.value.y = Math.max(.32, sk.uMoonDir.value.y * .55); sk.uMoonDir.value.normalize();
       sk.uRot.value = t * .0008; // slow drift of the stars
       const PS = this.playerSky || null;
@@ -876,7 +883,9 @@ export class World {
     this.updateFx(dt, t); this.updateWitness();
     // camera
     let fp = false;
-    if (v.cam) {
+    if (v.cam && v.cam.free) {
+      const f = v.cam.free; this.camPos.set(f.x, f.y, f.z); this.camLook.set(f.lx, f.ly, f.lz); this.camInit = true;
+    } else if (v.cam) {
       // follow camera: rotates with the character (yaw), pitch from look drag, zoom from first person (0) to far third person (1)
       const { yaw, pitch, zoom } = v.cam, fwd = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw));
       const eye = ghost ? 1.6 : mp.role === 'monster' && st !== 'lobby' ? monsterHeight(modelKey(mp.mt, mp.fm)) * .9 : 1.62;
@@ -927,7 +936,7 @@ export class World {
     u.uRed.value = danger * (.25 + .2 * Math.sin(t * 9)) + (isMon && playing ? .08 : 0);
     u.uVig.value = 1.05 + danger * .35 + (mp.st.blind ? .5 : 0); u.uGrain.value = this.theme.staticNoise ? .06 : .045; u.uAb.value = .6 + danger * 3; { const gk = (performance.now() - (this.glitchT || -1e9)) / 700; if (gk < 1) { u.uAb.value += (1 - gk) * 22 * Math.random(); u.uGrain.value += (1 - gk) * .35; } } // Doctor Nowhere's form-change glitch
     u.uExp.value = st === 'lobby' ? 1.5 : 1.7; u.uFade.value = 0; u.uFlash.value = Math.max(0, u.uFlash.value - dt * 3);
-    if (v.day) { this.hemi.intensity = 2.5; this.hemi.color.set('#fff6ea'); this.scene.fog.color.set('#d7e0ea'); this.scene.fog.density = 0.006; this.moon.intensity = 0.2; u.uExp.value = 1.05; u.uVig.value = 0.85; }
+    if (v.day) { this.hemi.intensity = 2.5; this.hemi.color.set('#fff6ea'); this.scene.fog.color.set('#d7e0ea'); this.scene.fog.density = 0.006; this.moon.intensity = 0.15; u.uExp.value = 1.05; u.uVig.value = 0.85; if (this.sky) { const sk = this.sky.material.uniforms; sk.uTint.value.setRGB(1.35, 1.22, 1.05); sk.uMoonI.value = 0.08; sk.uFogC.value.set('#d5e2ee'); } }
     this.render(this.scene, this.camera);
     return { danger, myPos };
   }
@@ -1081,6 +1090,45 @@ export class World {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff2020' }));
     eye.position.set(-6, 2.2, -8); s.add(eye); this.menuEye = eye;
     s.userData = { vol: { on: true, dens: .05, hf: .25, far: 40, flash: this.menuSpot, flashK: .0045, lights: [red], lampK: .01 }, cg: [[.01, .004, .006], [1, 1, 1], [1.04, 1, .98], .9], dof: .9, focus: 16, focusR: 9 };
+  }
+  renderFlyover(u) {
+    if (!this.flyScene) {
+      const s = this.flyScene = new THREE.Scene(); s.background = new THREE.Color('#140c18'); s.fog = new THREE.FogExp2('#140c18', .012);
+      this.flyCam = new THREE.PerspectiveCamera(42, innerWidth / Math.max(1, innerHeight), .15, 220);
+      s.add(new THREE.HemisphereLight('#8aa0c8', '#2a1018', 1.6));
+      const key = new THREE.DirectionalLight('#ffe4cc', 3.2); key.position.set(8, 14, 10); s.add(key);
+      const rim = new THREE.DirectionalLight('#ff6a3a', 1.4); rim.position.set(-8, 4, -6); s.add(rim);
+      this.flyDragon = buildMonster('dragon'); this.flyDragon.scale.setScalar(1.35); s.add(this.flyDragon);
+      const cnv = document.createElement('canvas'); cnv.width = cnv.height = 256; const cg = cnv.getContext('2d');
+      cg.fillStyle = '#8a4034'; cg.fillRect(0, 0, 256, 256);
+      const grd = cg.createRadialGradient(80, 140, 10, 140, 130, 220); grd.addColorStop(0, '#c47862'); grd.addColorStop(1, '#3a140e'); cg.fillStyle = grd; cg.fillRect(0, 0, 256, 256);
+      cg.strokeStyle = '#1a0c0a'; cg.lineWidth = 16; cg.beginPath(); cg.moveTo(24, 210); cg.lineTo(236, 28); cg.moveTo(24, 210); cg.lineTo(248, 130); cg.moveTo(24, 210); cg.lineTo(190, 240); cg.stroke();
+      cg.strokeStyle = '#e0b0a0'; cg.lineWidth = 3; for (let i = 0; i < 5; i++) { cg.beginPath(); cg.moveTo(30, 40 + i * 40); cg.quadraticCurveTo(130, 70 + i * 24, 240, 30 + i * 46); cg.stroke(); }
+      const tex = new THREE.CanvasTexture(cnv); tex.colorSpace = THREE.SRGBColorSpace;
+      const memb = new THREE.MeshPhysicalMaterial({ map: tex, color: '#6a2418', roughness: 0.55, metalness: 0.08, side: THREE.DoubleSide, transparent: true, opacity: 0 });
+      this.flyCover = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.7), memb);
+      this.flyCover.position.set(1.3, 0.2, -1.15); this.flyCam.add(this.flyCover); s.add(this.flyCam);
+      s.userData = { vol: { on: false, dens: 0, lights: [] }, cg: [[.02, .008, .004], [1, .98, .96], [1.08, .96, .9], 1], dof: 0 };
+      this.resize();
+    }
+    const p = flyPose(u);
+    const drag = this.flyDragon;
+    drag.position.set(-1.2 + u * 3.2, 0.2, 8);
+    drag.rotation.set(0.02, 0.55, 0.04 * Math.sin(u * 6));
+    drag.scale.setScalar(0.62);
+    if (drag.userData.anim) animTick(drag, 1 / 60, 'walk', 1.4);
+    const k = p.cover >= 0.98 ? 1 : Math.min(1, p.cover * 1.15);
+    this.flyCover.visible = k > 0.02;
+    this.flyCover.material.opacity = k >= 1 ? 1 : Math.min(0.98, k);
+    this.flyCover.scale.setScalar(k >= 1 ? 1.35 : 0.35 + k * 1.1);
+    this.flyCover.position.set(k >= 1 ? 0 : 1.2 * (1 - k), 0, -1.05);
+    this.flyCover.rotation.z = k >= 1 ? 0.15 : -0.35 * (1 - k);
+    this.flyCam.position.set(0, 3.4, 18); this.flyCam.lookAt(0.4, 2.4, 6);
+    const ufm = this.post.uniforms;
+    ufm.uGrey.value = 0; ufm.uRed.value = .04; ufm.uVig.value = .75; ufm.uGrain.value = .04; ufm.uAb.value = .35; ufm.uExp.value = 1.55; ufm.uFade.value = 0; ufm.uFlash.value = 0;
+    this.render(this.flyScene, this.flyCam);
+    let skinned = false; this.flyDragon.traverse(o => { if (o.isSkinnedMesh) skinned = true; });
+    return skinned;
   }
   renderMenu(dt, t) {
     const a = Math.sin(t * .35) * .9; this.menuSpot.target.position.set(Math.sin(a) * 14, 1.5, -Math.cos(a) * 14 + 6);

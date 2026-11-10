@@ -5,7 +5,7 @@
 <div id="warn" class="panel"><h1>WARNING</h1><p class="rating"><span class="r13">13+</span> Rated 13+ (teen)</p>
   <p>Night Hunt contains <b>flashing and strobing lights</b> that may trigger seizures in people with photosensitive epilepsy. If you feel dizzy, get a headache, have blurred vision, twitching or any discomfort, <b>stop playing immediately</b>. It also contains <b>blood and gore</b>, sudden <b>jumpscares</b> and <b>loud sounds</b>. The game is rated <b>13+</b>. If this is too much for you, please leave now.</p>
   <button id="bwarn" class="big">Continue</button></div>
-<div id="intro" class="intro hide"><div class="logo">NIGHT<br>HUNT</div><p class="tap">tap to start</p></div>
+<div id="intro" class="intro hide"><div class="logo">NIGHT<br>HUNT</div><button id="bplay" type="button" class="big">Play</button><button id="breduce" type="button">Reduce motion</button><p class="tap">or tap the screen</p></div>
 <div id="menu" class="panel hide">
   <h1>NIGHT HUNT <span class="r13" title="Rated 13+">13+</span></h1><p class="sub">a multiplayer monster survival game (fan-made, play with friends)</p>
   <label>Your name <input id="pname" maxlength="16" placeholder="Player"></label>
@@ -17,12 +17,22 @@
   <label>Graphics <select id="optgfx"><option value="auto">Auto</option><option value="low">Low (phones)</option><option value="med">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
   <label>Sky <select id="optsky"></select></label>
   <div class="tabs"><button data-tab="create" class="on">Create Server</button><button data-tab="join">Join with Code</button><button data-tab="browse">Public Servers</button></div>
-  <div id="tab-create" class="tab">
+  <div id="tab-create" class="tab card">
     <label>Server name <input id="sname" maxlength="24" placeholder="Night Hunt Server"></label>
-    <label>Round length <select id="sround"><option value="300">5 minutes</option><option value="420" selected>7 minutes</option><option value="600">10 minutes</option></select></label>
     <label>Max players: <b id="maxv">4</b><input id="smax" type="range" min="2" max="15" value="4"></label>
-    <div class="priv"><label><input type="radio" name="priv" value="friends" checked> 🔒 Friends only <small>(join with private code / invite link)</small></label>
-    <label><input type="radio" name="priv" value="public"> 🌍 Public <small>(shows in the public server list)</small></label></div>
+    <label>Round length <select id="sround"><option value="300">5 minutes</option><option value="420" selected>7 minutes</option><option value="600">10 minutes</option></select></label>
+    <label>Difficulty <select id="sdiff"><option value="story">Story</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+    <p class="lt">Map</p>
+    <div id="smap" class="mapgrid">
+      <button type="button" class="mapcard on" data-map=""><i class="thumb any"></i><b>Surprise</b></button>
+      <button type="button" class="mapcard" data-map="Neon Spire"><i class="thumb neon"></i><b>Neon Spire</b></button>
+      <button type="button" class="mapcard" data-map="Foggy Woods"><i class="thumb woods"></i><b>Foggy Woods</b></button>
+      <button type="button" class="mapcard" data-map="Fester Street"><i class="thumb street"></i><b>Fester Street</b></button>
+      <button type="button" class="mapcard" data-map="Vampire Castle"><i class="thumb castle"></i><b>Vampire Castle</b></button>
+    </div>
+    <input type="hidden" id="smapv" value="">
+    <div class="priv"><label><input type="radio" name="priv" value="friends" checked> 🔒 Private <small>join with a code</small></label>
+    <label><input type="radio" name="priv" value="public"> 🌍 Public <small>listed in the browser</small></label></div>
     <button id="bcreate" class="big">Create Server</button>
   </div>
   <div id="tab-join" class="tab hide"><label>Server code <input id="jcode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"></label><button id="bjoin" class="big">Join</button></div>
@@ -69,15 +79,15 @@
 <div id="touch">
   <div id="joyzone"><div id="joybase"><div id="joyknob"></div></div><span class="zl">MOVE</span></div>
   <div id="aimzone"><div id="aimring"><b></b></div><span class="zl">LOOK · PINCH ZOOM</span></div>
-  <button id="tsprint" class="tb">🏃<small>SPRINT</small></button>
-  <button id="temote" class="tb sm">💃<small>EMOTE</small></button>
-  <button id="tspeed" class="tb sm gear hide">🌀</button>
-  <button id="tgrav" class="tb sm gear hide">🌙</button>
-  <button id="tinvis" class="tb sm gear hide">👻</button>
-  <button id="tability" class="tb hide">⚡<small>ABILITY</small></button>
-  <button id="tattack" class="tb hide">⚔️<small>ATTACK</small></button>
-  <button id="topen" class="tb hide">📦<small>OPEN</small></button>
-  <button id="tboard" class="tb sm">📋</button>
-  <button id="tmute" class="tb sm">🔊</button>
+  <button id="tsprint" class="tb" title="Sprint" aria-label="Sprint">🏃<small>SPRINT</small></button>
+  <button id="temote" class="tb sm" title="Emotes" aria-label="Emotes">💃<small>EMOTE</small></button>
+  <button id="tspeed" class="tb sm gear hide" title="Speed coil" aria-label="Speed coil">🌀<small>SPEED</small></button>
+  <button id="tgrav" class="tb sm gear hide" title="Gravity coil" aria-label="Gravity coil">🌙<small>GRAV</small></button>
+  <button id="tinvis" class="tb sm gear hide" title="Invisibility" aria-label="Invisibility">👻<small>CLOAK</small></button>
+  <button id="tability" class="tb hide" title="Monster ability" aria-label="Monster ability">⚡<small>ABILITY</small></button>
+  <button id="tattack" class="tb hide" title="Attack or use item" aria-label="Attack">⚔️<small>ATTACK</small></button>
+  <button id="topen" class="tb hide" title="Open or interact" aria-label="Open">📦<small>OPEN</small></button>
+  <button id="tboard" class="tb sm" title="Player list" aria-label="Player list">📋<small>LIST</small></button>
+  <button id="tmute" class="tb sm" title="Mute" aria-label="Mute">🔊<small>MUTE</small></button>
 </div>
 <script src="vendor/peerjs.min.js"></script><script src="vendor/nostr.bundle.js"></script><script src="js/auras.js"></script><script src="core.js"></script><script src="net.js"></script><script type="module" src="game.js"></script></body></html>
