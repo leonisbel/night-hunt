@@ -1,4 +1,5 @@
 // Horror sound engine (Web Audio): procedural drones, reverb, heartbeat, rotor, screams + recorded CC0 ambience beds, footsteps and roars.
+import { seasonFor } from './season.js';
 let AC = null, master, comp, verb, verbSend, amb = null, rotor = null, muted = false;
 export const audio = {
   get ctx() { return AC; },
@@ -70,8 +71,18 @@ export function setAmbience(theme) {
     else if (theme === 'Haunted Farm') { if (r < .25) tone(500, .25, 'square', .02, 420, .6, pan); else if (r < .4) burst(.6, .05, 900, 3, 'bandpass', .6, pan); }
     else if (theme === 'Vampire Castle') { if (r < .25) sfx('bats', { vol: .3, pan }); else if (r < .4) tone(110, 2, 'sine', .04, 105, .95, pan); }
     else if (theme === 'Fester Street') { if (r < .2) tone(880, .8, 'sine', .015, 860, .95, pan); else if (r < .3) burst(.15, .05, 2000, 3, 'bandpass', .4, pan); }
-    else if (theme === 'lobby' && r < .2) burst(.4, .03, 600, 2, 'bandpass', .5, pan);
+    else if (theme === 'lobby') {
+      const season = seasonFor(new Date(), typeof location !== 'undefined' ? new URLSearchParams(location.search).get('season') : '');
+      if (r < .18) tone(180 + Math.random() * 40, .35, 'sawtooth', .012, 90, .4, pan);
+      else if (r < .28 && (season === 'newyear' || season === 'july4')) burst(.25, .05, 500, .8, 'lowpass', .4, pan);
+      else if (r < .34 && season === 'christmas') tone(784, .45, 'sine', .02, 659, .7, pan);
+    }
   }, 1700);
+  if (theme === 'lobby') {
+    const tr = AC.createBufferSource(); tr.buffer = noiseBuffer(); tr.loop = true;
+    const tf = AC.createBiquadFilter(); tf.type = 'lowpass'; tf.frequency.value = 240;
+    const tg = AC.createGain(); tg.gain.value = .07; tr.connect(tf).connect(tg).connect(gain); tr.start(); nodes.push(tr);
+  }
   amb = { theme, gain, nodes, timer }; bed(theme, gain, nodes);
 }
 

@@ -1,5 +1,5 @@
 // Mall locker. Cards open a 3D showcase. Buying and equipping are separate buttons inside it.
-import { migrateProfile, claimDaily, START_COINS, DAILY_FREE } from './save.js';
+import { migrateProfile, claimDaily, applyRoundReward, START_COINS, DAILY_FREE } from './save.js';
 import { EMOTES } from './emotes.js';
 import { openShowcase, closeShowcase } from './showcase.js';
 import { buildSurvivor, buildMonster, buildItem, buildPet, applySkin } from './models.js';
@@ -250,6 +250,6 @@ export function initLocker({ onChange, monsters, sfx, preview, onEmote }) {
   document.querySelectorAll('.blocker').forEach(b => b.onclick = () => { if (el.classList.contains('hide')) show(b.dataset.tab); else hide(); });
   $('lclose').onclick = hide;
   render();
-  return { profile: P, addCoins(n) { P.coins += n; saveProfile(P); render(); }, render, open: show, close: hide, get isOpen() { return !el.classList.contains('hide'); }, get tab() { return tab; }, emote: () => P.emote || 'wave',
+  return { profile: P, addCoins(n) { const total = applyRoundReward(P, n); render(); return total; }, render, open: show, close: hide, get isOpen() { return !el.classList.contains('hide'); }, get tab() { return tab; }, emote: () => P.emote || 'wave',
     kitUsed(list) { for (const k of list || []) { const i = P.kit.indexOf(k); if (i >= 0) P.kit.splice(i, 1); } saveProfile(P); render(); } };
 }
